@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261123gerentes1';
+  const VERSION_CSS = '20261126pruebaqr1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -50,7 +50,7 @@
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
       [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['clientes','Clientes']].map(([k, t], i) =>
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['excluidos', 'Números excluidos'], ['clientes','Clientes']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
           k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
@@ -209,8 +209,10 @@
     S.pestana = b.dataset.p; mostrar();
   });
   function mostrar() {
+    if (S.pestana === 'excluidos' && (!puede('configurar') || SHOWROOM)) S.pestana = 'pedidos';
     for (const b of $('pestanas').querySelectorAll('[data-p]')) {
       b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
+      if (b.dataset.p === 'excluidos') b.hidden = !puede('configurar') || !!SHOWROOM;
       if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
       if (['charlas','soporte','clientes'].includes(b.dataset.p)) b.hidden = !puede('gestionar');
     }
@@ -219,7 +221,7 @@
     if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
       avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
     ({pedidos: verPedidos, soporte: verSoporte, reporte:verReporte, stock: verStock, carta: verCarta,
-      mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas,clientes:verClientes})[S.pestana]();
+      mensajes: verMensajes, ajustes: verAjustes, excluidos: verExcluidos, charlas: verCharlas,clientes:verClientes})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -1046,6 +1048,51 @@
       campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
       editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
         : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
+    // Canal de atención opcional por sucursal. Solicitud != conexión.
+    const canalId=S.suc.id;
+    const canalVigente=()=>S.suc?.id===canalId&&S.pestana==='ajustes';
+    const canalWhatsApp=el('section',{class:'bloque'},
+      el('h3',{text:'WhatsApp · seguridad de la prueba'}),
+      el('p',{text:'WhatsApp real: no vinculado. Respuestas automáticas: desactivadas.'}),
+      el('p',{class:'nota',text:'No uses el WhatsApp comercial para experimentar. La prueba de vinculación, respuestas, exclusión de contactos y cupo utiliza solo datos ficticios y no puede enviar mensajes.'}),
+      CFG.entorno==='prueba'&&editable?el('a',{class:'boton principal',href:'/chat/prueba-whatsapp/',text:'Abrir laboratorio seguro de WhatsApp'}):null);
+    // Cupo de servicio: no confundir estimación de prueba con consumo real.
+    const cupoEstado=el('p',{role:'status','aria-live':'polite',class:'nota',text:'Consultando cupo…'});
+    const cupoDetalle=el('p',{class:'nota',text:'El asistente debe detenerse antes de generar cargos. El límite de seguridad del ensayo es de 900 sobre 1.000 mensajes mensuales por número.'});
+    const cupoContinuar=el('button',{type:'button',class:'boton principal',text:'Solicitar continuar',hidden:true});
+    const cupoPausa=el('button',{type:'button',class:'boton',text:'Mantener pausado',hidden:true});
+    let cupoId=null, cupoOcupado=false;
+    const cupoPanel=el('section',{class:'bloque'},el('h3',{text:'Cupo de WhatsApp y autorización'}),
+      cupoEstado,cupoDetalle,el('div',{class:'fila-botones'},cupoContinuar,cupoPausa),
+      el('p',{class:'nota',text:'Solo la dueña o administradora puede decidir. Solicitar continuar no activa envíos ni autoriza gasto; se deberá confirmar el presupuesto máximo antes.'}));
+    function cupoMostrar(r){
+      if(!canalVigente())return;
+      cupoId=r?.consulta_id||null;
+      const estados={sin_datos:'Sin medición verificada. No habilita respuestas.',normal:'Cupo dentro del límite.',
+        cerca_del_limite:'Aviso: te estás acercando al límite gratuito.',
+        consulta:'Respuestas pausadas: ¿querés solicitar continuar o mantener la pausa?',
+        continuacion_solicitada:'Continuación solicitada. Sigue pausado hasta confirmar un presupuesto.',
+        pausa_confirmada:'Pausa confirmada. Seguís atendiendo manualmente desde WhatsApp.'};
+      cupoEstado.textContent=(r?.simulado===true?'Ensayo · ':'')+(estados[r?.estado]||'Sin medición verificada.');
+      if(r?.simulado===true&&Number.isInteger(r.restantes_preventivos))
+        cupoDetalle.textContent='SIMULACIÓN: '+(900-r.restantes_preventivos)+' de 900 unidades preventivas utilizadas. No es el saldo real del proveedor.';
+      cupoContinuar.hidden=!(r?.puede_decidir&&cupoId);
+      cupoPausa.hidden=cupoContinuar.hidden;
+      cupoContinuar.disabled=cupoOcupado||r?.estado==='continuacion_solicitada';
+      cupoPausa.disabled=cupoOcupado||r?.estado==='pausa_confirmada';
+    }
+    async function cupoDecidir(accion){
+      if(!canalVigente()||!cupoId||cupoOcupado||DEMO)return;
+      if(accion==='continuar'&&!confirm('¿Solicitar continuar? Esto NO autoriza gastos ni activa respuestas. Se confirmará un presupuesto máximo por separado.'))return;
+      cupoOcupado=true;cupoContinuar.disabled=true;cupoPausa.disabled=true;
+      try{const r=await rpc('panel_whatsapp_cupo',{p_sucursal:canalId,p_accion:accion,p_consulta:cupoId});cupoOcupado=false;cupoMostrar(r);}
+      catch(e){cupoOcupado=false;if(canalVigente()){cupoEstado.textContent='No se confirmó la decisión. Volvé a abrir Ajustes.';aviso(e.message,true);}}
+    }
+    cupoContinuar.addEventListener('click',()=>cupoDecidir('continuar'));
+    cupoPausa.addEventListener('click',()=>cupoDecidir('mantener_pausa'));
+    if(DEMO)cupoEstado.textContent='Demostración · no se contabilizan mensajes reales.';
+    else if(puede('configurar'))void rpc('panel_whatsapp_cupo',{p_sucursal:canalId}).then(cupoMostrar)
+      .catch(()=>{if(canalVigente())cupoEstado.textContent='Sin datos de consumo verificados. Las respuestas no se habilitan con este panel.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1080,7 +1127,7 @@
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
     const suscripcion = editable ? bloqueSuscripcion() : null;
     const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, editable?cupoPanel:null, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
@@ -1093,6 +1140,62 @@
   }
 
   // ------------------------------------------------------------------------------------------- historial diario de demanda por sucursal
+  // Agenda privada por sucursal. No se altera la sesión de WhatsApp ni se activa el canal.
+  const numeroInternacional = v => String(v || '').trim().replace(/[\s()-]/g,'');
+  const claveExclusion = v => numeroInternacional(v).replace(/^\+54(?:9)?([0-9]{10})$/,'AR:$1');
+  async function verExcluidos() {
+    if (!puede('configurar') || SHOWROOM) return;
+    const id = S.suc.id;
+    const numero = el('input',{id:'excluidos-numero',type:'tel',inputmode:'tel',autocomplete:'off',maxlength:40,required:true,placeholder:'+54 9 11 0000 0000'});
+    const nombre = el('input',{id:'excluidos-nombre',type:'text',autocomplete:'off',maxlength:60,placeholder:'Dueña, gerente, proveedor…'});
+    const agregar = el('button',{class:'boton principal',type:'submit',text:'Agregar número',disabled:true});
+    const estado = el('p',{role:'status','aria-live':'polite',class:'nota',text:'Cargando números…'});
+    const lista = el('div',{id:'excluidos-lista',class:'excluidos-lista'});
+    const form = el('form',{class:'excluidos-form',onsubmit:e=>{
+      e.preventDefault();
+      const n=numeroInternacional(numero.value);
+      if(!/^\+[1-9]\d{7,14}$/.test(n)){estado.textContent='Ingresá el número completo con código de país (+54 9 para celulares argentinos).';return;}
+      void trabajar('agregar',n,nombre.value.trim());
+    }},campo('Número de WhatsApp (con código de país)',numero),campo('Referencia (opcional)',nombre),agregar);
+    const caja = el('section',{class:'bloque excluidos-panel'},el('h2',{text:'Números excluidos · '+S.suc.nombre}),
+      el('p',{class:'nota',text:'El asistente no procesa ni responde mensajes de estos números por WhatsApp. Podés conversar normalmente desde WhatsApp: no se bloquea el contacto. La lista es privada de esta sucursal y no activa el canal.'}),
+      DEMO?el('p',{class:'nota',text:'Demostración: usá números ficticios. Los cambios no se guardan en el servidor.'}):null,
+      form,estado,lista);
+    poner(contenido,caja);
+    const vigente=()=>caja.isConnected&&S.suc?.id===id&&S.pestana==='excluidos'&&puede('configurar');
+    let ocupado=false,cargado=false;
+    function bloquear(){
+      form.querySelectorAll('input,button').forEach(n=>{n.disabled=ocupado||!cargado;});
+      lista.querySelectorAll('button').forEach(n=>{n.disabled=ocupado;});
+      caja.setAttribute('aria-busy',String(ocupado));
+    }
+    function pintar(numeros){
+      poner(lista,...(numeros.length?numeros.map(item=>el('div',{class:'excluidos-fila'},
+        el('div',{},el('strong',{text:item.nombre||'Sin referencia'}),el('span',{text:item.numero})),
+        el('button',{class:'boton',type:'button',text:'Quitar','aria-label':'Quitar '+item.numero,onclick:()=>{
+          if(vigente()&&!ocupado&&confirm('¿Quitar este número de las exclusiones? El asistente podrá volver a responderle cuando WhatsApp esté activo.'))void trabajar('quitar',item.numero);
+        }}))):[el('p',{class:'nota',text:'No hay números excluidos en esta sucursal.'})]));
+    }
+    async function trabajar(accion,n=null,ref=null){
+      if(ocupado||!vigente())return;
+      ocupado=true;bloquear();estado.textContent=accion==='ver'?'Cargando números…':'Guardando…';
+      try{
+        const r=await rpc('panel_whatsapp_excluidos',{p_sucursal:id,p_accion:accion,p_numero:n,p_nombre:ref});
+        if(!vigente())return;
+        if(!Array.isArray(r?.numeros))throw Error('No se pudo verificar la lista. Probá de nuevo.');
+        cargado=true;pintar(r.numeros);
+        estado.textContent=accion==='agregar'?(r.cambio?'Número excluido correctamente.':'Ese número ya estaba excluido.'):
+          accion==='quitar'?(r.cambio?'Número quitado de las exclusiones.':'Ese número ya no estaba excluido.'):'Lista actualizada.';
+        if(accion==='agregar'){numero.value='';nombre.value='';}
+      }catch(err){
+        if(!vigente())return;
+        estado.textContent=err.message;
+        if(accion==='ver')poner(lista,el('button',{class:'boton',type:'button',text:'Reintentar',onclick:()=>void trabajar('ver')}));
+      }finally{ocupado=false;if(vigente())bloquear();}
+    }
+    await trabajar('ver');
+  }
+
   async function verReporte() {
     const id=S.suc.id,dias=S.reporteDias;
     contenido.replaceChildren(
@@ -1453,6 +1556,21 @@
         return {ok:true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
+      case 'panel_whatsapp_excluidos': {
+        const suc=D.suc.find(s=>s.id===a.p_sucursal);
+        if(!suc||suc.nivel!=='configurar'||SHOWROOM)throw Error('No tenés permiso para esta acción.');
+        D.excluidos ||= {};
+        const lista=D.excluidos[a.p_sucursal] ||= [];
+        let cambio=false;
+        if(a.p_accion!=='ver'){
+          const n=numeroInternacional(a.p_numero);
+          if(!/^\+[1-9]\d{7,14}$/.test(n))throw Error('Ingresá un número internacional válido.');
+          const i=lista.findIndex(x=>claveExclusion(x.numero)===claveExclusion(n));
+          if(a.p_accion==='agregar'&&i<0){lista.push({numero:n,nombre:String(a.p_nombre||'').trim().slice(0,60)});cambio=true;}
+          if(a.p_accion==='quitar'&&i>=0){lista.splice(i,1);cambio=true;}
+        }
+        return {cambio,numeros:structuredClone(lista)};
+      }
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_push_promociones': {

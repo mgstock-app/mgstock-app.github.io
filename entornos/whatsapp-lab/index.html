@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es-AR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>GESTLOK Prueba · WhatsApp seguro</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f5f9;color:#172f46;font:15px system-ui,sans-serif}main{max-width:980px;margin:auto;padding:52px 16px 36px}a{color:#234f87}h1{font-size:28px;margin:10px 0}h2{font-size:18px;margin:0 0 10px}p{line-height:1.5;margin:8px 0}small,.muted{color:#53677a}.notice{background:#e6f2eb;border:1px solid #bedbc7;color:#17482d;padding:14px;border-radius:12px;margin:16px 0}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}section{border:1px solid #d7e1e9;background:#fff;border-radius:16px;padding:18px}label{font-weight:600;display:block;margin:10px 0 5px}select,input{width:100%;padding:10px;border:1px solid #b1c0cd;border-radius:8px;font:inherit;color:inherit;background:#fff}button{font:inherit;border:1px solid #b1c0cd;border-radius:9px;background:white;color:#193c60;padding:10px 12px;margin:5px 4px 5px 0;cursor:pointer}button.primary{background:#123c5b;color:white;border-color:#123c5b}button:disabled{opacity:.42;cursor:not-allowed}.status{font-weight:650;color:#195a3a}.log{background:#f3f6f9;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:10px;padding:12px;min-height:120px;max-height:340px;overflow:auto}.badge{display:inline-block;padding:4px 8px;background:#e4edf6;border-radius:8px;font-size:12px;font-weight:650}.full{grid-column:1/-1}.row{display:flex;gap:8px;flex-wrap:wrap}.bar{width:100%;height:12px;background:#e4eaf1;border-radius:100px;overflow:hidden;margin:12px 0}.fill{height:100%;background:#378260;width:0%;transition:width .2s}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+</style></head>
+<body><main><a href="/">← Gestlok Prueba</a><h1>Laboratorio de WhatsApp</h1>
+<span class="badge">SIMULACIÓN AISLADA · SIN ENVÍOS</span>
+<div class="notice"><strong>Protegemos los números de los locales.</strong><p>No se conecta WhatsApp, no se usa IA paga, no se guardan pedidos ni mensajes. El desafío de QR es ficticio: no se escanea ni inicia sesión. Usá solamente datos de ejemplo.</p></div>
+<label for="local">Sucursal de ensayo</label><select id="local"><option value="munro">Munro · ficticio</option><option value="torcuato">Don Torcuato · ficticio</option></select>
+<div class="grid" style="margin-top:16px">
+<section><h2>1. Vinculación de ensayo</h2><p id="pair-state" class="status" role="status">Desconectado</p><p id="challenge" class="log">Sin desafío.</p>
+<button id="qr" class="primary">Generar desafío ficticio</button><button id="pair" disabled>Simular vinculación</button><button id="disconnect" disabled>Desconectar</button>
+<small>La prueba vence en 60 segundos. No hay QR real ni credenciales.</small></section>
+<section><h2>2. Números excluidos</h2><p class="muted">Contacto interno ficticio: simulá que es la dueña o el gerente. La exclusión se aplica únicamente a este local.</p>
+<label><input type="checkbox" id="exclude" style="width:auto"> Excluir contacto interno de este local</label>
+<p id="exclusion" class="status" role="status">Atención de ensayo permitida.</p>
+<a href="/chat/panel/">Administrar exclusiones en el panel de prueba</a></section>
+<section class="full"><h2>3. Conversación y pedido ficticio</h2><p class="muted">Motor de GESTLOK con carta inventada, opciones numeradas y sin IA externa. La respuesta es una vista previa: nunca se manda a WhatsApp.</p>
+<label for="message">Mensaje de ejemplo</label><input id="message" value="Hola" maxlength="600" autocomplete="off"><div class="row"><button id="send" class="primary" disabled>Procesar mensaje ficticio</button><button id="repeat" disabled>Repetir último evento</button><button id="group" disabled>Simular mensaje de grupo</button></div>
+<p id="result" role="status" class="status">Vinculá el ensayo primero.</p><div id="messages" class="log" aria-live="polite">Todavía no hay conversación.</div></section>
+<section class="full"><h2>4. Cupo y autorización</h2><p>Ensayo mensual por número: aviso a los 800, pausa preventiva a los 900. Continuar no habilita gasto ni envío.</p>
+<p id="quota" class="status" role="status">0 / 900 unidades preventivas.</p><div class="bar"><div class="fill" id="bar"></div></div>
+<button id="near">Simular 799 usados</button><button id="limit">Simular 899 usados</button><button id="advance" class="primary">Simular 1 respuesta</button><button id="continue" disabled>Solicitar continuar</button><button id="pause" disabled>Mantener pausado</button>
+<p id="decision" class="muted">Consumo ficticio independiente por sucursal. Sin medición real del proveedor.</p></section>
+</div></main><script src="./app.mjs" type="module"></script></body></html>

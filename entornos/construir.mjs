@@ -22,6 +22,7 @@ const MICROAPPS = [{
   enlaces: [['Chat de clientes · Munro', '/chat/?s=mi-gusto-munro'], ['Chat de clientes · Torcuato', '/chat/?s=mi-gusto-torcuato'],
     ['Panel del local (gerente y dueño)', '/chat/panel/']],
 }];
+if (nombre === 'prueba') MICROAPPS[0].enlaces.push(['Laboratorio seguro de WhatsApp · sin conexión real','/chat/prueba-whatsapp/']);
 const COMPARTIDAS = ['vendor', 'icons', 'img'];
 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -70,6 +71,21 @@ function copiar(origen, destino) {
 }
 for (const app of MICROAPPS) for (const c of app.carpetas) copiar(join(raiz, 'public', c), join(salida, c));
 for (const c of COMPARTIDAS) copiar(join(raiz, 'public', c), join(salida, c));
+// Solo Prueba: módulo sin credenciales, llamadas de red ni envío. Lista explícita de archivos.
+if (nombre === 'prueba') {
+  const lab = join(salida, 'chat/prueba-whatsapp');
+  copiar(join(raiz, 'entornos/whatsapp-lab'), lab);
+  for (const archivo of [
+    'scripts/gestlok-qr-pilot/pairing.mjs',
+    ...['conversation','compact','preview','verified-pilot','exclusions','quota'].map(n=>'supabase/functions/gestlok-ycloud-adapter/'+n+'.mjs'),
+    'supabase/functions/gestlok-chat/motor.js','supabase/functions/gestlok-chat/ia.js'
+  ]) {
+    const destino=join(lab,'runtime',archivo);
+    mkdirSync(dirname(destino),{recursive:true});
+    cpSync(join(raiz,archivo),destino);
+  }
+}
+
 
 // Conexión de las micro apps: base de pruebas y función del entorno.
 writeFileSync(join(salida, 'chat/config.js'), '/* ' + ent.nombre + ': base de pruebas (no es la base real). */\n' +
