@@ -29,7 +29,7 @@ test('el panel comunica el error y valida límites antes de guardar', () => {
   assert.match(js, /pedidoMinimo >= 10000000/);
   assert.match(js, /if \(!elegidos\.length\)/);
   assert.match(js, /p_sucursal: S\.suc\.id, p_version: a\.version/);
-  assert.match(page, /panel\.js\?v=20261126excluidos1/);
-  assert.match(central, /VERSION_PANEL='20261126excluidos1'/);
-  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-excluidos-20261126/);
+  assert.match(page, /panel\.js\?v=20261126cupo1/);
+  assert.match(central, /VERSION_PANEL='20261126cupo1'/);
+  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-cupo-20261126/);
 });

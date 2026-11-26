@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261126excluidos1';
+  const VERSION_CSS = '20261126cupo1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -1081,6 +1081,43 @@
     canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
     if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
     else void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
+    // Cupo de servicio: no confundir estimación de prueba con consumo real.
+    const cupoEstado=el('p',{role:'status','aria-live':'polite',class:'nota',text:'Consultando cupo…'});
+    const cupoDetalle=el('p',{class:'nota',text:'El asistente debe detenerse antes de generar cargos. El límite de seguridad del ensayo es de 900 sobre 1.000 mensajes mensuales por número.'});
+    const cupoContinuar=el('button',{type:'button',class:'boton principal',text:'Solicitar continuar',hidden:true});
+    const cupoPausa=el('button',{type:'button',class:'boton',text:'Mantener pausado',hidden:true});
+    let cupoId=null, cupoOcupado=false;
+    const cupoPanel=el('section',{class:'bloque'},el('h3',{text:'Cupo de WhatsApp y autorización'}),
+      cupoEstado,cupoDetalle,el('div',{class:'fila-botones'},cupoContinuar,cupoPausa),
+      el('p',{class:'nota',text:'Solo la dueña o administradora puede decidir. Solicitar continuar no activa envíos ni autoriza gasto; se deberá confirmar el presupuesto máximo antes.'}));
+    function cupoMostrar(r){
+      if(!canalVigente())return;
+      cupoId=r?.consulta_id||null;
+      const estados={sin_datos:'Sin medición verificada. No habilita respuestas.',normal:'Cupo dentro del límite.',
+        cerca_del_limite:'Aviso: te estás acercando al límite gratuito.',
+        consulta:'Respuestas pausadas: ¿querés solicitar continuar o mantener la pausa?',
+        continuacion_solicitada:'Continuación solicitada. Sigue pausado hasta confirmar un presupuesto.',
+        pausa_confirmada:'Pausa confirmada. Seguís atendiendo manualmente desde WhatsApp.'};
+      cupoEstado.textContent=(r?.simulado===true?'Ensayo · ':'')+(estados[r?.estado]||'Sin medición verificada.');
+      if(r?.simulado===true&&Number.isInteger(r.restantes_preventivos))
+        cupoDetalle.textContent='SIMULACIÓN: '+(900-r.restantes_preventivos)+' de 900 unidades preventivas utilizadas. No es el saldo real del proveedor.';
+      cupoContinuar.hidden=!(r?.puede_decidir&&cupoId);
+      cupoPausa.hidden=cupoContinuar.hidden;
+      cupoContinuar.disabled=cupoOcupado||r?.estado==='continuacion_solicitada';
+      cupoPausa.disabled=cupoOcupado||r?.estado==='pausa_confirmada';
+    }
+    async function cupoDecidir(accion){
+      if(!canalVigente()||!cupoId||cupoOcupado||DEMO)return;
+      if(accion==='continuar'&&!confirm('¿Solicitar continuar? Esto NO autoriza gastos ni activa respuestas. Se confirmará un presupuesto máximo por separado.'))return;
+      cupoOcupado=true;cupoContinuar.disabled=true;cupoPausa.disabled=true;
+      try{const r=await rpc('panel_whatsapp_cupo',{p_sucursal:canalId,p_accion:accion,p_consulta:cupoId});cupoOcupado=false;cupoMostrar(r);}
+      catch(e){cupoOcupado=false;if(canalVigente()){cupoEstado.textContent='No se confirmó la decisión. Volvé a abrir Ajustes.';aviso(e.message,true);}}
+    }
+    cupoContinuar.addEventListener('click',()=>cupoDecidir('continuar'));
+    cupoPausa.addEventListener('click',()=>cupoDecidir('mantener_pausa'));
+    if(DEMO)cupoEstado.textContent='Demostración · no se contabilizan mensajes reales.';
+    else if(puede('configurar'))void rpc('panel_whatsapp_cupo',{p_sucursal:canalId}).then(cupoMostrar)
+      .catch(()=>{if(canalVigente())cupoEstado.textContent='Sin datos de consumo verificados. Las respuestas no se habilitan con este panel.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1115,7 +1152,7 @@
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
     const suscripcion = editable ? bloqueSuscripcion() : null;
     const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, pushCampanas].filter(Boolean));
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, editable?cupoPanel:null, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
