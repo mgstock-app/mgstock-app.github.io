@@ -53,3 +53,30 @@ export async function createPartnerLink({approved = false, projectUrl, apiKey, a
     throw new PartnerError(502, 'YCloud devolvió un enlace inválido.');
   }
 }
+
+// Read-only confirmation. An account authorization alone is not a verified phone.
+const canonical = n => typeof n === 'string' && /^\+[1-9][0-9]{7,14}$/.test(n) ? n.replace(/^\+549([0-9]{10})$/, '+54$1') : null;
+export async function verifyPartnerPhone({apiKey,waba,number,fetcher=fetch}) {
+  if (!apiKey || typeof waba !== 'string' || !/^[0-9]{1,30}$/.test(waba) || !canonical(number))
+    throw new PartnerError(409,'Primero autorizá la cuenta del comercio.');
+  const matches=[];
+  for (let page=1; page<=5; page++) {
+    const url=new URL('https://api.ycloud.com/v2/whatsapp/phoneNumbers');
+    url.searchParams.set('filter.wabaId',waba);url.searchParams.set('limit','100');url.searchParams.set('page',String(page));
+    let response, data;
+    try {
+      response=await fetcher(url.href,{method:'GET',headers:{'X-API-Key':apiKey,Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error();
+      data=await response.json();
+      if (!Array.isArray(data.items)||data.items.length>100) throw new Error();
+    } catch { throw new PartnerError(502,'No se pudo comprobar el número en YCloud.'); }
+    for (const phone of data.items) {
+      if (phone?.wabaId===waba&&canonical(phone.phoneNumber)===canonical(number)&&typeof phone.id==='string'&&/^[0-9]{1,30}$/.test(phone.id)) matches.push(phone);
+    }
+    if (data.items.length<100) {
+      if (matches.length!==1) throw new PartnerError(409,'El número exacto no pudo confirmarse en esa cuenta.');
+      return {waba,phoneId:matches[0].id,phone:matches[0].phoneNumber};
+    }
+  }
+  throw new PartnerError(409,'No se pudo completar la comprobación de la cuenta.');
+}
