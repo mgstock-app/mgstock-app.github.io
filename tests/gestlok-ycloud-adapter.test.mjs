@@ -263,3 +263,99 @@ test('coste cero: la configuración IA por sí sola no ejecuta llamadas externas
   assert.equal(calls,0);
  }finally{globalThis.fetch=oldFetch;}
 });
+
+// Compare exactly the same successful order, counting actual projected YCloud
+// payloads, rather than counting individual text fragments in a reply.
+test('modo económico: mismo combo, delivery y efectivo en 10 mensajes en vez de 21, sin IA ni envío',async()=>{
+ const now=new Date('2026-11-26T12:00:00Z'),from='+5491100000001';
+ let payloadCount=0,network=0;
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=async()=>{network++;throw Error('Red prohibida');};
+ function measured(){
+  const u=client();
+  const measure=r=>{
+   const p=projectYCloudText({from,to:ident.phone,messages:r.messages,lastInboundAt:now,now});
+   assert.equal(p.dispatchAllowed,false);assert.equal(r.sendAllowed,false);
+   payloadCount+=p.payloads.length;return r;
+  };
+  return {u,say:async text=>measure(await u.say(text)),pick:async id=>measure(await u.pick(id)),get count(){return payloadCount;}};
+ }
+ try{
+  const standard=measured();
+  await standard.say('Hola');await standard.pick('carta');await standard.pick('elegir:pack:1');await standard.say('1');
+  await standard.pick('carne');await standard.say('4');await standard.pick('queso');await standard.say('2');
+  await standard.pick('ajo');await standard.say('1');await standard.pick('criolla');await standard.say('1');
+  await standard.pick('v:agua');await standard.pick('add');await standard.pick('finalizar');await standard.pick('envio');
+  await standard.say('Persona ficticia');await standard.say('Calle ficticia 123');await standard.pick('efectivo');await standard.say('7000');
+  const old=await standard.pick('confirm');assert.equal(standard.count,21);
+  payloadCount=0;
+  const quick=measured();
+  await quick.say('Hola');await quick.pick('carta');
+  const pack=quick.u.last.options.find(o=>o.id==='elegir:pack:1');assert.ok(pack);
+  await quick.say(pack.number+'x1');assert.equal(quick.u.session.stage,'flavor');
+  await quick.say('1x4, 2x2');assert.equal(quick.u.session.product.group,1);
+  await quick.say('1x1, 2x1');await quick.pick('v:agua');
+  assert.equal(quick.u.session.stage,'product_review');assert.equal(quick.u.session.engine.carrito.length,0);
+  await quick.pick('add');await quick.pick('finalizar');
+  const review=await quick.say('datos: entrega=delivery; nombre=Persona ficticia; dirección=Calle ficticia 123; pago=efectivo; abono=$7.000');
+  assert.equal(review.session.stage,'confirm');assert.equal(review.action,undefined);
+  const fast=await quick.pick('confirm');assert.equal(quick.count,10);
+  assert.equal(fast.action.type,'simulated_order');assert.deepEqual(fast.action.pedido,old.action.pedido);
+  const thanks=await quick.say('¡Muchas gracias!');assert.equal(thanks.messages.length,0);assert.equal(quick.count,10);
+  assert.equal(thanks.action,undefined);assert.equal(thanks.session.stage,'submitted');assert.equal(network,0);
+  console.log('Consumo de servicio proyectado: 21 -> 10 (52,38% menos), 0 llamadas de IA y 0 envíos reales.');
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+test('atajos no permiten elegir opciones duplicadas, fuera de página, exceso de cantidad ni escribir un carrito sin revisión',async()=>{
+ const u=client();await u.say('Hola');await u.pick('carta');
+ const p=u.last.options.find(o=>o.id==='elegir:pack:1');assert.ok(p);
+ const old=structuredClone(u.session.engine.carrito);
+ assert.equal((await u.say('99x1')).session.stage,'menu');assert.deepEqual(u.session.engine.carrito,old);
+ await u.say(p.number+'x1');assert.equal(u.session.stage,'flavor');
+ for(const text of ['1x7','1x2, 1x4','3x6','1x1, 2x0','1x51','1x4, 2x3']){
+  const before=structuredClone(u.session.product.choices);
+  const r=await u.say(text);assert.equal(r.session.stage,'flavor');assert.equal(r.action,undefined);
+  assert.deepEqual(r.session.product.choices,before);assert.deepEqual(r.session.engine.carrito,old);
+ }
+ await u.say('1x4');assert.equal(u.session.stage,'flavor');assert.equal(u.session.product.group,0);
+ await u.say('2x2');assert.equal(u.session.product.group,1);
+ await u.say('1x2');await u.pick('v:agua');assert.equal(u.session.stage,'product_review');
+ assert.equal(u.session.engine.carrito.length,0);
+});
+
+test('datos agrupados no permiten cambiar teléfono, medios deshabilitados ni confirmar sin validar el cambio y precio actual',async()=>{
+ const u=client();await u.say('Hola');await u.pick('carta');
+ const p=u.last.options.find(o=>o.id==='elegir:p1:1');await u.say(p.number+'x2');await u.pick('add');await u.pick('finalizar');
+ const before=structuredClone(u.session.data);
+ for(const text of ['datos: entrega=delivery; telefono=123','datos: entrega=delivery; pago=debito','datos: nombre=Uno; nombre=Dos','datos: entrega=otro','datos: nombre=']){
+  const r=await u.say(text);assert.equal(r.session.stage,'checkout');assert.equal(r.action,undefined);assert.deepEqual(r.session.data,before);
+ }
+ const insufficient=await u.say('datos: entrega=delivery; nombre=Persona ficticia; direccion=Calle 123; pago=efectivo; abono=1');
+ assert.equal(insufficient.session.field,'efectivo_abona');assert.equal(insufficient.action,undefined);
+ const correct=await u.say('datos: abono=7000');assert.equal(correct.session.stage,'confirm');assert.equal(correct.action,undefined);
+ const changed={...cat2,productos:cat2.productos.map(p=>p.id==='p1'?{...p,precio:1200}:p)};
+ const refreshed=await u.pick('confirm',{catalogo:changed});assert.equal(refreshed.action,undefined);assert.equal(refreshed.session.stage,'confirm');
+ const final=await u.pick('confirm',{catalogo:changed});assert.equal(final.action.pedido.telefono,ident.phone);assert.equal(final.action.pedido.efectivo_abona,'7000');
+});
+
+test('las cortesías exactas posteriores a una derivación no generan respuesta; las consultas y acciones no se silencian',async()=>{
+ const u=client();await u.say('Me cobraron mal');assert.equal(u.session.stage,'handoff');
+ const thanks=await u.say('Muchas gracias.');assert.deepEqual(thanks.messages,[]);assert.equal(thanks.action,undefined);
+ assert.ok((await u.say('Gracias, pero falta una empanada')).messages.length>0);
+ assert.equal((await u.say('MENU')).session.stage,'menu');
+});
+
+test('cantidades naturales de nombres exactos se resuelven localmente y las ambiguas no se aplican',async()=>{
+ let calls=0;const u=client({iaSimulada:async()=>{calls++;throw Error('No necesita IA');}});
+ const single=await u.say('2 Empanada ficticia');assert.equal(single.session.stage,'product_review');assert.equal(single.session.product.qty,2);assert.equal(single.session.engine.carrito.length,0);
+ await u.pick('add');assert.equal(u.session.engine.carrito[0].cantidad,2);
+ const combo=client();await combo.say('Hola');await combo.pick('carta');const pack=combo.last.options.find(o=>o.id==='elegir:pack:1');await combo.say(pack.number+'x1');
+ assert.equal(combo.session.stage,'flavor');const before=structuredClone(combo.session.product.choices);
+ for(const text of ['4 de carne, 2 de inventado','4 de carne, 2 de agotada','4 de carne, 2 de CARNE']){
+  const r=await combo.say(text);assert.deepEqual(r.session.product.choices,before);assert.equal(r.action,undefined);
+ }
+ await combo.say('4 de Carne, 2 de Queso');assert.equal(combo.session.product.group,1);
+ await combo.say('1 Ajo, 1 Criolla');await combo.pick('v:agua');assert.equal(combo.session.stage,'product_review');assert.equal(calls,0);
+});
+
