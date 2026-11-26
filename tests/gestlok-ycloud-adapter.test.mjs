@@ -359,3 +359,44 @@ test('cantidades naturales de nombres exactos se resuelven localmente y las ambi
  await combo.say('1 Ajo, 1 Criolla');await combo.pick('v:agua');assert.equal(combo.session.stage,'product_review');assert.equal(calls,0);
 });
 
+import {exclusionKey,prepareExclusions,excludedSender} from '../supabase/functions/gestlok-ycloud-adapter/exclusions.mjs';
+test('exclusiones aceptan formato internacional argentino equivalente y rechazan números ambiguos',()=>{
+ const a=prepareExclusions(['+54 (11) 0000-0000','+5491100000000','+14155550123']);
+ assert.equal(a.size,2);assert.equal(excludedSender(a,'+5491100000000'),true);assert.equal(excludedSender(a,'+541100000000'),true);
+ assert.equal(excludedSender(a,'+5491100000003'),false);assert.equal(excludedSender(a,'+14155550123'),true);
+ assert.equal(exclusionKey('11 0000 0000'),null);assert.throws(()=>prepareExclusions(['11 0000 0000']),/inválido/);
+ assert.throws(()=>prepareExclusions(null),/inválida/);assert.throws(()=>prepareExclusions('invalid'),/inválida/);
+});
+
+test('número excluido tiene prioridad incluso si está autorizado: firma válida, cero accesos al almacén, sin enviar ni registrar pedido',async()=>{
+ const secret='ficticio-supersecreto-1234567890',now=Date.now(),timestamp=Math.floor(now/1000);
+ const route={empresa:'empresa-a',sucursal:'local-a',sucursalId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',slug:'local-a',waba:'waba-a',to:'+5491100000001',allowSenders:[ident.phone],excludedSenders:['+54 (11) 0000-0000']};
+ const other={...route,sucursal:'local-b',sucursalId:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',slug:'local-b',to:'+5491100000002',excludedSenders:[]};
+ let reads=0,writes=0;
+ const store={async load(){reads++;return {revision:0,state:null,sucursal:s2,catalogo,privado:{}};},async commit(){writes++;return {status:'committed'};}};
+ const accept=createSignedYCloudBridge({secret,routes:[route,other],store,enabled:true});
+ const encoder=new TextEncoder(),key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ async function signed(r,id){
+  const raw=JSON.stringify({id:'event-'+id,type:'whatsapp.inbound_message.received',apiVersion:'v2',whatsappInboundMessage:{id:'msg-'+id,wabaId:r.waba,to:r.to,from:ident.phone,type:'text',text:{body:'Quiero hacer un pedido'}}});
+  const mac=await crypto.subtle.sign('HMAC',key,encoder.encode(timestamp+'.'+raw));
+  return {raw,signature:'t='+timestamp+',s='+Array.from(new Uint8Array(mac),b=>b.toString(16).padStart(2,'0')).join(''),now};
+ }
+ const ignored=await signed(route,'1');assert.deepEqual(await accept(ignored),{status:'excluded_sender',sendAllowed:false});
+ assert.deepEqual(await accept(ignored),{status:'excluded_sender',sendAllowed:false});assert.equal(reads,0);assert.equal(writes,0);
+ assert.equal((await accept({...ignored,signature:'bad'})).status,'invalid_signature');assert.equal(reads,0);
+ // Editing externally supplied route objects cannot remove the snapshot's gate.
+ route.excludedSenders=[];assert.equal((await accept(await signed(route,'2'))).status,'excluded_sender');assert.equal(reads,0);
+ assert.equal((await accept(await signed(other,'3'))).status,'accepted');assert.equal(reads,1);assert.equal(writes,1);
+ assert.throws(()=>createSignedYCloudBridge({secret,routes:[{...route,excludedSenders:['123']}],store,enabled:true}),/inválido/);
+});
+
+test('exclusión conserva el aislamiento por local en el ensayo y no crea sesiones, pedidos ni derivaciones',async()=>{
+ const a={empresa:'empresa-a',sucursal:'local-a',to:'+5491100000001',waba:'ficticia',senders:[ident.phone],config:s2,catalogo,excludedSenders:['+541100000000']};
+ const b={...a,sucursal:'local-b',to:'+5491100000002',excludedSenders:[]};
+ const pilot=createOfflinePilot([a,b]);let n=0;
+ const say=async(route,body)=>pilot.receive({id:'e'+(++n),type:'whatsapp.inbound_message.received',apiVersion:'v2',whatsappInboundMessage:{id:'m'+n,wabaId:route.waba,to:route.to,from:ident.phone,type:'text',text:{body}}});
+ for(const body of ['Hola','Quiero hacer un pedido','Me cobraron mal'])assert.deepEqual(await say(a,body),{accepted:false,reason:'excluded_sender',sendAllowed:false});
+ assert.equal(pilot.listPending(a).length,0);assert.equal(pilot.listHandoffs(a).length,0);
+ const other=await say(b,'Me cobraron mal');assert.equal(other.accepted,true);assert.equal(pilot.listHandoffs(b).length,1);
+});
+

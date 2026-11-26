@@ -2,6 +2,7 @@
 // the private test-only RPC. No network client and no WhatsApp response sender.
 // Never mount this module as an unauthenticated public endpoint.
 import {conversationPreview} from './conversation.mjs';
+import {prepareExclusions,excludedSender} from './exclusions.mjs';
 const enc=new TextEncoder(),e164=/^\+[1-9]\d{7,14}$/;
 const good=v=>typeof v==='string'&&v.length>0&&v.length<=200;
 const bytes=x=>x instanceof Uint8Array?x:typeof x==='string'?enc.encode(x):null;
@@ -33,11 +34,12 @@ export function createSupabasePilotStore(rpc){
 }
 export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
  if(!Array.isArray(routes)||!store||typeof store.load!=='function'||typeof store.commit!=='function')throw Error('Configuración incompleta');
- const used=new Set();
+ const used=new Set(),registry=[];
  for(const r of routes){
   if(!good(r.waba)||!e164.test(r.to)||!good(r.empresa)||!good(r.sucursal)||!good(r.slug)||!good(r.sucursalId)
    ||!Array.isArray(r.allowSenders)||!r.allowSenders.length||r.allowSenders.some(p=>!e164.test(p)||p===r.to))throw Error('Ruta inválida');
   const key=JSON.stringify([r.waba,r.to]);if(used.has(key))throw Error('Ruta duplicada');used.add(key);
+  registry.push({...structuredClone(r),exclusions:prepareExclusions(r.excludedSenders)});
  }
  const drop=reason=>({status:reason,sendAllowed:false});
  return async function accept({raw,signature,now=Date.now()}){
@@ -49,8 +51,13 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   const m=p.whatsappInboundMessage;
   if(!good(p.id)||!good(m?.id)||!e164.test(m.from)||!e164.test(m.to)||!good(m.wabaId)||m.groupId)return drop('invalid_message');
   if(m.type!=='text'||typeof m.text?.body!=='string'||m.text.body.length>600)return drop('unsupported_message');
-  const route=routes.find(r=>r.waba===m.wabaId&&r.to===m.to&&r.allowSenders.includes(m.from));
+  const route=registry.find(r=>r.waba===m.wabaId&&r.to===m.to);
+  // Match only the signed sender on the verified business number. Exclusion
+  // wins over allowlist, before loading data, invoking AI, committing orders,
+  // or preparing an outbound response. The native WhatsApp chat is untouched.
   if(!route)return drop('not_allowlisted');
+  if(excludedSender(route.exclusions,m.from))return drop('excluded_sender');
+  if(!route.allowSenders.includes(m.from))return drop('not_allowlisted');
   const scope=await digest(enc.encode(JSON.stringify([route.empresa,route.sucursal,m.from])));
   for(let attempt=0;attempt<3;attempt++){
    const current=await store.load({slug:route.slug,sucursal:route.sucursalId,scope});
@@ -69,3 +76,4 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   return drop('conflict_retry_later');
  };
 }
+

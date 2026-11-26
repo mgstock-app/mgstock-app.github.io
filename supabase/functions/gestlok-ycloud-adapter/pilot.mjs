@@ -2,6 +2,7 @@
 // replace raw-body signature verification. The caller supplies synthetic events
 // and a server-controlled allowlist. No network, credentials, storage or sends.
 import {conversationPreview} from './conversation.mjs';
+import {prepareExclusions,excludedSender} from './exclusions.mjs';
 const e164=/^\+[1-9]\d{7,14}$/;
 const id=v=>typeof v==='string'&&v.length>0&&v.length<=200;
 export function createOfflinePilot(routes){
@@ -10,6 +11,7 @@ export function createOfflinePilot(routes){
  for(const r of registry){
   if(!id(r.waba)||!e164.test(r.to)||!id(r.empresa)||!id(r.sucursal)||!Array.isArray(r.senders)||!r.senders.length||r.senders.some(p=>!e164.test(p)||p===r.to))throw Error('Ruta ficticia inválida');
   const k=JSON.stringify([r.waba,r.to]);if(uniq.has(k))throw Error('Ruta ambigua');uniq.add(k);
+  r.exclusions=prepareExclusions(r.excludedSenders);
  }
  const sessions=new Map(),seen=new Set(),pending=new Map(),handoffs=new Map();
  let preceding=Promise.resolve();
@@ -25,8 +27,10 @@ export function createOfflinePilot(routes){
   const m=p.whatsappInboundMessage;
   if(!id(p.id)||!id(m?.id)||!id(m.wabaId)||m.groupId||!e164.test(m.from)||!e164.test(m.to)||m.from===m.to)return drop('invalid_message');
   if(m.type!=='text'||typeof m.text?.body!=='string'||m.text.body.length>600)return drop('unsupported_message');
-  const route=registry.find(r=>r.waba===m.wabaId&&r.to===m.to&&r.senders.includes(m.from));
+  const route=registry.find(r=>r.waba===m.wabaId&&r.to===m.to);
   if(!route)return drop('unmatched_route');
+  if(excludedSender(route.exclusions,m.from))return drop('excluded_sender');
+  if(!route.senders.includes(m.from))return drop('unmatched_route');
   const scope=JSON.stringify([route.empresa,route.sucursal,m.from]);
   const eventKey=JSON.stringify([scope,p.id]),messageKey=JSON.stringify([scope,m.id]),wamidKey=id(m.wamid)?JSON.stringify([scope,m.wamid]):null;
   if(seen.has(eventKey)||seen.has(messageKey)||wamidKey&&seen.has(wamidKey))return drop('duplicate');
@@ -61,3 +65,4 @@ export function createOfflinePilot(routes){
  }
  return {receive,listPending,listHandoffs,reviewPending};
 }
+
