@@ -1,6 +1,6 @@
 // Preview only: reuse the real chat engine. No persistence, no network by default,
 // no provider sends, no order execution. Explicitly report unsupported web UI.
-import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea} from '../gestlok-chat/motor.js';
+import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea,pagosDe,soloEfectivo,totalCarrito,PAGOS} from '../gestlok-chat/motor.js';
 import {responderIA} from '../gestlok-chat/ia.js';
 const text=v=>String(v??'').trim();
 const available=p=>p?.activo!==false&&p?.disponible!==false;
@@ -75,4 +75,34 @@ export function completePreviewProduct({projection,catalogo,selection,lotId}){
  const line={producto_id:p.id,cantidad:selection.quantity,opciones:choices,nota:''};
  const issue=validarLinea(catalogo,line);if(issue)return fail(issue);
  return {ok:true,estimatedTotal:importeLinea(catalogo,line),entry:{agregar_varios:[line],lote_id:lotId}};
+}
+
+// Checkout preview only: collect validated fields, never save or confirm a real order.
+// Caller must bind state and verified sender to its own tenant/sucursal/conversation.
+export function checkoutPreview({sucursal,catalogo,estado,datos={},confirmed=false,ahora=new Date()}){
+ const active=carteleraDelDia(sucursal,catalogo,ahora),s=active.sucursal,c=active.catalogo;
+ const error=message=>({stage:'review',message,sendAllowed:false});
+ const ask=(field,message,options=[])=>({stage:'collect',field,message,options,sendAllowed:false});
+ const cart=estado?.carrito;
+ if(!Array.isArray(cart)||!cart.length)return error('El pedido está vacío.');
+ for(const line of cart){const issue=validarLinea(c,line);if(issue)return error(issue);}
+ if(s.atencion?.habilitado&&!s.atencion.abierto&&!estado.programado)return error('El local está cerrado. Primero debe aceptar programar el pedido.');
+ const types=[...(s.acepta_retiro?['retiro']:[]),...(s.acepta_envio?['envio']:[])];
+ if(!types.length)return error('El local no tiene entregas habilitadas.');
+ if(!types.includes(datos.entrega))return ask('entrega','¿Retiro en el local o delivery?',types);
+ if(typeof datos.nombre!=='string'||!datos.nombre.trim()||datos.nombre.length>80)return ask('nombre','Indique su nombre.');
+ // Telephone comes only from an authenticated inbound sender in the future transport.
+ if(typeof datos.telefono!=='string'||!/^\+[1-9]\d{7,14}$/.test(datos.telefono))return error('No se pudo verificar el teléfono.');
+ if(datos.entrega==='envio'&&(typeof datos.direccion!=='string'||!datos.direccion.trim()||datos.direccion.length>200))return ask('direccion','Indique su dirección y entrecalles.');
+ let payments=pagosDe(s,datos.entrega).filter(p=>Object.hasOwn(PAGOS,p));
+ if(soloEfectivo(c,cart))payments=payments.filter(p=>p==='efectivo');
+ if(!payments.length)return error('Consulte al gerente los medios de pago.');
+ if(!payments.includes(datos.medio_pago))return ask('medio_pago','¿Cómo desea abonar?',payments.map(p=>({id:p,label:PAGOS[p]})));
+ if(datos.entrega==='envio'&&datos.medio_pago==='efectivo'&&(typeof datos.efectivo_abona!=='string'||!/^\d{1,12}$/.test(datos.efectivo_abona)))return ask('efectivo_abona','¿Con cuánto abona?');
+ const clean={entrega:datos.entrega,nombre:datos.nombre.trim(),telefono:datos.telefono,direccion:datos.entrega==='envio'?datos.direccion.trim():'',medio_pago:datos.medio_pago,efectivo_abona:datos.entrega==='envio'&&datos.medio_pago==='efectivo'?datos.efectivo_abona:'',nota:typeof datos.nota==='string'?datos.nota.slice(0,500):''};
+ const total=totalCarrito(c,cart);
+ if(confirmed!==true)return {stage:'confirm',message:'Revise el pedido. El gerente debe confirmarlo antes de la preparación.',estimatedProductsTotal:total,deliveryQuotePending:datos.entrega==='envio',sendAllowed:false};
+ const turn=responder({sucursal:s,catalogo:c,estado,entrada:{datos:clean},ahora});
+ if(turn.accion?.tipo!=='crear_pedido')return error('El pedido necesita revisión antes de enviarlo.');
+ return {stage:'preview_order',message:'Pedido simulado, pendiente de validación y confirmación del gerente.',estimatedProductsTotal:total,action:turn.accion,sendAllowed:false};
 }
