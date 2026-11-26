@@ -1,28 +1,29 @@
 // Preview only: reuse the real chat engine. No persistence, no network by default,
 // no provider sends, no order execution. Explicitly report unsupported web UI.
-import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea,pagosDe,soloEfectivo,totalCarrito,PAGOS} from '../gestlok-chat/motor.js';
+import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea,pagosDe,soloEfectivo,totalCarrito,PAGOS,descuentoEfectivoAplica,totalSinDescuento} from '../gestlok-chat/motor.js';
 import {responderIA} from '../gestlok-chat/ia.js';
 const text=v=>String(v??'').trim();
 const available=p=>p?.activo!==false&&p?.disponible!==false;
 export function projectWhatsApp(turn,catalogo){
  const messages=[];const pending=new Set();const options=[];const selectors=[];
- const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id)||options.length>=30)return;options.push({id,label:text(label).slice(0,80)});};
+ const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id))return;options.push({id,label:text(label).slice(0,80)});};
  for(const m of turn.mensajes||[]){
+  if(text(m.texto))messages.push(text(m.texto));
   if(m.tipo==='carta'){
    const list=(catalogo?.productos||[]).filter(p=>available(p)&&(!m.categoria||p.categoria_id===m.categoria));
    if(list.length){messages.push('Productos disponibles:');for(const p of list)add('elegir:'+p.id+':1',p.nombre+' · $ '+Number(p.precio).toLocaleString('es-AR'));}
    if(list.length>30)pending.add('paginacion_carta');
   }else if(m.tipo==='producto'){
    pending.add('selector_producto');
-   for(const id of (m.productos||[]).slice(0,30)){
+   for(const id of (m.productos||[])){
     const p=(catalogo?.productos||[]).find(x=>x.id===id&&available(x));if(!p)continue;
-    selectors.push({id:p.id,label:p.nombre,quantity:Number.isInteger(m.cantidad)?m.cantidad:1,basePrice:Number(p.precio),groups:(p.opciones||[]).map(g=>({id:g.id,label:g.nombre,type:g.tipo,required:g.obligatorio===true,total:g.total,max:g.max,values:valoresDisponibles(catalogo,g).map(v=>({id:v.id,label:v.nombre,extra:Number(v.extra)||0}))}))});
+    selectors.push({id:p.id,label:p.nombre,quantity:Number.isInteger(m.cantidad)?m.cantidad:1,basePrice:Number(p.precio),preset:structuredClone(m.opciones||{}),groups:(p.opciones||[]).map(g=>({id:g.id,label:g.nombre,type:g.tipo,required:g.obligatorio===true,total:g.total,max:g.max,values:valoresDisponibles(catalogo,g).map(v=>({id:v.id,label:v.nombre,extra:Number(v.extra)||0}))}))});
    }
   }else if(m.tipo==='datos'){
    pending.add('formulario_datos');
-  }else if(m.tipo){
+  }else if(m.tipo&&m.tipo!=='carrito'){
    pending.add('interfaz_'+m.tipo);
-  }else if(text(m.texto)){messages.push(text(m.texto));}
+  }
   for(const b of m.botones||[])add(b.id,b.texto);
  }
  if(turn.accion)pending.add('accion_'+turn.accion.tipo);
@@ -32,10 +33,11 @@ export async function previewWhatsApp({sucursal,catalogo,privado={},estado,histo
  const active=carteleraDelDia(sucursal,catalogo,ahora);
  const x={sucursal:active.sucursal,catalogo:active.catalogo,estado,entrada,mensajes:privado.mensajes||{},ahora};
  const raw=text(entrada?.texto).slice(0,600);
- if(clasificarSoporte(entrada)||raw&&consultaAjena(raw)){
+ const support=clasificarSoporte(entrada);
+ if(support&&support!=='consulta_demora'||raw&&consultaAjena(raw)){
   return {motor:'guiado',estado,projection:{messages:['Un integrante del local revisará su consulta.'],options:[],pending:['derivacion_humana'],sendAllowed:false}};
  }
- let turn=responder(x),motor='guiado';
+ let turn=responder(support==='consulta_demora'?{...x,entrada:{boton:'demora'}}:x),motor='guiado';
  const unknown=t=>t.mensajes?.length===1&&!t.accion&&/^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(text(t.mensajes[0].texto));
  // Only an explicitly injected fake provider is allowed in the preview.
  if(raw&&unknown(turn)&&privado.ia_activa!==false&&config.clave&&typeof fetchImpl==='function'){
@@ -47,7 +49,7 @@ export async function previewWhatsApp({sucursal,catalogo,privado={},estado,histo
 }
 // Selection maps must be scoped to one conversation and one turn by the future backend.
 export function selectPreviewOption(projection,input){
- const s=text(input);if(!/^[1-9][0-9]?$/.test(s))return null;
+ const s=text(input);if(!/^[1-9][0-9]*$/.test(s))return null;
  const option=projection?.options?.find(x=>x.number===Number(s));
  return option?{boton:option.id}:null;
 }
@@ -88,21 +90,27 @@ export function checkoutPreview({sucursal,catalogo,estado,datos={},confirmed=fal
  for(const line of cart){const issue=validarLinea(c,line);if(issue)return error(issue);}
  if(s.atencion?.habilitado&&!s.atencion.abierto&&!estado.programado)return error('El local está cerrado. Primero debe aceptar programar el pedido.');
  const types=[...(s.acepta_retiro?['retiro']:[]),...(s.acepta_envio?['envio']:[])];
+ if(Number(s.pedido_minimo)>0&&totalCarrito(c,cart)<Number(s.pedido_minimo))return error('El pedido no alcanza el mínimo del local.');
  if(!types.length)return error('El local no tiene entregas habilitadas.');
  if(!types.includes(datos.entrega))return ask('entrega','¿Retiro en el local o delivery?',types);
- if(typeof datos.nombre!=='string'||!datos.nombre.trim()||datos.nombre.length>80)return ask('nombre','Indique su nombre.');
+ if(typeof datos.nombre!=='string'||datos.nombre.trim().length<2||datos.nombre.length>80)return ask('nombre','Indique su nombre.');
  // Telephone comes only from an authenticated inbound sender in the future transport.
  if(typeof datos.telefono!=='string'||!/^\+[1-9]\d{7,14}$/.test(datos.telefono))return error('No se pudo verificar el teléfono.');
- if(datos.entrega==='envio'&&(typeof datos.direccion!=='string'||!datos.direccion.trim()||datos.direccion.length>200))return ask('direccion','Indique su dirección y entrecalles.');
+ if(datos.entrega==='envio'&&(typeof datos.direccion!=='string'||datos.direccion.trim().length<5||datos.direccion.length>200))return ask('direccion','Indique su dirección y entrecalles.');
  let payments=pagosDe(s,datos.entrega).filter(p=>Object.hasOwn(PAGOS,p));
  if(soloEfectivo(c,cart))payments=payments.filter(p=>p==='efectivo');
  if(!payments.length)return error('Consulte al gerente los medios de pago.');
  if(!payments.includes(datos.medio_pago))return ask('medio_pago','¿Cómo desea abonar?',payments.map(p=>({id:p,label:PAGOS[p]})));
- if(datos.entrega==='envio'&&datos.medio_pago==='efectivo'&&(typeof datos.efectivo_abona!=='string'||!/^\d{1,12}$/.test(datos.efectivo_abona)))return ask('efectivo_abona','¿Con cuánto abona?');
+ if(datos.entrega==='envio'&&datos.medio_pago==='efectivo'&&(typeof datos.efectivo_abona!=='string'||!/^\d{1,8}(\.\d{1,2})?$/.test(datos.efectivo_abona)))return ask('efectivo_abona','¿Con cuánto abona?');
  const clean={entrega:datos.entrega,nombre:datos.nombre.trim(),telefono:datos.telefono,direccion:datos.entrega==='envio'?datos.direccion.trim():'',medio_pago:datos.medio_pago,efectivo_abona:datos.entrega==='envio'&&datos.medio_pago==='efectivo'?datos.efectivo_abona:'',nota:typeof datos.nota==='string'?datos.nota.slice(0,500):''};
  const total=totalCarrito(c,cart);
- if(confirmed!==true)return {stage:'confirm',message:'Revise el pedido. El gerente debe confirmarlo antes de la preparación.',estimatedProductsTotal:total,deliveryQuotePending:datos.entrega==='envio',sendAllowed:false};
+ const discount=datos.medio_pago==='efectivo'&&descuentoEfectivoAplica(s,datos.entrega)?Math.round((total-totalSinDescuento(c,cart))*Number(s.descuento_efectivo_pct))/100:0;
+ const delivery=datos.entrega==='envio'?Number(s.envio_costo||0):0;
+ const estimate=Math.round((total-discount+delivery)*100)/100;
+ if(datos.entrega==='envio'&&datos.medio_pago==='efectivo'&&Number(datos.efectivo_abona)<estimate)return ask('efectivo_abona','El importe no alcanza el total estimado. ¿Con cuánto abona?');
+ if(confirmed!==true)return {stage:'confirm',message:'Revise el pedido. El gerente debe confirmarlo antes de la preparación.',estimatedProductsTotal:total,discount,delivery,estimatedTotal:estimate,deliveryQuotePending:datos.entrega==='envio',sendAllowed:false};
  const turn=responder({sucursal:s,catalogo:c,estado,entrada:{datos:clean},ahora});
  if(turn.accion?.tipo!=='crear_pedido')return error('El pedido necesita revisión antes de enviarlo.');
  return {stage:'preview_order',message:'Pedido simulado, pendiente de validación y confirmación del gerente.',estimatedProductsTotal:total,action:turn.accion,sendAllowed:false};
 }
+
