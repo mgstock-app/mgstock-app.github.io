@@ -51,12 +51,12 @@ test('habilitación comercial: varios números, permisos, aislamiento, validaci�
   } finally { await db.close(); }
 });
 
-test('panel privado: formulario, estado comercial y Meta pendiente; sin transporte',()=>{
+test('panel privado: formulario, estado comercial y vínculo pendiente; sin transporte',()=>{
   assert.match(ui,/\['habilitacion', 'Habilitación'/);
   assert.match(ui,/cur === 'habilitacion'\) body = .*premiumWAView/);
   assert.match(ui,/data-ch-wa-form/);
   assert.match(ui,/gestlok_chat_admin_whatsapp_premium/);
-  assert.match(ui,/WhatsApp: pendiente de Meta/);
+  assert.match(ui,/WhatsApp: pendiente de vinculación/);
   assert.match(ui,/premiumWAAllowed=\(\)=>api\?\.isCreadora/);
   assert.doesNotMatch(sql,/https?:|net\.http|vault\.|service_role/);
 });
