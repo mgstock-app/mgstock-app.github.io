@@ -32,6 +32,11 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+    // Revertir únicamente los ajustes visuales del reinicio de Stock Local.
+    for(const {actual,original} of [{"actual":"'<span class=\"pill ok\">Turno cerrado hoy · Próxima planilla</span>'","original":"'<span class=\"pill ok\">Turno cerrado hoy</span>'"},{"actual":"value=\"${esc(fmtIn(f))}\" placeholder=\"${stockLocalEnVista()?'—':'0'}\" class=\"${chgF","original":"value=\"${esc(fmtIn(f))}\" placeholder=\"0\" class=\"${chgF"},{"actual":"value=\"${esc(fmtIn(l))}\" placeholder=\"${stockLocalEnVista()?'—':'0'}\" class=\"${chgL","original":"value=\"${esc(fmtIn(l))}\" placeholder=\"0\" class=\"${chgL"},{"actual":"if(total)total.textContent=fTotalVisible(it);","original":"if(total)total.textContent=fmt(fTot(it));"},{"actual":"if (t) t.textContent = fTotalVisible(it);","original":"if (t) t.textContent = fmt(fTot(it));"},{"actual":"${fTotalVisible(it)}</strong></span>","original":"${fmt(fTot(it))}</strong></span>"},{"actual":"const fTot = it => round((fVal(it, 'l') || 0) + (fVal(it, 'f') || 0));\nconst fTotalVisible = it => stockLocalEnVista() && fVal(it,'l')==null && fVal(it,'f')==null ? '—' : fmt(fTot(it));","original":"const fTot = it => round((fVal(it, 'l') || 0) + (fVal(it, 'f') || 0));"},{"actual":"Después de guardar el historial, las cantidades de Local e Ingreso quedarán vacías para el próximo turno.","original":"No se borrará el stock para el próximo turno."}]){
+      assert.equal(content.split(actual).length-1,1,'Hook exacto de planilla vacía');
+      content=content.replace(actual,()=>original);
+    }
     // Revertir exclusivamente los tres fragmentos de edición histórica revisados.
     const closedEditHooks=[
   {

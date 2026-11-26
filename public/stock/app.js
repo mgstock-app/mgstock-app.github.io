@@ -416,6 +416,7 @@ const lastFab = () => { const f = fabCtx(); return S.conteos.find(c => c.tipo ==
 const fItems = () => [...S.fab].sort((a,b) => (a.orden ?? 1e9) - (b.orden ?? 1e9) || String(a.nombre||'').localeCompare(String(b.nombre||''), 'es'));
 function fVal(it, k){ if (stockLocalDuenaServidor()) return num(k === 'l' ? it.local : it.fabrica); const d = S.fdraft[it.id]; if (d && has(d, k)) return d[k]; return num(k === 'l' ? it.local : it.fabrica); }
 const fTot = it => round((fVal(it, 'l') || 0) + (fVal(it, 'f') || 0));
+const fTotalVisible = it => stockLocalEnVista() && fVal(it,'l')==null && fVal(it,'f')==null ? '—' : fmt(fTot(it));
 function fPend(){ return fItems().filter(it => { const d = S.fdraft[it.id]; if (!d) return false; return (has(d, 'l') && d.l !== num(it.local)) || (has(d, 'f') && d.f !== num(it.fabrica)); }); }
 const fSin = it => { const l = fVal(it, 'l'); return l != null ? l === 0 : !!it.sinStock; };
 const bloqueOf = it => Math.max(1, Math.round(num(it.bloque) || 1));
@@ -1998,7 +1999,7 @@ V.fabrica = () => {
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH)), auto=stockLocalEnVista();
   const head = `${banners()}${stockLocalDuenaAviso()}${stockLocalSyncLinea()}<div class="bar"><p class="lead">${auto ? 'Cargá las cantidades de Local e Ingreso. Cada cambio se guarda automáticamente para todo el equipo. El historial se registra al cerrar el turno; si nadie lo cierra, se cierra solo a las 00:50.' : IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
-    <div class="bar-a">${IH && esTotal() && !auto ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `${!stockLocalEnVista() ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>` : ''}${canW() && !stockLocalDuenaServidor() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}${!auto ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
+    <div class="bar-a">${IH && esTotal() && !auto ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `${!stockLocalEnVista() ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>` : ''}${canW() && !stockLocalDuenaServidor() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}${!auto ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy · Próxima planilla</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -2022,9 +2023,9 @@ function rowFab(it, n){
   return `<div class="xl-r ${fSin(it) ? 'sin' : ''} ${fabIsFolded(bloqueOf(it)) ? 'gl-folded-row' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
-    <span class="xt"><small class="xl-mob-label">Total</small><strong id="ft-${id}">${fmt(fTot(it))}</strong></span>
-    <span class="xc xcl"><small class="xl-mob-label">Local</small><span class="xl-stepper" role="group" aria-label="Ajustar Local de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="-1" aria-label="Restar 1 a Local de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(l > 0) ? 'disabled' : ''}>−</button><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="1" aria-label="Sumar 1 a Local de ${esc(it.nombre)}" ${dis}>+</button></span>${fracFab(it, l)}</span>
-    <span class="xc fab"><small class="xl-mob-label">${ingHoja() ? 'Ingreso' : 'Fábrica'}</small><span class="xl-stepper" role="group" aria-label="Ajustar ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="-1" aria-label="Restar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(f > 0) ? 'disabled' : ''}>−</button><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="1" aria-label="Sumar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}>+</button></span></span>
+    <span class="xt"><small class="xl-mob-label">Total</small><strong id="ft-${id}">${fTotalVisible(it)}</strong></span>
+    <span class="xc xcl"><small class="xl-mob-label">Local</small><span class="xl-stepper" role="group" aria-label="Ajustar Local de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="-1" aria-label="Restar 1 a Local de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(l > 0) ? 'disabled' : ''}>−</button><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="${stockLocalEnVista()?'—':'0'}" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="1" aria-label="Sumar 1 a Local de ${esc(it.nombre)}" ${dis}>+</button></span>${fracFab(it, l)}</span>
+    <span class="xc fab"><small class="xl-mob-label">${ingHoja() ? 'Ingreso' : 'Fábrica'}</small><span class="xl-stepper" role="group" aria-label="Ajustar ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="-1" aria-label="Restar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(f > 0) ? 'disabled' : ''}>−</button><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="${stockLocalEnVista()?'—':'0'}" class="${chgF ? 'chg' : ''}" aria-label="${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="1" aria-label="Sumar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}>+</button></span></span>
   </div>`;
 }
 /* ¼ ½ ¾ debajo de Local: eligen la fracción (tocar la misma otra vez la saca) */
@@ -2068,7 +2069,7 @@ function openFEdit(id, del){
 }
 function refreshF(id){
   const it = S.fab.find(x => x.id === id); if (!it) return;
-  const t = document.getElementById('ft-' + id); if (t) t.textContent = fmt(fTot(it));
+  const t = document.getElementById('ft-' + id); if (t) t.textContent = fTotalVisible(it);
   const d = S.fdraft[id] || {};
   const li = document.getElementById('fl-' + id); if (li) li.classList.toggle('chg', has(d, 'l') && d.l !== num(it.local));
   const fi = document.getElementById('ff-' + id); if (fi) fi.classList.toggle('chg', has(d, 'f') && d.f !== num(it.fabrica));
@@ -2208,7 +2209,7 @@ function refreshStockLocalRows(){
       if(input)input.classList.toggle('chg',has(d,k));
     }
     const total=document.getElementById('ft-'+it.id);
-    if(total)total.textContent=fmt(fTot(it));
+    if(total)total.textContent=fTotalVisible(it);
     const row=document.getElementById('fr-'+it.id);
     if(!row)continue;
     row.classList.toggle('sin',fSin(it));
@@ -2307,7 +2308,7 @@ function openCloseStockLocal(){
     toast('Revisá o descartá el borrador local antes de cerrar.',true); return;
   }
   openConfirm('Cerrar turno de Stock Local',
-    'Se guardarán los cambios y una copia completa en Historial, con fecha de hoy y sucursal. No se borrará el stock para el próximo turno.',
+    'Se guardarán los cambios y una copia completa en Historial, con fecha de hoy y sucursal. Después de guardar el historial, las cantidades de Local e Ingreso quedarán vacías para el próximo turno.',
     'Guardar y cerrar turno','stock-local-close-ok',false);
 }
 async function doSaveF(v = S.view, closeTurn = false){
