@@ -39,6 +39,28 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.contains('Pedidos WhatsApp').should('not.exist');
  });
 
+ it('el gerente agrega, evita duplicados y quita exclusiones de WhatsApp de su sucursal',()=>{
+  setup('gerente.munro@example.com',390);
+  cy.get('#gestlok-mobile-dock [data-dock="more"]',{timeout:15000}).click();
+  cy.get('#gestlok-mobile-sheet').contains('GESTLOK Chat').click();
+  central().find('[data-p="excluidos"]').click();
+  central().contains('No hay números excluidos en esta sucursal.');
+  central().find('#excluidos-numero').type('1100000000');
+  central().contains('button','Agregar número').click();
+  central().contains('Ingresá el número completo');
+  central().find('#excluidos-numero').clear().type('+54 9 11 0000 0000');
+  central().find('#excluidos-nombre').type('Dueña ficticia');
+  central().contains('button','Agregar número').click();
+  central().find('#excluidos-lista').should('contain.text','Dueña ficticia').and('contain.text','+5491100000000');
+  central().find('#excluidos-numero').type('+54 11 0000 0000');
+  central().contains('button','Agregar número').click();
+  central().contains('Ese número ya estaba excluido.');
+  central().find('.excluidos-fila').should('have.length',1);
+  cy.on('window:confirm',()=>true);
+  central().contains('button','Quitar').click();
+  central().contains('No hay números excluidos en esta sucursal.');
+ });
+
  it('gerente puede probar banner con sonido desde la Central y cerrarlo',()=>{
   setup('gerente.munro@example.com',390);
   cy.get('#gestlok-mobile-dock [data-dock="more"]',{timeout:15000}).click();

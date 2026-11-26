@@ -241,6 +241,21 @@
     }
     const loc = deSuc(x.p_sucursal) || C.pedidos.find(p => p.id === x.p_pedido)?.local;
     if (!loc || !nivel(loc)) return sinPermiso;
+    if (fn === 'gestlok_chat_panel_whatsapp_excluidos') {
+      if(nivel(loc)!=='configurar')return sinPermiso;
+      C.excluidos ||= {};
+      const lista=C.excluidos[loc] ||= [];
+      let cambio=false;
+      const n=String(x.p_numero||'').trim().replace(/[\s()-]/g,'');
+      const key=v=>v.replace(/^\+54(?:9)?([0-9]{10})$/,'AR:$1');
+      if(x.p_accion!=='ver'){
+        if(!/^\+[1-9]\d{7,14}$/.test(n))return {data:null,error:{code:'22023',message:'Número inválido'}};
+        const i=lista.findIndex(q=>key(q.numero)===key(n));
+        if(x.p_accion==='agregar'&&i<0){lista.push({numero:n,nombre:x.p_nombre||''});cambio=true;}
+        if(x.p_accion==='quitar'&&i>=0){lista.splice(i,1);cambio=true;}
+      }
+      return {data:{cambio,numeros:structuredClone(lista)},error:null};
+    }
     if (fn === 'gestlok_chat_panel_pedidos') return {data: {nivel: nivel(loc), pedidos: C.pedidos.filter(p => p.local === loc && (x.p_estado === 'todos' || p.estado === x.p_estado))}, error: null};
     if (fn === 'gestlok_chat_panel_decidir') {
       const p = C.pedidos.find(q => q.id === x.p_pedido);

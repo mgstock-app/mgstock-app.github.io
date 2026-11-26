@@ -26,6 +26,7 @@ export function createSupabasePilotStore(rpc){
   return data;
  };
  return {
+  isExcluded:({sucursal,phone})=>call('gestlok_chat_srv_whatsapp_excluido',{p_sucursal:sucursal,p_numero:phone}),
   load:({slug,sucursal,scope})=>call('gestlok_ycloud_pilot_load',{p_slug:slug,p_sucursal:sucursal,p_scope:scope}),
   commit:({slug,sucursal,scope,revision,eventId,messageId,wamid,state,customer,reply,order})=>
    call('gestlok_ycloud_pilot_commit',{p_slug:slug,p_sucursal:sucursal,p_scope:scope,p_revision:revision,p_event:eventId,p_message:messageId,
@@ -33,7 +34,7 @@ export function createSupabasePilotStore(rpc){
  };
 }
 export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
- if(!Array.isArray(routes)||!store||typeof store.load!=='function'||typeof store.commit!=='function')throw Error('Configuración incompleta');
+ if(!Array.isArray(routes)||!store||typeof store.isExcluded!=='function'||typeof store.load!=='function'||typeof store.commit!=='function')throw Error('Configuración incompleta');
  const used=new Set(),registry=[];
  for(const r of routes){
   if(!good(r.waba)||!e164.test(r.to)||!good(r.empresa)||!good(r.sucursal)||!good(r.slug)||!good(r.sucursalId)
@@ -58,14 +59,21 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   if(!route)return drop('not_allowlisted');
   if(excludedSender(route.exclusions,m.from))return drop('excluded_sender');
   if(!route.allowSenders.includes(m.from))return drop('not_allowlisted');
+  const isExcluded=async()=>{
+   const value=await store.isExcluded({sucursal:route.sucursalId,phone:m.from});
+   if(typeof value!=='boolean')throw Error('No se pudo verificar la exclusión');
+   return value;
+  };
   const scope=await digest(enc.encode(JSON.stringify([route.empresa,route.sucursal,m.from])));
   for(let attempt=0;attempt<3;attempt++){
+   if(await isExcluded())return drop('excluded_sender');
    const current=await store.load({slug:route.slug,sucursal:route.sucursalId,scope});
    const result=await conversationPreview({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:current.sucursal,
      catalogo:current.catalogo,privado:current.privado||{},session:current.state,
      event:{id:m.id,text:m.text.body},ahora:new Date(now)});
    if(result.duplicate)return drop('duplicate');
    const order=result.action?.type==='simulated_order'?result.action.pedido:null;
+   if(await isExcluded())return drop('excluded_sender');
    const commit=await store.commit({slug:route.slug,sucursal:route.sucursalId,scope,revision:current.revision,
      eventId:p.id,messageId:m.id,wamid:m.wamid,state:result.session,customer:m.text.body,reply:result.messages,order});
    if(commit.status==='duplicate')return drop('duplicate');

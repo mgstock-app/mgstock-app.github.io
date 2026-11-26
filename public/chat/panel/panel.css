@@ -261,3 +261,12 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .gerentes .codigo-local b{font:700 1.25rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;padding:6px 10px;border-radius:10px;background:#eef6f5}
 .gerentes .fila-gerente{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e3e8ee}
 .gerentes .fila-gerente span{flex:1 1 200px;overflow-wrap:anywhere}
+
+/* Agenda privada de exclusiones WhatsApp */
+.excluidos-form{display:grid;gap:12px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:end}
+.excluidos-form .boton{justify-self:start}
+.excluidos-lista{display:grid;gap:8px}
+.excluidos-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--borde,#ddd)}
+.excluidos-fila>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.excluidos-fila .boton{flex-shrink:0}
+@media(max-width:560px){.excluidos-form{grid-template-columns:minmax(0,1fr)}}

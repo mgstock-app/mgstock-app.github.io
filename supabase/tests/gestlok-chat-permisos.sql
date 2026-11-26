@@ -111,6 +111,56 @@ begin
   v := prueba_q('select public.gestlok_chat_panel_inicio()::text');
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' anónimo no entra al panel';
 
+  -- Lista privada de números que no debe atender WhatsApp.
+  perform prueba_como('gerente.munro@prueba.example');
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_munro, 'ver');
+  r := r || E'\n' || case when j->'numeros'='[]'::jsonb then 'OK' else 'FALLA' end || ' gerente ve lista vacía de su local';
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_munro,'agregar','+54 (11) 0000-0000','Dueña ficticia');
+  r := r || E'\n' || case when j->>'cambio'='true' and j->'numeros'->0->>'nombre'='Dueña ficticia' and j->'numeros'->0->>'numero'='+541100000000' then 'OK' else 'FALLA' end || ' gerente agrega número con referencia';
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_munro,'agregar','+5491100000000','Duplicado');
+  r := r || E'\n' || case when j->>'cambio'='false' and jsonb_array_length(j->'numeros')=1 and j->'numeros'->0->>'nombre'='Dueña ficticia' then 'OK' else 'FALLA' end || ' no duplica números argentinos ni sobrescribe referencia';
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L,%L,%L)::text',s_munro,'agregar','1100000000'));
+  r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' número ambiguo rechazado';
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L,%L,%L)::text',s_torc,'agregar','+5491100000000'));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no agrega en otra sucursal';
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L)::text',s_centro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no lee otra empresa';
+  v := prueba_q(format('select public.gestlok_chat_srv_whatsapp_excluido(%L,%L)::text',s_munro,'+5491100000000'));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' consulta de servidor no accesible al panel';
+  perform prueba_como('gerente.torcuato@prueba.example');
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L)::text',s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' editor no administra exclusiones';
+  perform set_config('role','postgres',true);
+  update public.docs set data=jsonb_set(data,'{rol}','"gerente"') where tenant_id=ta and col='equipo' and id='gt';
+  perform prueba_como('gerente.torcuato@prueba.example');
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_torc,'ver');
+  r := r || E'\n' || case when j->'numeros'='[]'::jsonb then 'OK' else 'FALLA' end || ' Torcuato conserva lista independiente';
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L,%L,%L)::text',s_munro,'quitar','+5491100000000'));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' Torcuato no quita exclusión de Munro';
+  perform set_config('role','postgres',true);
+  update public.docs set data=jsonb_set(data,'{rol}','"editor"') where tenant_id=ta and col='equipo' and id='gt';
+  perform prueba_como('colaborador.a@prueba.example');
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L)::text',s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' colaborador no accede a agenda privada';
+  perform prueba_como('duena.b@prueba.example');
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L)::text',s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' dueña de otra empresa no puede ver agenda';
+  perform prueba_como(null);
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_excluidos(%L)::text',s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' agenda inaccesible sin sesión';
+  perform prueba_como('service_role');
+  r := r || E'\n' || case when public.gestlok_chat_srv_whatsapp_excluido(s_munro,'+5491100000000') and not public.gestlok_chat_srv_whatsapp_excluido(s_torc,'+5491100000000') then 'OK' else 'FALLA' end || ' servidor detecta exclusión en tiempo real y por local';
+  perform prueba_como('duena.a@prueba.example');
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_munro,'ver');
+  r := r || E'\n' || case when jsonb_array_length(j->'numeros')=1 then 'OK' else 'FALLA' end || ' dueña ve lista de su local';
+  j := public.gestlok_chat_panel_whatsapp_excluidos(s_munro,'quitar','+5491100000000');
+  r := r || E'\n' || case when j->>'cambio'='true' and j->'numeros'='[]'::jsonb then 'OK' else 'FALLA' end || ' dueña quita exclusión';
+  perform prueba_como('service_role');
+  r := r || E'\n' || case when not public.gestlok_chat_srv_whatsapp_excluido(s_munro,'+541100000000') then 'OK' else 'FALLA' end || ' servidor detecta baja sin reiniciar';
+  perform set_config('role', 'postgres', true);
+  select count(*) into n from gestlok_chat_private.auditoria where sucursal_id=s_munro and accion in ('whatsapp_exclusion_agregar','whatsapp_exclusion_quitar') and detalle ? 'id' and not detalle ? 'numero';
+  r := r || E'\n' || case when n=2 then 'OK' else 'FALLA' end || ' alta y baja auditadas sin número, duplicado no genera cambio';
+
   -- Solicitudes WhatsApp: no cambian la configuración ni crean conexión.
   perform set_config('role','postgres',true);
   update gestlok_chat_private.sucursales set whatsapp_local='5491100000000' where id=s_munro;

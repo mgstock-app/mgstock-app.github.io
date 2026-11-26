@@ -156,6 +156,7 @@ test('puente firmado: verifica HMAC real, rutas aisladas, no envía y tolera rei
   slug:'local-a',waba:'waba-a',to:'+5491100000001',allowSenders:[ident.phone]};
  const records=new Map(),events=new Set();
  const store={
+  async isExcluded(){return false;},
   async load({scope}){const x=records.get(scope);return {revision:x?.revision||0,state:x?.state||null,sucursal:s2,catalogo,privado:{ia_activa:false}};},
   async commit({scope,revision,messageId,eventId,state,order}){
    if(events.has(eventId)||events.has(messageId))return {status:'duplicate'};
@@ -373,7 +374,7 @@ test('número excluido tiene prioridad incluso si está autorizado: firma válid
  const route={empresa:'empresa-a',sucursal:'local-a',sucursalId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',slug:'local-a',waba:'waba-a',to:'+5491100000001',allowSenders:[ident.phone],excludedSenders:['+54 (11) 0000-0000']};
  const other={...route,sucursal:'local-b',sucursalId:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',slug:'local-b',to:'+5491100000002',excludedSenders:[]};
  let reads=0,writes=0;
- const store={async load(){reads++;return {revision:0,state:null,sucursal:s2,catalogo,privado:{}};},async commit(){writes++;return {status:'committed'};}};
+ const store={async isExcluded(){return false;},async load(){reads++;return {revision:0,state:null,sucursal:s2,catalogo,privado:{}};},async commit(){writes++;return {status:'committed'};}};
  const accept=createSignedYCloudBridge({secret,routes:[route,other],store,enabled:true});
  const encoder=new TextEncoder(),key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  async function signed(r,id){
@@ -388,6 +389,27 @@ test('número excluido tiene prioridad incluso si está autorizado: firma válid
  route.excludedSenders=[];assert.equal((await accept(await signed(route,'2'))).status,'excluded_sender');assert.equal(reads,0);
  assert.equal((await accept(await signed(other,'3'))).status,'accepted');assert.equal(reads,1);assert.equal(writes,1);
  assert.throws(()=>createSignedYCloudBridge({secret,routes:[{...route,excludedSenders:['123']}],store,enabled:true}),/inválido/);
+ // La lista del gerente se consulta en vivo, incluso durante el procesamiento.
+ let excluded=new Set([other.sucursalId]), checks=0;
+ store.isExcluded=async ({sucursal,phone})=>{assert.equal(phone,ident.phone);checks++;return excluded.has(sucursal);};
+ assert.equal((await accept(await signed(other,'4'))).status,'excluded_sender');
+ assert.equal(reads,1);assert.equal(writes,1);
+ excluded.clear();
+ assert.equal((await accept(await signed(other,'5'))).status,'accepted');
+ assert.equal(reads,2);assert.equal(writes,2);
+ assert.equal(checks,3);
+ store.isExcluded=async()=>undefined;
+ await assert.rejects(accept(await signed(other,'6')),/verificar la exclusión/);
+ store.isExcluded=async()=>{throw Error('sin conexión');};
+ await assert.rejects(accept(await signed(other,'7')),/sin conexión/);
+ assert.equal(reads,2);assert.equal(writes,2);
+ let recheck=0;store.isExcluded=async()=>++recheck===2;
+ assert.equal((await accept(await signed(other,'8'))).status,'excluded_sender');
+ assert.equal(reads,3);assert.equal(writes,2);
+ const calls=[];
+ const rpcStore=createSupabasePilotStore(async(name,args)=>{calls.push([name,args]);return {data:true};});
+ assert.equal(await rpcStore.isExcluded({sucursal:other.sucursalId,phone:ident.phone}),true);
+ assert.deepEqual(calls,[['gestlok_chat_srv_whatsapp_excluido',{p_sucursal:other.sucursalId,p_numero:ident.phone}]]);
 });
 
 test('exclusión conserva el aislamiento por local en el ensayo y no crea sesiones, pedidos ni derivaciones',async()=>{

@@ -42,7 +42,7 @@ document.addEventListener('pointerdown',()=>{
  if(allowed()&&(!soundReady||audioCtx?.state!=='running'))void activarSonido();
 },{capture:true});
 
-const VERSION_PANEL='20261126canales1';
+const VERSION_PANEL='20261126excluidos1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,pendientesAvisables=0,avisablesVistos=null,enPreparacion=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
@@ -151,7 +151,7 @@ function quickAccess(){
  // «Pagos Online» solo donde esa micro app existe (hoy Mi Gusto).
  const pagos=window.GestLokMiGustoOnline?.permitido?.()?'<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>':'';
  return '<nav class="mgp-shift-quick" aria-label="Atajos del turno">'+pagos+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+(pendientes+enPreparacion+reclamos)+'</span> comandas activas y reclamos</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>GESTLOK Chat</strong><small><span data-gcc-quick-count>'+(pendientes+enPreparacion+reclamos)+'</span> comandas activas y reclamos</small></span></button>'+
  '</nav>';
 }
 function navBadge(){
@@ -323,8 +323,8 @@ function view(){
  if(!allowed())return '';
  queueMicrotask(colocar);
  const l=local();
- return '<section class="gcc" aria-label="Central de mensajes de '+esc(localName())+'">'+
-  '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
+ return '<section class="gcc" aria-label="GESTLOK Chat · Central de mensajes de '+esc(localName())+'">'+
+  '<div class="gcc-cab"><h2>GESTLOK Chat</h2><small>Central de mensajes · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
   '<div class="gcc-active-summary" data-gcc-comandas role="status" aria-live="polite"'+(pendientes+enPreparacion?'':' hidden')+'><strong>Comandas activas</strong><span>Por confirmar: <b data-gcc-pendientes>'+pendientes+'</b></span><span>En preparación: <b data-gcc-preparacion>'+enPreparacion+'</b></span></div>'+

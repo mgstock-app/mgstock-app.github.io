@@ -219,7 +219,7 @@
       ['home','Inicio'],
       ['business','Administración de la empresa'],
       [esMunro()?'colaboradores':'staff','Colaboradores'],
-      ...(esMunro()?[['pedidos','Central de mensajes']]:[]),
+      ...(pedidos()?[['pedidos','GESTLOK Chat · Central de mensajes']]:[]),
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(['staff','colaboradores'].includes(k)&&staff())||(k==='pedidos'&&pedidos())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
