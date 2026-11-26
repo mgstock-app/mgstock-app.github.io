@@ -198,3 +198,11 @@ test('no queda atrapado cuando una variedad obligatoria se agotó por completo',
  await u.say('Hola');await u.pick('carta');await u.pick('elegir:único:1');const r=await u.say('1');
  assert.equal(r.session.stage,'menu');assert.match(r.messages.join(' '),/no tiene disponibles/);
 });
+import {projectYCloudText} from '../supabase/functions/gestlok-ycloud-adapter/outbound.mjs';
+test('proyección YCloud de respuestas por WhatsApp sin envíos ni plantillas pagas',()=>{
+ const now=new Date('2026-11-26T02:00:00Z');
+ const base={from:'+5491100000001',to:ident.phone,messages:['Hola','1. Empanada ficticia\n2. Pack ficticio'],now,lastInboundAt:'2026-11-26T01:59:59Z'};
+ const p=projectYCloudText(base);assert.equal(p.dispatchAllowed,false);assert.equal(p.payloads.length,1);assert.equal(p.payloads[0].type,'text');assert.match(p.payloads[0].text.body,/Pack ficticio/);
+ assert.equal(projectYCloudText({...base,lastInboundAt:'2026-11-24T01:00:00Z'}).reason,'service_window_unverified');
+ assert.equal(projectYCloudText({...base,from:ident.phone}).reason,'invalid_numbers');
+});

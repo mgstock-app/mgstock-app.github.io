@@ -27,13 +27,14 @@ Referencias del contrato YCloud: https://ycloud.readme.io/reference/webhook-even
 ## Código de conexión preparado (no desplegado)
 - `index.ts` recibe exclusivamente POST YCloud y verifica firma HMAC, tamaño, ventana y lista de remitentes. Antes de todo exige el proyecto de Pruebas y los interruptores `YCLOUD_PILOT_ENABLED=true` **y** `YCLOUD_PILOT_DRY_RUN_ONLY=true`.
 - `bridge.mjs` enlaza ese evento firmado con las RPC privadas `gestlok_ycloud_pilot_load` y `gestlok_ycloud_pilot_commit`. El campo `scope` es SHA-256 de empresa/sucursal/remitente, y los RPC validan sucursal, versión y duplicados en una transacción.
+- `outbound.mjs` prepara el formato de texto YCloud con las opciones numeradas directamente dentro de WhatsApp y comprueba preliminarmente la ventana de atención de 24 horas. **No envía nada**: requiere validación de ventana por el proveedor, límites de coste y consentimiento antes de conectar un despacho.
 - En Pruebas el pedido se envía **solamente a la RPC local** para crear un pedido con `es_prueba=true`, pendiente de aprobación manual. No sale por YCloud ninguna respuesta: el piloto real **NO está operativo todavía**.
 - `YCLOUD_ROUTES_JSON` debe contener rutas verificadas por comercio, sucursal y remitente; nunca usar claves ni números reales en el repositorio. El cuerpo del evento no decide el tenant.
 - La firma corresponde a la documentación oficial del proveedor. El transporte aún no tiene envío, negociación de ventana comercial ni respuestas de atención humana. No activar los interruptores por ahora.
 - Pruebas SQL `tests/db/gestlok-ycloud-persistencia-prueba.sql` garantizan versión, deduplicación, creación única, aislamiento y `ROLLBACK` de datos ficticios.
 
 ## Estado comprobado
-- Pruebas Node locales: 15 aprobadas.
+- Pruebas Node locales: 16 aprobadas.
 - Entorno remoto Pruebas: pruebas SQL de pedido y persistencia aprobadas con rollback; nada guardado al finalizar.
 - No se observó ningún evento YCloud de prueba autenticado en los registros consultados. La firma real, coexistencia con el número comercial y respuestas de salida siguen sin validar.
 - La operación de base se encuentra en `supabase/operaciones` y está expresamente limitada a Pruebas; no existe migración de producción.
