@@ -22,6 +22,54 @@
     // Mensajes del formulario de Contacto de gestlok.com.ar (gestlok-contacto-web.js).
     ['contacto', 'Mensajes web', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
   ]);
+  // Agrupación exclusiva de la administradora: las rutas existentes y sus permisos no cambian.
+  const ADMIN_GROUPS = Object.freeze([
+    ['Inicio', 'inicio', ['inicio']],
+    ['Comercios', 'locales', ['locales','empresas','usuarios','empleados']],
+    ['GESTLOK Chat', 'gestlok-chat', ['gestlok-chat','habilitacion','chat-prueba']],
+    ['Oficina', 'hq', ['hq','contacto','resenas']],
+    ['Herramientas', 'herramientas', ['herramientas','nfc']]
+  ]);
+  const ADMIN_LEAF_LABELS = Object.freeze({'gestlok-chat':'Panel y entornos','chat-prueba':'Demostración','hq':'Oficina virtual','resenas':'Reseñas','herramientas':'Configuración general'});
+  function adminNavigation(cur,p) {
+    const unread = num(window.GestLokContactoWeb?.unread?.());
+    const pending = num(p.pending);
+    const badge = n => n > 0 ? '<b>'+esc(n)+'</b>' : '';
+    const main = ADMIN_GROUPS.map(([label,id,children]) => {
+      const active=children.includes(cur);
+      const icon=TABS.find(t=>t[0]===id)[2];
+      return '<button type="button" title="'+esc(label)+'" aria-label="'+esc(label)+'" data-ch-tab="'+id+'" data-ch-group="'+id+'"'+
+        (active?' class="on" aria-current="'+(id===cur?'page':'true')+'"':'')+'>'+svg(icon,20)+'<span>'+esc(label)+'</span>'+
+        badge(id==='locales'?pending:id==='hq'?unread:0)+'</button>';
+    }).join('');
+    const tools=ADMIN_GROUPS.filter(g=>g[2].length>1).map(([label,id,children])=>
+      '<nav class="gl-ch-section-tools" aria-label="Secciones de '+esc(label)+'"'+(children.includes(cur)?'':' hidden')+'>'+
+      children.map(id=>{
+        const leaf=TABS.find(t=>t[0]===id);
+        const label=ADMIN_LEAF_LABELS[id]||leaf[1];
+        return '<button type="button" data-ch-tab="'+id+'"'+(id===cur?' class="on" aria-current="page"':'')+'>'+
+          svg(leaf[2],18)+'<span>'+esc(label)+'</span>'+badge(id==='usuarios'?pending:id==='contacto'?unread:0)+'</button>';
+      }).join('')+'</nav>').join('');
+    return {main,tools};
+  }
+  function adminStart(p) {
+    const t=data.totals||{};
+    const shortcuts=[
+      ['locales','Locales y microapps','Administrá comercios, sucursales y aplicaciones.'],
+      ['habilitacion','Habilitación GESTLOK Chat','Activá comercios, autorizá números y ayudá con la configuración.'],
+      ['usuarios','Usuarios y accesos',num(p.pending)+' solicitudes pendientes.'],
+      ['contacto','Mensajes web',num(window.GestLokContactoWeb?.unread?.())+' mensajes sin leer.'],
+      ['hq','Oficina virtual','Áreas, tareas y asistencia.'],
+      ['herramientas','Configuración general','Ajustes administrativos y herramientas.']
+    ];
+    return '<section class="gl-ch-admin-summary" aria-label="Resumen de administración">'+
+      [['Empresas',t.companies],['Locales',t.locals],['Usuarios',t.users]].map(([label,value])=>
+        '<div><small>'+label+'</small><strong>'+num(value)+'</strong></div>').join('')+'</section>'+
+      '<section class="gl-ch-card gl-ch-admin-actions" aria-label="Accesos frecuentes"><header><h2>Accesos frecuentes</h2></header><div class="gl-ch-admin-grid">'+
+      shortcuts.map(([id,label,detail])=>'<button type="button" data-ch-tab="'+id+'">'+
+        '<span class="gl-ch-admin-action-icon">'+svg(TABS.find(t=>t[0]===id)[2],24)+'</span><span><b>'+esc(label)+'</b><small>'+esc(detail)+'</small></span><span aria-hidden="true">›</span></button>').join('')+
+      '</div></section>';
+  }
   const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
   const MOLINO_NEXT = 'gestlok:creator-molino-microapp:v1';
   const MOLINO_TOOLS = Object.freeze([
@@ -442,7 +490,7 @@
       '<a class="btn" href="https://gestlok.com.ar/chat/panel/" target="_blank" rel="noopener noreferrer">GESTLOK Chat · Panel</a>'+
       '<a class="btn" href="https://gestlok-prueba.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Prueba</a>'+
       '<a class="btn" href="https://gestlok-testing.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Testing</a>'+
-      '</div><p class="gl-ch-app-tip">Para habilitar GESTLOK Chat en una nueva empresa, ingresá a «Locales» → «+ Apps».</p></section>';
+      '</div><p class="gl-ch-app-tip">La habilitación y los números de WhatsApp se administran en una única sección.</p><button type="button" class="btn primary" data-ch-tab="habilitacion">Ir a Habilitación →</button></section>';
   }
 
   async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponAttempted=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
@@ -582,10 +630,10 @@
       ['Plan Scanner', 'Escaneo con cámara, ventas y control de stock'],
       ['Horarios', 'Turnos y planillas'],
       ['Empleados', 'Legajos y recibos autorizados'],
-      // GESTLOK Chat: se enciende empresa por empresa en Herramientas (gestlok_chat_admin_*).
+      // GESTLOK Chat: se enciende empresa por empresa en Habilitación (gestlok_chat_admin_*).
       ['GESTLOK Chat', 'Atención y pedidos por chat, un chat por local']
     ].map(([name,detail]) => name === 'GESTLOK Chat'
-      ? '<button type="button" class="gl-ch-microapp" data-ch-tab="herramientas" aria-label="Activar GESTLOK Chat por empresa">' +
+      ? '<button type="button" class="gl-ch-microapp" data-ch-tab="' + (premiumAdmin()?'habilitacion':'herramientas') + '" aria-label="Activar GESTLOK Chat por empresa">' +
         '<b>' + name + '</b><small>' + detail + ' · ' + esc(chatResumen()) + '</small><span>Activar por empresa →</span></button>'
       : '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
       '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
@@ -607,7 +655,7 @@
       ['Mensajes web', 'contacto', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
     ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
       '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
-    return '<div class="gl-ch-creator-start">' +
+    const content = '<div class="gl-ch-creator-start">' +
       '<section class="gl-ch-company-area" aria-label="Empresas activas">' +
       '<header class="gl-ch-company-area-head"><h2>Empresas activas</h2>' +
       '<button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header>' +
@@ -626,6 +674,8 @@
       '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
+    return premiumAdmin()?'<div class="gl-ch-creator-start">'+adminStart(p)+
+      '<details class="gl-ch-admin-more"><summary>Ver todas las empresas y otros accesos <span aria-hidden="true">⌄</span></summary>'+content+'</details></div>':content;
   }
 
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
@@ -1269,7 +1319,8 @@
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
-    const nav = TABS.filter(t=>!['gestlok-chat','habilitacion','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const groupedNav=premium?adminNavigation(cur,p):null;
+    const nav = premium?groupedNav.main:TABS.filter(t=>!['gestlok-chat','habilitacion','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
       (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -1278,16 +1329,16 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
-    else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
+    else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+'</div>';
     else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+chatAdminView()+premiumWAView()+'</div>';
     else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'contacto') body = '<div class="gl-ch-stack">' + (window.GestLokContactoWeb?.view?.() || '<section class="gl-admin-card"><p role="status">Mensajes web se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
-    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + chatAdminView() + dailySettingsView() + (parts.tools || '') + '</div>';
+    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + (premium?'':chatAdminView()) + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
-    const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
+    const title = cur === 'inicio' ? (premium?'Panel de administración':'¡Hola!') : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
       cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
@@ -1298,13 +1349,13 @@
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
       '<button type="button" class="gl-ch-collapse" data-ch-collapse aria-controls="gl-ch-navigation" aria-expanded="' + (!navCollapsed) + '" title="' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '" aria-label="' + (navCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral') + '">' + svg('<path d="M4 5h16v14H4zM9 5v14M13 9l-3 3 3 3"/>', 20) + '<span>' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '</span></button>' +
-      '<nav class="gl-ch-nav" id="gl-ch-navigation">' + nav + '</nav>' +
+      '<nav class="gl-ch-nav'+(premium?' gl-ch-group-nav':'')+'" id="gl-ch-navigation" aria-label="Secciones de administración">' + nav + '</nav>' +
       '<div class="gl-ch-me"><span class="gl-ch-av">' + initial + '</span><div><b>Creadora</b><small>' + esc(api.S?.me?.email || '') + '</small><em>ADMINISTRADORA</em></div></div>' +
       '<p class="gl-ch-quote">Gestión simple<br>para negocios reales</p></aside>' +
       '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' && !premium ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
       '<div class="gl-ch-topr"><div class="gl-ch-date"><span>' + esc(d.date) + '</span><span>' + esc(d.time) + '</span></div>' +
       '<button type="button" class="gl-ch-bell" data-act="share" aria-label="Solicitudes pendientes: ' + num(p.pending) + '">' + svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>', 22) + (p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>' +
-      '</div></header>' + body +
+      '</div></header>' + (groupedNav?.tools||'') + body +
       '<footer class="gl-ch-foot">GESTLOK · Panel privado de la creadora · Accesos protegidos · Datos al ' + esc(dmy(data.generated_at)) + ' ' + esc(new Date(data.generated_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})) + '</footer></main></div>';
   }
   function empleados(p) {

@@ -755,3 +755,45 @@ test('HQ: Marketing de GESTLOK Chat y Soporte general trabajan con datos reales 
  assert.match(home,/rpc\('gestlok_hq_difusion_estado',\{p_id:id,p_estado:estado\}\)/);
  assert.match(home,/\['pendiente','publicado','descartado'\]\.includes\(estado\)/);
 });
+
+test('La administradora tiene cinco grupos, y las trece secciones conservan su destino', async () => {
+  const r=load(async fn=>({data:fn==='gestlok_creator_dashboard'?DASH:[],error:null}));
+  r.window.GestLokContactoWeb={unread:()=>3};
+  r.h.mode();await tick();await tick();
+  const rendered=r.h.view({pending:2,parts:{}});
+  const main=rendered.match(/<nav class="gl-ch-nav gl-ch-group-nav"[^>]*>(.*?)<\/nav>/s)?.[1];
+  assert.ok(main);
+  assert.deepEqual([...main.matchAll(/data-ch-group="([^"]+)"/g)].map(x=>x[1]),['inicio','locales','gestlok-chat','hq','herramientas']);
+  assert.match(main,/Comercios<\/span><b>2<\/b>/);
+  assert.match(main,/Oficina<\/span><b>3<\/b>/);
+  assert.match(rendered,/Accesos frecuentes/);
+  assert.match(rendered,/Habilitación GESTLOK Chat/);
+  assert.match(rendered,/<details class="gl-ch-admin-more">/);
+  for (const [members,group] of [[['locales','empresas','usuarios','empleados'],'Comercios'],[['gestlok-chat','habilitacion','chat-prueba'],'GESTLOK Chat'],[['hq','contacto','resenas'],'Oficina'],[['herramientas','nfc'],'Herramientas']]) {
+    for(const leaf of members){
+      r.h.setTab(leaf);
+      const html=r.h.view({pending:2,parts:{}});
+      const visibleNav=html.match(/<nav class="gl-ch-section-tools" aria-label="([^"]+)">([\s\S]*?)<\/nav>/);
+      assert.equal(visibleNav?.[1],'Secciones de '+group);
+      assert.match(visibleNav[2],new RegExp('data-ch-tab="'+leaf+'" class="on" aria-current="page"'));
+      assert.equal((html.match(/<nav class="gl-ch-section-tools"[^>]* hidden>/g)||[]).length,3);
+    }
+  }
+});
+test('Los controles de Chat tienen una sola ubicación principal para la administradora',async()=>{
+  const r=load(async fn=>({data:fn==='gestlok_creator_dashboard'?DASH:[],error:null}));
+  r.h.mode();await tick();await tick();
+  for(const tab of ['gestlok-chat','herramientas']){
+    r.h.setTab(tab);
+    const html=r.h.view({parts:{}});
+    assert.doesNotMatch(html,/aria-label="GESTLOK Chat por empresa"/);
+    if(tab==='gestlok-chat')assert.match(html,/Ir a Habilitación/);
+  }
+  r.h.setTab('habilitacion');
+  const html=r.h.view({parts:{}});
+  assert.match(html,/aria-label="GESTLOK Chat por empresa"/);
+  assert.match(html,/GESTLOK Chat Premium/);
+  const other=load(async()=>({data:DASH,error:null}),{email:'otra@empresa.com'});
+  other.h.mode();await tick();await tick();
+  assert.doesNotMatch(other.h.view({parts:{}}),/gl-ch-group-nav|gl-ch-admin-summary|data-ch-tab="habilitacion"/);
+});
