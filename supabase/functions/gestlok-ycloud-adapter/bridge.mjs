@@ -1,13 +1,11 @@
 // Internal offline bridge between a *verified* signed YCloud inbound event and
 // the private test-only RPC. No network client and no WhatsApp response sender.
 // Never mount this module as an unauthenticated public endpoint.
-import {conversationPreview} from './conversation.mjs';
-import {prepareExclusions,excludedSender} from './exclusions.mjs';
+import {processVerifiedPilotText} from './verified-pilot.mjs';
+import {prepareExclusions} from './exclusions.mjs';
 const enc=new TextEncoder(),e164=/^\+[1-9]\d{7,14}$/;
 const good=v=>typeof v==='string'&&v.length>0&&v.length<=200;
 const bytes=x=>x instanceof Uint8Array?x:typeof x==='string'?enc.encode(x):null;
-const toHex=x=>[...x].map(b=>b.toString(16).padStart(2,'0')).join('');
-async function digest(body){return toHex(new Uint8Array(await crypto.subtle.digest('SHA-256',body)));}
 export async function verifyYCloudSignature({raw,signature,secret,now=Date.now()}){
  const body=bytes(raw);
  if(!body||body.length>262144||!good(secret)||secret.length<24||typeof signature!=='string')return false;
@@ -57,31 +55,7 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   // wins over allowlist, before loading data, invoking AI, committing orders,
   // or preparing an outbound response. The native WhatsApp chat is untouched.
   if(!route)return drop('not_allowlisted');
-  if(excludedSender(route.exclusions,m.from))return drop('excluded_sender');
-  if(!route.allowSenders.includes(m.from))return drop('not_allowlisted');
-  const isExcluded=async()=>{
-   const value=await store.isExcluded({sucursal:route.sucursalId,phone:m.from});
-   if(typeof value!=='boolean')throw Error('No se pudo verificar la exclusión');
-   return value;
-  };
-  const scope=await digest(enc.encode(JSON.stringify([route.empresa,route.sucursal,m.from])));
-  for(let attempt=0;attempt<3;attempt++){
-   if(await isExcluded())return drop('excluded_sender');
-   const current=await store.load({slug:route.slug,sucursal:route.sucursalId,scope});
-   const result=await conversationPreview({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:current.sucursal,
-     catalogo:current.catalogo,privado:current.privado||{},session:current.state,
-     event:{id:m.id,text:m.text.body},ahora:new Date(now)});
-   if(result.duplicate)return drop('duplicate');
-   const order=result.action?.type==='simulated_order'?result.action.pedido:null;
-   if(await isExcluded())return drop('excluded_sender');
-   const commit=await store.commit({slug:route.slug,sucursal:route.sucursalId,scope,revision:current.revision,
-     eventId:p.id,messageId:m.id,wamid:m.wamid,state:result.session,customer:m.text.body,reply:result.messages,order});
-   if(commit.status==='duplicate')return drop('duplicate');
-   if(commit.status==='conflict')continue;
-   if(commit.status!=='committed')throw Error('Persistencia inesperada');
-   return {status:'accepted',orderCode:commit.order_code||null,sendAllowed:false};
-  }
-  return drop('conflict_retry_later');
+  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:m.text.body,now});
  };
 }
 
