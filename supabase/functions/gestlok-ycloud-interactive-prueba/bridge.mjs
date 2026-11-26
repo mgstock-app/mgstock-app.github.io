@@ -16,7 +16,7 @@ async function signed(raw,signature,secret,now){
 }
 async function scopeOf(r,from){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(JSON.stringify(['wa-interactive-v1',r.waba,r.to,r.empresa,r.sucursal,from])))),b=>b.toString(16).padStart(2,'0')).join('');}
 const drop=status=>({status,sendAllowed:false,payloads:[]});
-export function createInteractiveTestBridge({projectRef,enabled=false,dryRun=false,secret,routes,store}){
+export function createInteractiveTestBridge({projectRef,enabled=false,dryRun=false,secret,routes,store,visualOrigin}){
  const active=projectRef==='irqeitzbfyerxcrogkyh'&&enabled===true&&dryRun===true;
  if(!active)return async()=>drop('disabled');
  if(!Array.isArray(routes)||routes.length!==1||!store||!['isExcluded','load','commit'].every(k=>typeof store[k]==='function'))throw Error('Configuración de pruebas inválida');
@@ -37,7 +37,7 @@ export function createInteractiveTestBridge({projectRef,enabled=false,dryRun=fal
   for(let attempt=0;attempt<3;attempt++){
    if(await excluded())return drop('excluded_sender');
    const current=await store.load({slug:route.slug,sucursal:route.sucursalId,scope});
-   const r=await interactiveTurn({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:current.sucursal,catalogo:current.catalogo,privado:current.privado,session:current.state??undefined,input:m.input,now:new Date(now)});
+   const r=await interactiveTurn({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:current.sucursal,catalogo:current.catalogo,privado:current.privado,session:current.state??undefined,input:m.input,now:new Date(now),visualOrigin:current.sucursal?.slug===route.slug?visualOrigin:undefined});
    if(r.duplicate)return drop('duplicate');
    if(!r.session)return drop('no_session');
    if(await excluded())return drop('excluded_sender');

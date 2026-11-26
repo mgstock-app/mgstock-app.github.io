@@ -1,4 +1,4 @@
-import {interactiveTurn,resumeDemo} from './interactive.mjs';
+import {interactiveTurn,resumeDemo} from './interactive.mjs?v=20261126visual1';
 import {fixture} from './fixtures.mjs';
 import {describirLinea,importeLinea,pesos} from '../motor.js';
 const $=id=>document.getElementById(id);
@@ -17,6 +17,12 @@ function render(){
  for(const m of state.history){
   const bubble=el('article',undefined,'bubble '+(m.role==='cliente'?'customer':m.role==='gerente'?'manager-msg':''));
   bubble.append(el('small',m.role==='cliente'?'Cliente':m.role==='gerente'?'Gerente · Gestlok Chat':'Asistente'));
+  if(m.interactive?.header?.type==='image'){
+   const url=m.interactive.header.image?.link;
+   const link=el('a',undefined,'menu-picture');link.href=url;link.target='_blank';link.rel='noopener noreferrer';
+   const img=el('img');img.src=url;img.alt=m.body.split('\n')[0];img.loading='lazy';img.addEventListener('error',()=>{link.removeAttribute('href');link.replaceChildren(el('span','Imagen no disponible. Podés continuar con el pedido.'));});
+   link.append(img);bubble.append(link);
+  }
   bubble.append(el('div',m.body));
   if(m.interactive){
    const control=el('div',undefined,'choices'),i=m.interactive;
@@ -56,7 +62,7 @@ async function turn(value,label){
  if(busy)return;busy=true;const state=current();
  state.history.push({role:'cliente',body:label});render();
  try{
-  const r=await interactiveTurn({...fixture(local),session:state.session,input:{id:crypto.randomUUID(),...value},excluded:state.excluded});
+  const r=await interactiveTurn({...fixture(local),session:state.session,input:{id:crypto.randomUUID(),...value},excluded:state.excluded,visualOrigin:location.origin,visualDemonstration:true});
   state.session=r.session;state.format=r.payloads;
   for(const p of r.payloads)state.history.push({role:'bot',body:p.type==='text'?p.text.body:p.interactive.body.text,interactive:p.interactive});
   if(r.action?.type==='simulated_order')state.orders.push({pedido:r.action.pedido,status:'Pendiente de confirmación'});

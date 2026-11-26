@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>Gestlok Chat · Ensayo de WhatsApp</title>
-<link rel="stylesheet" href="./demo.css">
+<link rel="stylesheet" href="./demo.css?v=20261126visual1">
 </head>
 <body>
 <header><a href="/chat/panel/">← Gestlok Chat</a><span>GESTLOK · PRUEBA</span></header>
 <main>
- <h1>Gestlok Chat + WhatsApp</h1><p class="lead">Probá el mismo asistente de Gestlok con botones y listas de WhatsApp.</p>
- <div class="notice"><strong>Ensayo aislado · Sin envíos reales</strong><br>Usamos carta, precios y personas ficticias. No se conecta ningún número, no se crea un pedido real y no se cobra IA.</div>
+ <h1>Gestlok Chat + WhatsApp</h1><p class="lead">Probá el mismo asistente de Gestlok: carta con imágenes, botones y pedidos que confirma el gerente.</p>
+ <div class="notice"><strong>Ensayo aislado · Sin envíos reales</strong><br>Usamos imágenes de la carta como referencia y datos de pedidos ficticios. No se conecta ningún número, no se crea un pedido real y no se cobra IA.</div>
  <div class="settings"><label>Local de ensayo<select id="local"><option value="munro">Mi Gusto · Munro (ficticio)</option><option value="torcuato">Mi Gusto · Don Torcuato (ficticio)</option></select></label><label class="check"><input type="checkbox" id="exclude"> Excluir al contacto de ensayo (la IA no responde)</label><button id="reset" class="secondary">Reiniciar ensayo</button></div>
  <div class="grid">
   <section class="card chat"><div class="heading"><div><h2>Vista del cliente</h2><p>Mensajes y opciones que recibiría por WhatsApp</p></div><span id="mode" class="tag">Bot guiado</span></div>
    <div id="messages" class="messages" aria-live="polite"></div>
    <form id="composer"><label class="sr" for="input">Mensaje ficticio</label><input id="input" maxlength="600" autocomplete="off" placeholder="Escribí un mensaje ficticio…"><button type="submit">Enviar</button></form>
-   <p class="tip">También podés escribir cantidades o preguntar por el horario. No ingreses datos reales.</p>
+   <p class="tip">Escribí «menú», «carta» o «promociones» para ver las imágenes. También podés escribir cantidades o preguntar por el horario. No ingreses datos reales.</p>
   </section>
   <section class="card manager"><div class="heading"><div><h2>Vista del gerente</h2><p>Bandeja de Gestlok Chat (ensayo)</p></div><span class="tag">Simulación</span></div>
    <div id="managerContent" aria-live="polite"></div>
@@ -24,5 +24,5 @@
  </div>
  <details class="technical"><summary>Ver formato oficial de los botones (último mensaje)</summary><pre id="format">Sin mensajes.</pre></details>
  <footer>El bot de WhatsApp real necesita un número vinculado a un proveedor oficial y la autorización de Gestlok. La habilitación interna por sí sola no conecta WhatsApp.</footer>
-</main><script type="module" src="./demo.mjs"></script>
+</main><script type="module" src="./demo.mjs?v=20261126visual1"></script>
 </body></html>
