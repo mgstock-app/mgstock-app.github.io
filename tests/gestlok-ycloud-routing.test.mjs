@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {classifyPilot} from '../supabase/functions/gestlok-ycloud-webhook/routing.mjs';
+const c={waba:'12345',to:'+5491100000000',from:'+5491100000001'};
+const p={type:'whatsapp.inbound_message.received',whatsappInboundMessage:{wabaId:c.waba,to:c.to,from:c.from,type:'text',text:{body:'GESTLOK PRUEBA 001'}}};
+test('only intended test message matches',()=>{assert.equal(classifyPilot(p,c),'TEST_RECEIVED');for(const [patch,expected] of [[{from:'+5491100000002'},'OTHER_SENDER'],[{to:'+5491100000003'},'OTHER_DESTINATION'],[{wabaId:'other'},'OTHER_WABA'],[{groupId:'group'},'GROUP'],[{type:'image'},'OTHER_TYPE'],[{text:{body:'Hola'}},'OTHER_TEXT']])assert.equal(classifyPilot({...p,whatsappInboundMessage:{...p.whatsappInboundMessage,...patch}},c),expected);assert.equal(classifyPilot({...p,type:'whatsapp.smb.history'},c),'OTHER_EVENT');assert.equal(classifyPilot(p,{...c,from:c.to}),'INVALID_CONFIG');});
