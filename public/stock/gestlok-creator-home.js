@@ -162,7 +162,7 @@
       if(!premiumWAAllowed())return;
       if(!Array.isArray(result?.locales)||!Array.isArray(result?.numeros))throw new Error('Respuesta inválida.');
       premiumWhatsApp=result;
-      if(params.p_accion==='agregar'){premiumWADraft='';api?.toast?.('Números habilitados internamente. Meta sigue pendiente.');}
+      if(params.p_accion==='agregar'){premiumWADraft='';api?.toast?.('Números habilitados internamente. La conexión con WhatsApp sigue pendiente.');}
       if(params.p_accion==='estado')api?.toast?.(params.p_habilitada?'Habilitación interna reactivada.':'Número pausado.');
     }catch(e){premiumWAError=['22023','23505','P0002'].includes(String(e?.code))?String(e.message):'No se pudo consultar o guardar. Revisá la conexión y los permisos.';}
     finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
@@ -173,11 +173,11 @@
     const locales=premiumWhatsApp?.locales||[],numeros=premiumWhatsApp?.numeros||[];
     const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(premiumWALocal===premiumWAKey(l)?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
     const active=numeros.filter(n=>n.habilitada&&n.local_existe).length;
-    const rows=numeros.map(n=>'<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(n.habilitada&&n.local_existe?'gl-wa-on':'gl-wa-off')+'">'+(n.habilitada&&n.local_existe?'Habilitado internamente':'Pausado / inactivo')+'</strong><span>WhatsApp: pendiente de Meta</span></p></div><div class="gl-ch-chat-actions"><button type="button" class="btn" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Pausar':'Reactivar')+'</button></div></article>').join('');
+    const rows=numeros.map(n=>'<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(n.habilitada&&n.local_existe?'gl-wa-on':'gl-wa-off')+'">'+(n.habilitada&&n.local_existe?'Habilitado internamente':'Pausado / inactivo')+'</strong><span>WhatsApp: pendiente de vinculación</span></p></div><div class="gl-ch-chat-actions"><button type="button" class="btn" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Pausar':'Reactivar')+'</button></div></article>').join('');
     return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK Chat Premium">'+
       '<header><h2>GESTLOK Chat Premium</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
       '<p>Autorizá qué comercios y números de WhatsApp pueden usar Chat Premium según su suscripción. Podés habilitar varios números por local.</p>'+
-      '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de Meta</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
+      '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de vinculación</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
       (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
       (premiumWABusy?'<p role="status">Consultando o guardando…</p>':'')+
       (premiumWhatsApp?'<form data-ch-wa-form class="gl-wa-form"><h3>Nueva habilitación</h3><label for="gl-wa-local">Empresa y local</label><select id="gl-wa-local" name="local" required'+(premiumWABusy?' disabled':'')+'><option value="">Seleccioná el local</option>'+options+'</select>'+
@@ -584,7 +584,7 @@
     const waRefresh=ev.target.closest?.('[data-ch-wa-refresh]');
     if(waRefresh&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWARequest();return;}
     const waState=ev.target.closest?.('[data-ch-wa-state]');
-    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en Premium? WhatsApp seguirá pendiente de Meta.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
+    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en Premium? WhatsApp seguirá pendiente de vinculación.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
@@ -641,3 +641,4 @@
     dailyVisible, refreshDaily, dailySettingsView
   });
 })();
+
