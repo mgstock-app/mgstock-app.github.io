@@ -83,6 +83,10 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
    return show(['Revisar: '+describirLinea(c,line),'Subtotal estimado: '+pesos(validation.estimatedTotal)], [choice('add','Agregar al pedido'),choice('restart','Volver a elegir'),choice('back','Cancelar selección')]);
   }
   const current=p.choices[g.id];
+  if(!g.values.length&&(g.required||g.type==='cantidad'&&Number(g.total)>0)){
+   st.stage='menu';delete st.product;delete st.engine.promo_reemplazo;
+   return show(['Ese producto no tiene disponibles las variedades necesarias. Puede elegir otro.'],[choice('carta','Ver carta'),choice('carrito','Ver mi pedido')]);
+  }
   if(g.type==='cantidad'){
    const done=Object.values(current||{}).reduce((sum,v)=>sum+(Number.isInteger(v)?v:0),0);
    if(done===Number(g.total)){p.group++;return productStep();}

@@ -36,7 +36,7 @@ test('checkout ficticio respeta retiro, entrega, pagos y confirmación explícit
 
 import {conversationPreview} from '../supabase/functions/gestlok-ycloud-adapter/conversation.mjs';
 const ident={empresa:'empresa-ficticia',sucursal:'local-ficticio',phone:'+5491100000000'};
-const s2={...sucursal,acepta_envio:true,medios_pago_envio:['efectivo','transferencia'],medios_pago_retiro:['debito']};
+const s2={...sucursal,acepta_envio:true,medios_pago:['efectivo','debito','transferencia'],medios_pago_envio:['efectivo','transferencia'],medios_pago_retiro:['debito']};
 const cat2={...catalogo,productos:[...catalogo.productos,{id:'pack',categoria_id:'c1',nombre:'Pack ficticio',precio:5000,activo:true,disponible:true,opciones:[
  {id:'emp',nombre:'Empanadas',tipo:'cantidad',total:6,valores:[{id:'carne',nombre:'Carne',producto_id:'p1'},{id:'queso',nombre:'Queso'},{id:'agotada',nombre:'Agotada',producto_id:'p2'}]},
  {id:'salsa',nombre:'Salsas',tipo:'cantidad',total:2,valores:[{id:'ajo',nombre:'Ajo'},{id:'criolla',nombre:'Criolla'}]},
@@ -147,4 +147,54 @@ test('IA opcional simulada solo se usa cuando el motor guiado no entiende, y nun
  await u.say('Hola');assert.equal(calls,0);
  const r=await u.say('zzz qqq xxx');
  assert.equal(calls,1);assert.match(r.messages.join('\n'),/IA ficticia/);assert.equal(r.action,undefined);assert.equal(r.sendAllowed,false);
+});
+
+import {verifyYCloudSignature,createSignedYCloudBridge,createSupabasePilotStore} from '../supabase/functions/gestlok-ycloud-adapter/bridge.mjs';
+test('puente firmado: verifica HMAC real, rutas aisladas, no envía y tolera reintentos',async()=>{
+ const secret='ficticio-supersecreto-1234567890';
+ const timestamp=Math.floor(Date.now()/1000),route={empresa:'empresa-a',sucursal:'sucursal-a',sucursalId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  slug:'local-a',waba:'waba-a',to:'+5491100000001',allowSenders:[ident.phone]};
+ const records=new Map(),events=new Set();
+ const store={
+  async load({scope}){const x=records.get(scope);return {revision:x?.revision||0,state:x?.state||null,sucursal:s2,catalogo,privado:{ia_activa:false}};},
+  async commit({scope,revision,messageId,eventId,state,order}){
+   if(events.has(eventId)||events.has(messageId))return {status:'duplicate'};
+   const previous=records.get(scope);
+   if(revision!==(previous?.revision||0))return {status:'conflict'};
+   assert.equal(order,null);
+   records.set(scope,{state,revision:revision+1});events.add(eventId);events.add(messageId);
+   return {status:'committed',revision:revision+1};
+  }
+ };
+ const content={id:'evento-1',type:'whatsapp.inbound_message.received',apiVersion:'v2',whatsappInboundMessage:{id:'mensaje-1',wabaId:'waba-a',from:ident.phone,to:route.to,type:'text',text:{body:'Hola'}}};
+ const sign=async x=>{
+  const raw=JSON.stringify(x),key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(timestamp+'.'+raw));
+  return {raw,signature:'t='+timestamp+',s='+Buffer.from(sig).toString('hex')};
+ };
+ const packet=await sign(content);
+ assert.equal(await verifyYCloudSignature({...packet,secret,now:timestamp*1000}),true);
+ assert.equal(await verifyYCloudSignature({...packet,secret:'falso',now:timestamp*1000}),false);
+ assert.equal(await verifyYCloudSignature({...packet,secret,now:(timestamp+400)*1000}),false);
+ assert.equal((await createSignedYCloudBridge({secret,routes:[route],store})({...packet})).status,'disabled');
+ const accept=createSignedYCloudBridge({secret,routes:[route],store,enabled:true});
+ assert.equal((await accept(packet)).status,'accepted');
+ assert.equal((await accept(packet)).status,'duplicate');
+ assert.equal(records.size,1);
+ const foreign=await sign({...content,id:'evento-2',whatsappInboundMessage:{...content.whatsappInboundMessage,from:'+5491100000002'}});
+ assert.equal((await accept(foreign)).status,'not_allowlisted');
+ assert.equal((await accept({...packet,signature:'t='+timestamp+',s='+ '0'.repeat(64)})).status,'invalid_signature');
+ assert.equal(records.size,1);
+ const otherRoute={...route,empresa:'empresa-b',sucursal:'sucursal-b',sucursalId:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',to:'+5491100000003',slug:'local-b'};
+ const both=createSignedYCloudBridge({secret,routes:[route,otherRoute],store,enabled:true});
+ const other=await sign({...content,id:'evento-3',whatsappInboundMessage:{...content.whatsappInboundMessage,id:'mensaje-3',to:otherRoute.to}});
+ assert.equal((await both(other)).status,'accepted');assert.equal(records.size,2);
+});
+
+
+test('no queda atrapado cuando una variedad obligatoria se agotó por completo',async()=>{
+ const cat={categorias:[{id:'c',nombre:'Combo'}],productos:[{id:'único',categoria_id:'c',nombre:'Combo ficticio',activo:true,disponible:true,precio:1000,opciones:[{id:'var',nombre:'Rellenos',tipo:'cantidad',total:2,valores:[{id:'agotado',nombre:'Sin stock',producto_id:'p2'}]}]}]};
+ const u=client({catalogo:{...cat,productos:[...cat.productos,catalogo.productos[1]]}});
+ await u.say('Hola');await u.pick('carta');await u.pick('elegir:único:1');const r=await u.say('1');
+ assert.equal(r.session.stage,'menu');assert.match(r.messages.join(' '),/no tiene disponibles/);
 });
