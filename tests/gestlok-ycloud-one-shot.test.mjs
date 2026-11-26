@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {dispatchSinglePilotReply} from '../supabase/functions/gestlok-ycloud-adapter/one-shot.mjs';
+function setup(){
+ const now=new Date('2026-11-26T04:30:00Z');const route={waba:'fictitious',from:'+5491100000001',to:'+5491100000002'};
+ let claimed=false,calls=0;
+ const base={projectId:'irqeitzbfyerxcrogkyh',route,receipt:{verified:true,waba:route.waba,from:route.to,to:route.from,text:'GESTLOK PRUEBA 001',messageId:'fictitious',receivedAt:'2026-11-26T04:00:00Z'},approval:{explicit:true,currency:'USD',maxAuthorized:0.05},apiKey:'mock-only',messages:['Hola. Prueba de GESTLOK.'],now,claim:async()=>{if(claimed)return false;claimed=true;return true;},fetchImpl:async(url,req)=>{calls++;assert.equal(url,'https://api.ycloud.com/v2/whatsapp/messages/sendDirectly');const payload=JSON.parse(req.body);assert.equal(payload.from,route.from);assert.equal(payload.to,route.to);assert.equal(payload.type,'text');assert.equal(payload.externalId,'gestlok-torcuato-pilot-reply-001');assert.equal(payload.template,undefined);return {ok:true,json:async()=>({id:'fake',status:'sent',totalPrice:0,currency:'USD'})};}};
+ return {base,calls:()=>calls};
+}
+test('rejects missing budget, wrong sender, stale receipt and production without network',async()=>{const {base,calls}=setup();for(const patch of [{approval:{}},{projectId:'production'},{receipt:{...base.receipt,from:'+5491100000003'}},{receipt:{...base.receipt,receivedAt:'2026-11-24T00:00:00Z'}},{messages:['a'.repeat(5000)]}]){assert.equal((await dispatchSinglePilotReply({...base,...patch})).attempted,false);}assert.equal(calls(),0);});
+test('one atomic claim, single text response, estimated price is not final',async()=>{const {base,calls}=setup();const results=await Promise.all([dispatchSinglePilotReply(base),dispatchSinglePilotReply(base)]);assert.equal(calls(),1);assert.equal(results.filter(r=>r.attempted).length,1);assert.equal(results.find(r=>r.attempted).priceFinal,false);});
+test('timeout consumes claim; never repeats uncertain send',async()=>{const {base}=setup();let n=0;const b={...base,fetchImpl:async()=>{n++;throw Error('timeout');}};assert.equal((await dispatchSinglePilotReply(b)).reason,'uncertain_no_retry');assert.equal((await dispatchSinglePilotReply(b)).reason,'already_claimed');assert.equal(n,1);});
