@@ -72,3 +72,26 @@ drop trigger if exists gestlok_stock_local_vaciar_al_cerrar on public.docs;
 create trigger gestlok_stock_local_vaciar_al_cerrar after insert on public.docs
 for each row when (new.col in ('munro/conteos','torcuato/conteos'))
 execute function gestlok_platform.stock_local_vaciar_al_cerrar();
+
+-- Un reintento de upsert no puede reemplazar la foto archivada ni volver a vaciar
+-- una planilla que ya se empezó a cargar. El editor histórico conserva cerradoEn.
+create or replace function gestlok_platform.stock_local_proteger_cierre()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if old.tenant_id = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'::uuid
+     and old.col in ('munro/conteos','torcuato/conteos')
+     and old.data->>'tipo' = 'fabrica' and old.data->>'turnoCerrado' = 'true'
+     and old.id = 'cierre-' || (old.data->>'hoja') || '-' || (old.data->>'fechaOperativa')
+     and (new.data->>'cerradoEn' is distinct from old.data->>'cerradoEn'
+       or new.data->>'fechaOperativa' is distinct from old.data->>'fechaOperativa'
+       or new.data->>'turnoCerrado' is distinct from old.data->>'turnoCerrado'
+       or new.data->>'hoja' is distinct from old.data->>'hoja') then
+    raise exception 'El turno ya está cerrado; usá Modificar turno en Historial';
+  end if;
+  return new;
+end $$;
+revoke all on function gestlok_platform.stock_local_proteger_cierre() from public, anon, authenticated;
+drop trigger if exists gestlok_stock_local_proteger_cierre on public.docs;
+create trigger gestlok_stock_local_proteger_cierre before update on public.docs
+for each row when (old.col in ('munro/conteos','torcuato/conteos'))
+execute function gestlok_platform.stock_local_proteger_cierre();
