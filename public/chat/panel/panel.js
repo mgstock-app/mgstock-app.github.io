@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261126wapiloto1';
+  const VERSION_CSS = '20261126pedidos1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -41,6 +41,12 @@
   const LOCAL = String(op.local || '').toLowerCase();
   const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
+  const GRUPOS_PANEL = [
+    {id:'pedidos', titulo:'Pedidos', items:[['pedidos','Tarjetas de pedidos'],['whatsapp','WhatsApp'],['reporte','Historial diario'],['stock','Stock'],['clientes','Clientes']]},
+    {id:'ajustes', titulo:'Configuración', items:[['ajustes','Datos del local'],['carta','Carta y precios'],['mensajes','Bot y mensajes'],['excluidos','Números excluidos']]},
+    {id:'soporte', titulo:'Reclamos', items:[['soporte','Reclamos']]}
+  ];
+  const grupoDe = pestana => GRUPOS_PANEL.find(g=>g.items.some(([id])=>id===pestana));
   const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
     el('header', {class: 'tope'},
       el('a', {class: 'volver', href: DEMO ? '#' : '/',
@@ -49,12 +55,13 @@
       el('img', {class: 'tope-marca', src: '/chat/gestlok-monograma.svg', alt: '', width: 29, height: 32, 'aria-hidden': 'true'}),
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
-    el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['whatsapp','WhatsApp'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['excluidos','Números excluidos'], ['clientes','Clientes']].map(([k, t], i) =>
-        el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
-          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
-          k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
+    el('div', {class:'navegacion-panel', id:'navegacion-panel', hidden:true},
+      el('nav', {class:'pestanas', id:'pestanas', role:'tablist', 'aria-label':'Secciones principales'},
+        GRUPOS_PANEL.map(({id, titulo}) => el('button',{role:'tab',type:'button','data-grupo':id,'aria-selected':String(id==='pedidos')},titulo,
+          id==='pedidos' ? el('span',{class:'globo',id:'globo',hidden:true}) :
+          id==='soporte' ? el('span',{class:'globo',id:'globo-soporte',hidden:true}) : null))),
+      el('nav',{class:'subpestanas',id:'subpestanas','aria-label':'Herramientas de la sección'} ,
+        GRUPOS_PANEL.flatMap(g=>g.items.map(([id,titulo])=>el('button',{type:'button','data-p':id,'aria-pressed':'false',text:titulo}))))),
     EMBED ? null : el('aside', {id:'comandas-resumen', class:'comandas-resumen sin-comandas', role:'status', 'aria-live':'polite'},
       el('strong',{text:'Comandas activas'}),
       el('span',{id:'comandas-pendientes',text:'Por confirmar: 0'}),
@@ -109,7 +116,7 @@
     S.suc.pendientes=pend;S.suc.en_preparacion=prep;
   }
   async function revisarComandas() {
-    if(EMBED||DEMO||document.hidden||!marco.isConnected||!S.suc)return;
+    if(ADMIN_CONFIG||EMBED||DEMO||document.hidden||!marco.isConnected||!S.suc)return;
     const sucursal=S.suc.id;
     try{
       const data=await rpc('panel_inicio');
@@ -184,7 +191,7 @@
         S.suc={id:ADMIN_CONFIG,nivel:a.nivel,nombre:a.nombre,slug:a.slug}; S.pestana='ajustes';
         $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
         $('panel').setAttribute('aria-busy','false'); $('comandas-resumen')?.remove();
-        await verAjustes(); return;
+        $('navegacion-panel').hidden=false; mostrar(); return;
       }catch(e){return fijo('Sin acceso a la configuración',e.message,['Ir a GESTLOK','/']);}
     }
     let r;
@@ -207,7 +214,7 @@
       try { localStorage.setItem(sucursalPref, S.suc.id); } catch { /* nada */ }
       mostrar();pintarComandas(S.suc);void revisarComandas();
     };
-    $('pestanas').hidden = false;
+    $('navegacion-panel').hidden = false;
     $('panel').setAttribute('aria-busy', 'false');
     mostrar();pintarComandas(S.suc);
     if(!EMBED&&!DEMO){
@@ -215,18 +222,36 @@
       timerComandas=setInterval(revisarComandas,15000);
     }
   }
+  function seccionPermitida(pestana) {
+    if (ADMIN_CONFIG) return ['ajustes','carta','mensajes'].includes(pestana);
+    if (['whatsapp','excluidos'].includes(pestana)) return puede('gestionar')&&!DEMO;
+    if (['charlas','soporte','clientes'].includes(pestana)) return puede('gestionar');
+    if (['ajustes','mensajes'].includes(pestana)) return puede('ver');
+    return !!grupoDe(pestana);
+  }
   $('pestanas').addEventListener('click', e => {
-    const b = e.target.closest('[data-p]'); if (!b) return;
-    S.pestana = b.dataset.p; mostrar();
+    const b=e.target.closest('[data-grupo]'); if(!b)return;
+    const g=GRUPOS_PANEL.find(g=>g.id===b.dataset.grupo);
+    if(g && seccionPermitida(g.id)){S.pestana=g.id;mostrar();}
+  });
+  $('subpestanas').addEventListener('click',e=>{
+    const b=e.target.closest('[data-p]');if(!b||!seccionPermitida(b.dataset.p))return;
+    S.pestana=b.dataset.p;mostrar();
   });
   function mostrar() {
-    if(['whatsapp','excluidos'].includes(S.pestana)&&(!puede('gestionar')||DEMO))S.pestana='pedidos';
-    for (const b of $('pestanas').querySelectorAll('[data-p]')) {
-      b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
-      if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
-      if (['charlas','soporte','clientes'].includes(b.dataset.p)) b.hidden = !puede('gestionar');
-      if (['whatsapp','excluidos'].includes(b.dataset.p)) b.hidden = !puede('gestionar')||DEMO;
+    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG?'ajustes':'pedidos';
+    const grupo=grupoDe(S.pestana);
+    for(const b of $('pestanas').querySelectorAll('[data-grupo]')){
+      b.hidden=!seccionPermitida(b.dataset.grupo);
+      b.setAttribute('aria-selected',String(b.dataset.grupo===grupo?.id));
     }
+    let visibles=0;
+    for(const b of $('subpestanas').querySelectorAll('[data-p]')){
+      b.hidden=grupoDe(b.dataset.p)?.id!==grupo?.id||!seccionPermitida(b.dataset.p);
+      if(!b.hidden)visibles++;
+      b.setAttribute('aria-pressed',String(b.dataset.p===S.pestana));
+    }
+    $('subpestanas').hidden=visibles<=1;
     clearTimeout(S.sondeo);
     const avisoSoporte = $('globo-soporte');
     if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
@@ -293,11 +318,11 @@
   }
 
   async function verPedidos() {
-    const filtros = [['pendiente', 'Por confirmar'], ['confirmado', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
+    const filtros = [['pendiente', 'Por confirmar'], ['confirmado', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
     const cabeza = el('div', {class: 'filtros', role: 'toolbar', 'aria-label': 'Filtrar pedidos'}, filtros.map(([v, t]) =>
-      el('button', {type: 'button', class: 'chip', 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
+      el('button', {type: 'button', class: 'chip filtro-estado '+v, 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
     const lista = el('div', {class: 'tarjetas'}, el('p', {class: 'nota', text: 'Cargando pedidos…'}));
-    contenido.replaceChildren(cabeza, lista);
+    contenido.replaceChildren(el('div',{class:'pedidos-titulo'},el('h2',{text:'Pedidos'}),el('p',{class:'nota',text:'Cada tarjeta indica el estado. Los pedidos nuevos requieren la confirmación del gerente.'})), cabeza, lista);
     await cargarPedidos(lista);
   }
   async function cargarPedidos(lista) {
@@ -510,14 +535,17 @@
   // ------------------------------------------------------------------------------------------- carta
   async function verCarta() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando la carta…'}));
+    const sucCarta=S.suc.id;
+    const vigente=()=>S.suc?.id===sucCarta&&S.pestana==='carta';
     let c;
-    try { c = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    try { c = await rpc('panel_catalogo', {p_sucursal: sucCarta}); } catch (e) { if(vigente())contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
+    if(!vigente())return;
     // Carta: dueño, administradora y gerente del local (lo valida la base).
     const config = puede('gestionar');
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
+      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para marcar faltantes, el local puede usar Stock dentro de Pedidos.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)}),
@@ -796,11 +824,14 @@
     ['despedida', 'Despedida', 'Cuando el cliente agradece.'],
   ];
   async function verMensajes() {
+    const sucMensajes=S.suc.id;
+    const vigente=()=>S.suc?.id===sucMensajes&&S.pestana==='mensajes';
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     if (!motor) motor = await import('/chat/motor.js?v=20261126comercial1').catch(() => null);
     let a, cat = {categorias: []};
-    try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    try { cat = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch { /* sin categorías: venta sugerida automática */ }
+    try { a = await rpc('panel_config', {p_sucursal: sucMensajes}); } catch (e) { if(vigente())contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
+    try { cat = await rpc('panel_catalogo', {p_sucursal: sucMensajes}); } catch { /* sin categorías: venta sugerida automática */ }
+    if(!vigente())return;
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
     const editable = puede('gestionar');
     const ejemplo = {nombre: 'Ana', codigo: (a.prefijo || 'P') + '-0012', total: '$ 8.400', direccion: 'Av. Mitre 2200', local: a.direccion || ('el local de ' + a.nombre), motivo: 'nos quedamos sin stock'};
@@ -866,10 +897,10 @@
         mensajes.sugerir_categorias = ids.join(',');
       }
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
+        await rpc('panel_config_guardar', {p_sucursal: sucMensajes, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
           bienvenida: bienvenida.value, mensajes}});
-        aviso('Mensajes guardados'); verMensajes();
+        aviso('Mensajes guardados'); if(vigente())verMensajes();
       } catch (err) { aviso(err.message, true); }
     }},
     el('section', {class: 'bloque'}, el('h3', {text: 'Asistente con inteligencia artificial'}),
@@ -978,7 +1009,7 @@
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     const sucAjustes=S.suc.id;
     let a;
-    try { a = await rpc('panel_config', {p_sucursal: sucAjustes}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    try { a = await rpc('panel_config', {p_sucursal: sucAjustes}); } catch (e) { if(S.suc.id===sucAjustes&&S.pestana==='ajustes')contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
     const editable = a.nivel === 'configurar';
     const adminNumero = a.administradora_chat === true;
     if(S.suc.id!==sucAjustes||S.pestana!=='ajustes')return;
