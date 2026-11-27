@@ -199,3 +199,4 @@ a{color:#087a98}
 .wai-vote-history summary{cursor:pointer;width:fit-content;text-decoration:underline;text-underline-offset:2px}
 .wai-vote-history ul{margin:6px 0 1px;padding-left:17px;color:#5d7484;line-height:1.5;overflow-wrap:anywhere}
 .wai-vote-open .wai-option{cursor:default}
+.wai-private-photo{display:grid;gap:5px;max-width:360px}.wai-private-photo a{display:block}.wai-private-photo img{max-height:410px;object-fit:contain;background:#f2f6f9}.wai-private-photo .hint{font-size:.72rem}
