@@ -756,14 +756,14 @@ test('HQ: Marketing de GESTLOK Chat y Soporte general trabajan con datos reales 
  assert.match(home,/\['pendiente','publicado','descartado'\]\.includes\(estado\)/);
 });
 
-test('La administradora tiene cinco grupos, y las trece secciones conservan su destino', async () => {
+test('La administradora tiene seis grupos, y las catorce secciones conservan su destino', async () => {
   const r=load(async fn=>({data:fn==='gestlok_creator_dashboard'?DASH:[],error:null}));
   r.window.GestLokContactoWeb={unread:()=>3};
   r.h.mode();await tick();await tick();
   const rendered=r.h.view({pending:2,parts:{}});
   const main=rendered.match(/<nav class="gl-ch-nav gl-ch-group-nav"[^>]*>(.*?)<\/nav>/s)?.[1];
   assert.ok(main);
-  assert.deepEqual([...main.matchAll(/data-ch-group="([^"]+)"/g)].map(x=>x[1]),['inicio','locales','gestlok-chat','hq','herramientas']);
+  assert.deepEqual([...main.matchAll(/data-ch-group="([^"]+)"/g)].map(x=>x[1]),['inicio','locales','gestlok-chat','wai','hq','herramientas']);
   assert.match(main,/Comercios<\/span><b>2<\/b>/);
   assert.match(main,/Oficina<\/span><b>3<\/b>/);
   assert.match(rendered,/Accesos frecuentes/);
@@ -852,4 +852,16 @@ test('HQ: avatares humanos, ampliación de la oficina y cupo servidor exclusivo'
  assert.match(sql,/revoke all on function public\.gestlok_hq_claim_chat\(uuid,uuid\) from public,anon,authenticated/);
  assert.match(sql,/grant execute on function public\.gestlok_hq_claim_chat\(uuid,uuid\) to service_role/);
  assert.match(sql,/tokens_usados/);
+});
+
+
+test('WAI comercial: panel exclusivo, lectura real y controles por empresa y local',async()=>{
+ const data=[{tenant:'a',local_id:'uno',slug:'a-uno',empresa:'A',nombre:'Munro',rubro:'gastronomia',activo:true,numeros:[{id:'n1',numero:'+5491100000001',registrado:true,activo:true,estado:'conectado'}]},{tenant:'b',local_id:'uno',slug:'b-uno',empresa:'B',nombre:'Torcuato',activo:false,numeros:[]}];
+ const r=load(async fn=>({data:fn==='gestlok_creator_dashboard'?DASH:data}));
+ r.h.mode();await tick();await tick();r.h.setTab('wai');r.h.view({parts:{}});await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/1 activos · 1 inactivos/);assert.match(html,/Munro/);assert.match(html,/Torcuato/);assert.match(html,/Gastronomía/);assert.match(html,/wai-a-uno.gestlok.com.ar/);assert.match(html,/Abrir local · ajustes y QR/);
+ r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-wai-commercial]'?{dataset:{waiCommercial:'numero',row:'0',number:'0'}}:null}});await tick();
+ const i=r.calls.lastIndexOf('gestlok_chat_wai_admin_comercial');assert.equal(r.argsLog[i].p_tenant,'a');assert.equal(r.argsLog[i].p_local,'uno');assert.equal(r.argsLog[i].p_id,'n1');assert.equal(r.argsLog[i].p_activo,false);
+ const other=load(async()=>({data:DASH}),{email:'other@example.com'});other.h.mode();await tick();other.h.setTab('wai');assert.notEqual(other.h.tab(),'wai');assert.doesNotMatch(other.h.view({parts:{}}),/data-ch-tab="wai"/);
 });
