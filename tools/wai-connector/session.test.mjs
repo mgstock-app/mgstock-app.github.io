@@ -62,3 +62,33 @@ test('una señal local no mantiene el estado conectado si el transporte no respo
  await s.tick();handler({type:'open',number:'+5491100000001'});await s.tick();assert.equal(reports.at(-1).p_estado,'conectado');
  healthy=false;await s.tick();assert.equal(reports.at(-1).p_estado,'desconectado');assert.equal(s.state(),'desconectado');
 });
+
+test('carga simulada: diez sesiones, 60 ciclos, caída parcial y reconexión aislada',async()=>{
+ const sessions=Array.from({length:10},(_,i)=>({number:'+54911000000'+String(i+10),...fixture('+54911000000'+String(i+10),'sesion-'+i)}));
+ const tick=()=>Promise.all(sessions.map(v=>v.s.tick()));
+ await tick();
+ sessions.forEach(v=>v.event({type:'open',number:v.number}));
+ await tick();
+ for(let i=0;i<60;i++){
+  if(i===10){
+   sessions[1].event({type:'close',retryable:true});
+   sessions[3].net(true);
+   sessions[5].event({type:'close',retryable:false});
+  }
+  if(i===12){sessions[3].net(false);}
+  sessions.forEach(v=>v.advance(1000));
+  await tick();
+  if(i===12){sessions[1].event({type:'open',number:sessions[1].number});sessions[3].event({type:'open',number:sessions[3].number});}
+  for(const j of [0,2,4,6,7,8,9]){
+   assert.equal(sessions[j].s.state(),'conectado');
+   assert.equal(sessions[j].actions.length,1);
+   assert.equal(sessions[j].reports.at(-1).p_id,'sesion-'+j);
+   assert.equal(sessions[j].reports.at(-1).p_numero,sessions[j].number);
+  }
+ }
+ assert.equal(sessions[1].s.state(),'conectado');
+ assert.equal(sessions[3].s.state(),'conectado');
+ assert.equal(sessions[5].s.state(),'desconectado');
+ assert.equal(sessions[5].actions.filter(v=>v[0]==='start').length,1);
+ await Promise.all(sessions.map(v=>v.s.close()));
+});
