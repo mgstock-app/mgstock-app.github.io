@@ -17,6 +17,10 @@ export function validateConfig(config){
  if(typeof config.anonKey!=='string'||config.anonKey.length<30)throw Error('Falta la clave pública.');
  const claims=JSON.parse(Buffer.from(config.anonKey.split('.')[1]||'','base64url').toString());
  if(claims.role!=='anon'||claims.ref!==url.hostname.split('.')[0])throw Error('Solo se admite la clave pública de Prueba; nunca service_role.');
+ if(config.central===true){
+  if(!/^[a-f0-9]{64}$/.test(config.centralKey||'')||config.sessions?.length)throw Error('Configuración central inválida.');
+  return {url:url.origin,anonKey:config.anonKey,testOnly:true,enableTestMessages:config.enableTestMessages===true,central:true,centralKey:config.centralKey,sessions:[]};
+ }
  if(!Array.isArray(config.sessions)||config.sessions.length<1||config.sessions.length>10)throw Error('Configurá de 1 a 10 sesiones de ensayo.');
  const ids=new Set(),num=new Set();
  for(const s of config.sessions){

@@ -56,9 +56,10 @@ async function init(){
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Solo gastronomía · habilitación exclusiva de la administración. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
+   const central=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'}):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
-   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));
-   if(health){startAdminHealth(health,mine);}
+   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));
+   if(health){startAdminHealth(health,mine,central);}
    return;
   }
   sessionLocal=locals.find(s=>s.slug===slug&&['gestionar','configurar'].includes(s.nivel));
@@ -68,14 +69,35 @@ async function init(){
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
  }catch{if(mine===generation)access('No pudimos abrir WAI','Revisá la conexión o volvé a ingresar. Este espacio puede estar pendiente de publicación.',button('Reintentar',()=>void init()));}
 }
-function startAdminHealth(host,mine){
+function downloadCentralConfig(key){
+ if(!/^[a-f0-9]{64}$/.test(key||''))throw Error('Configuración central inválida.');
+ const C=window.GESTLOK_CHAT_CONFIG,config={url:C.url,anonKey:C.key,testOnly:true,enableTestMessages:true,central:true,centralKey:key,sessions:[]};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'}));
+ const a=node('a',{href:url,download:'gestlok-wai-servidor-central.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function startAdminHealth(host,mine,central){
+ let centralBusy=false,centralSignature='';
+ const paintCentral=d=>{
+  if(!central||centralBusy)return;
+  const signature=JSON.stringify(d);
+  if(signature===centralSignature)return;centralSignature=signature;
+  const status=node('p',{role:'status',class:'hint'});
+  const take=async(action)=>{
+   if(centralBusy)return;
+   if(!confirm(action==='rotar'?'¿Reemplazar la configuración privada del servidor central? Solo si perdiste la anterior y el servicio está detenido.':'¿Preparar el servidor central una única vez? Detené el conector anterior antes de importarlo. El servicio administrará todos los locales de ensayo habilitados.'))return;
+   centralBusy=true;status.textContent='Preparando configuración privada…';
+   try{const r=await rpc('wai_central_admin',{p_accion:action});downloadCentralConfig(r.clave);status.textContent='Importá este único archivo con CONFIGURAR-WAI y luego iniciá el servicio. No descargues archivos por local.';centralSignature='';}
+   catch(e){status.textContent=e.message;}finally{centralBusy=false;}
+  };
+  central.replaceChildren(node('h2',{},'Servidor central WAI'),node('strong',{class:d?.activo?'wai-health-ok':'wai-health-warn'},d?.activo?'● Servicio central en línea':d?.preparado?'⚠ Servidor preparado · sin señal':'Pendiente de instalación única'),node('p',{class:'hint'},'Una sola instancia de Node.js administra todas las líneas habilitadas. Nuevas altas, pausas y QR desde GESTLOK, sin otra consola.'),node('p',{class:'hint'},(d?.lineas||0)+' líneas habilitadas · '+(d?.senal_at?'Última señal: '+scheduledLabel(d.senal_at):'Sin señal todavía')),!d?.preparado?button('Preparar servidor central (una sola vez)',()=>void take('preparar'),'btn primary'):!d?.activo?button('Recuperar configuración central',()=>void take('rotar'),'btn'):null,status);
+ };
  let busy=false,actionBusy=false,last='',fail=false;
  const visible=()=>mine===generation&&host.isConnected&&!destroyed;
  const title=node('h2',{},'Centro de conexiones'),label=node('p',{class:'hint',role:'status'},'Comprobando los locales…'),list=node('div',{class:'wai-health-list'}),actionStatus=node('p',{class:'hint',role:'status'});
  const refreshNow=async()=>{
   if(!visible()||busy||actionBusy)return;busy=true;
   try{
-   const data=await rpc('wai_estado_global');if(!visible())return;
+   const [data,centralState]=await Promise.all([rpc('wai_estado_global'),central?rpc('wai_central_admin').catch(()=>null):Promise.resolve(null)]);if(!visible())return;if(centralState)paintCentral(centralState);
    if(!Array.isArray(data))throw Error('Estado no disponible');
    const enabled=data.filter(r=>r.habilitada),alerts=enabled.filter(r=>r.estado!=='conectado');
    label.className=alerts.length?'wai-health-warn':'hint';
@@ -221,7 +243,7 @@ function messageTime(t){
  return d.toLocaleDateString('es-AR')===now.toLocaleDateString('es-AR')?time(t):d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' · '+time(t);
 }
 function historyLabel(c){
- if(c.archivado)return 'Historial guardado · ensayo finalizado. Autorizá nuevamente el contacto para responder.';
+ if(c.archivado)return rows.some(r=>r.id===c.linea&&r.recepcion_prueba)?'Historial guardado · se reactivará cuando el cliente vuelva a escribir.':'Historial guardado · ensayo finalizado. Autorizá nuevamente el contacto para responder.';
  if(c.cerrado_at)return 'Conversación finalizada · el próximo mensaje abrirá una atención nueva. Historial conservado.';
  if(c.conexion_activa===false)return 'Historial guardado · WhatsApp sin conexión verificada. Podés leer los mensajes.';
  if(Date.parse(c.postventa_hasta||'')>Date.now())return 'Postventa abierta hasta '+scheduledLabel(c.postventa_hasta)+' · reclamos y nuevos pedidos habilitados.';
@@ -435,7 +457,7 @@ function renderThread(force=false){
  const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at,c.ciclos,c.cerrado_at,c.postventa_hasta,Date.parse(c.postventa_hasta||'')>Date.now()]);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
-   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+(c.vence_at?' · ensayo hasta '+time(c.vence_at):' · historial'))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
+   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+(c.vence_at?(rows.some(r=>r.id===c.linea&&r.recepcion_prueba)?' · recepción de prueba':' · ensayo hasta '+time(c.vence_at)):' · historial'))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
    const elements=[];let cycle=null;
    for(const m of c.mensajes||[]){
     if(m.ciclo_id&&m.ciclo_id!==cycle){cycle=m.ciclo_id;const info=(c.ciclos||[]).find(x=>x.id===cycle);elements.push(node('div',{class:'cycle-divider'},'Nueva atención'+(info?' · '+time(info.inicio_at):'')));}
@@ -447,7 +469,7 @@ function renderThread(force=false){
  }
  compose.hidden=false;updateComposer();
 }
-function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.placeholder=c?.cerrado_at?'Conversación finalizada · esperá un nuevo mensaje':c&&c.archivado?'Historial guardado · autorizá para responder':c&&c.conexion_activa===false?'Historial guardado · esperando conexión':'Escribí un mensaje';textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
+function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.placeholder=c?.cerrado_at?'Conversación finalizada · esperá un nuevo mensaje':c&&c.archivado?(rows.some(r=>r.id===c.linea&&r.recepcion_prueba)?'Historial guardado · esperá que el cliente vuelva a escribir':'Historial guardado · autorizá para responder'):c&&c.conexion_activa===false?'Historial guardado · esperando conexión':'Escribí un mensaje';textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
 async function respond(){
  const id=selected,txt=textarea.value.trim();
  if(claimed||!id||!txt||send.disabled)return;
@@ -484,12 +506,37 @@ function openDrawer(kind){
  drawerTitle.textContent=kind==='config'?'Configuración del local':'Vinculación de WhatsApp';
  if(kind==='config'){
   const host=node('div'),tabs=node('div',{class:'wai-config-tabs'});
+  const excluded=button('Números excluidos',()=>{settingsPanel?.destruir();settingsPanel=null;void renderWaiExclusions(host);},'btn');
   const local=button('Datos del local',()=>{settingsPanel?.destruir();host.waiSettings=null;host.replaceChildren();settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});},'btn');
   const attention=button('Atención WAI',()=>{settingsPanel?.destruir();settingsPanel=null;void renderAttentionSettings(host);},'btn primary');
-  tabs.append(local,attention);drawerBody.append(tabs,host);
+  tabs.append(local,attention,excluded);drawerBody.append(tabs,host);
   void renderAttentionSettings(host);
  }
  else{renderConnection();void refresh();}
+}
+async function renderWaiExclusions(host){
+ const me=generation,local=sessionLocal?.id,identity=Symbol();host.waiSettings=identity;
+ const alive=()=>generation===me&&host.isConnected&&host.waiSettings===identity&&drawerKind==='config';
+ const number=node('input',{type:'tel',required:true,placeholder:'+54911…',autocomplete:'off','aria-label':'Número excluido'});
+ const name=node('input',{type:'text',maxlength:60,placeholder:'Dueño, gerente, proveedor…','aria-label':'Referencia'});
+ const status=node('p',{class:'hint',role:'status'}),list=node('div');
+ const submit=node('button',{type:'submit',class:'btn primary'},'Agregar número excluido');
+ let busy=false;
+ async function change(action,n=null,ref=null){
+  if(busy||!alive())return;busy=true;submit.disabled=true;status.textContent='Actualizando…';
+  try{
+   const data=await rpc('panel_whatsapp_excluidos',{p_sucursal:local,p_accion:action,p_numero:n,p_nombre:ref});
+   if(!alive())return;
+   if(!Array.isArray(data?.numeros))throw Error('No se pudo comprobar la lista.');
+   list.replaceChildren(...(data.numeros.length?data.numeros.map(x=>node('article',{class:'connection-card'},node('strong',{},x.nombre||'Sin referencia'),node('p',{},x.numero),button('Quitar de exclusiones',()=>{if(confirm('¿Quitar este número? Podrá recibir atención de WAI cuando vuelva a escribir.'))void change('quitar',x.numero);},'btn'))):[node('p',{class:'hint'},'No hay números excluidos.')]));
+   status.textContent=action==='ver'?'Lista privada de este local.':action==='agregar'?'Número excluido.':'Exclusión actualizada.';
+   if(action==='agregar'){number.value='';name.value='';}
+  }catch(e){if(alive())status.textContent=e.message;}
+  finally{busy=false;if(alive())submit.disabled=false;}
+ }
+ const form=node('form',{class:'wai-settings',onsubmit:e=>{e.preventDefault();const n=number.value.trim();if(!/^\+[1-9]\d{7,14}$/.test(n)){status.textContent='Ingresá el número con + y código de país.';return;}void change('agregar',n,name.value.trim());}},node('label',{},'Número internacional',number),node('label',{},'Referencia (opcional)',name),submit);
+ host.replaceChildren(node('h2',{},'Números excluidos del bot'),node('p',{class:'hint'},'Estos números no se procesan ni reciben respuestas automáticas. Podés seguir conversando desde WhatsApp normalmente; no se bloquea el contacto. Cada local administra su propia lista.'),form,status,list);
+ void change('ver');
 }
 async function renderAttentionSettings(host){
  const me=generation,local=sessionLocal?.id,identity=Symbol();host.waiSettings=identity;
@@ -554,6 +601,15 @@ async function prepareTrial(row,rotate=false){
  }catch(e){if(current===generation)drawerStatus.textContent=e.message;}
  finally{connectionBusy=false;if(drawerKind==='conexion')renderConnection();}
 }
+async function toggleInbound(row){
+ if(!trialEnvironment()||!portal?.administradora||connectionBusy||!row.centralizada)return;
+ const enable=!row.recepcion_prueba;
+ if(!confirm(enable?'¿Activar la recepción automática en esta línea de ensayo? Usá únicamente un WhatsApp de pruebas autorizado; las personas que escriban podrán recibir respuestas del bot. No se iniciarán mensajes a contactos desconocidos.':'¿Pausar la recepción automática en esta línea? Se conservará el historial.'))return;
+ connectionBusy=true;
+ try{await rpc('wai_recepcion_admin',{p_id:row.id,p_activo:enable});await refresh();drawerStatus.textContent=enable?'Recepción entrante activa en Prueba.':'Recepción automática pausada.';}
+ catch(e){drawerStatus.textContent=e.message;}
+ finally{connectionBusy=false;if(drawerKind==='conexion')renderConnection();}
+}
 function renderConnection(){
  if(drawerKind!=='conexion')return;
  // Keep the contact form mounted while the status polls every five seconds.
@@ -572,9 +628,14 @@ function renderConnection(){
   }
   if(r.habilitada&&r.preparada&&['qr','qr_vencido','desconectado'].includes(r.estado))box.append(node('div',{class:'actions'},button('Restablecer señal',()=>void connectionAction('reconectar',r.id),'btn',{disabled:connectionBusy}),button('Generar nuevo QR',()=>void connectionAction('qr',r.id),'btn primary',{disabled:connectionBusy})));
   if(['sin_senal','sin_conector'].includes(r.estado))box.append(node('p',{class:'hint'},'El servicio de conexión debe estar en línea. Contactá a soporte GESTLOK; no hace falta que el cliente te entregue su teléfono.'));
-  if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
-  if(trialEnvironment()&&portal.administradora&&r.habilitada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
-  if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado'){
+  if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.centralizada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
+  if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.centralizada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
+  if(r.centralizada)box.append(node('p',{class:'hint'},'Administrada por el servidor central. No requiere una consola ni configuración privada por local.'));
+  if(portal.administradora&&portal.piloto_disponible&&r.centralizada&&r.habilitada&&(r.estado==='conectado'||r.recepcion_prueba)){
+   box.append(node('p',{class:'hint'},r.recepcion_prueba?'Recepción automática de mensajes entrantes de ensayo activa. Se respetan las exclusiones del local.':'Recepción automática desactivada. Podés probar clientes entrantes sin autorizar cada contacto.'));
+   box.append(button(r.recepcion_prueba?'Pausar recepción automática':'Activar recepción entrante (Prueba)',()=>void toggleInbound(r),'btn '+(r.recepcion_prueba?'':'primary'),{disabled:connectionBusy}));
+  }
+  if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado'&&!r.recepcion_prueba){
     const active=Number(r.ensayos_activos??chats.filter(c=>c.linea===r.id&&c.piloto_activo).length);
     if(active)box.append(node('p',{class:'hint'},active+' contacto(s) de ensayo autorizado(s). Cada conversación y pedido se mantiene separado.'));
     if(!active||r.multi_ensayos&&active<5)box.append(button(active?'Autorizar otro contacto de ensayo':'Autorizar contacto de ensayo',()=>openAuthorization(r.id),'btn primary',{disabled:connectionBusy}));

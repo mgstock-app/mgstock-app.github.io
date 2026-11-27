@@ -11,3 +11,9 @@ test('importación del piloto: limita proyecto, credenciales y números válidos
  const d=valid();d.sessions.push({...d.sessions[0],id:'20000000-0000-4000-8000-000000000001',number:'+541100000001'});
  assert.throws(()=>validateConfig(d),/repetida/);
 });
+test('configuración central única no requiere números ni permite mezclarlos',()=>{
+ const c={...valid(),sessions:[],central:true,centralKey:'b'.repeat(64)};
+ assert.deepEqual(validateConfig(c).sessions,[]);
+ assert.throws(()=>validateConfig({...c,sessions:valid().sessions}),/central/);
+ assert.throws(()=>validateConfig({...c,centralKey:'wrong'}),/central/);
+});

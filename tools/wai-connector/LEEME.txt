@@ -1,30 +1,33 @@
-GESTLOK WAI · CONECTOR DE ENSAYO
-================================
-Este paquete es solo para Gestlok Prueba. No se conecta a producción
-ni autoriza respuestas comerciales. Usa Node.js y el transporte
-no oficial Baileys: WhatsApp puede limitar o revocar una sesión.
+GESTLOK WAI · SERVIDOR CENTRAL DE PRUEBA
+========================================
+Una sola instancia administra todas las líneas habilitadas en GESTLOK.
+Está limitada al entorno de Prueba. La conexión no oficial Baileys
+puede ser restringida o revocada por WhatsApp.
 
-1. WINDOWS: instalá Node.js LTS desde https://nodejs.org/en/download
-   (versión 22 o superior). Extraé TODO el ZIP a una carpeta.
-   Doble clic en INSTALAR-WAI.cmd. Si aún no tenés la configuración
-   del portal, elegí N al final. No hace falta instalar Python.
-2. En https://gestlok-prueba.vercel.app/chat/wai/ iniciá sesión con
-   tu cuenta de prueba, una vez habilitada por la administración.
-   Solo la administradora puede registrar un número autorizado de
-   ensayo y descargar su configuración privada (Vincular >
-   Preparar y descargar configuración).
-3. Abrí CONFIGURAR-WAI.cmd y arrastrá el JSON descargado a la
-   ventana, luego Enter. Guardará la configuración en tu carpeta
-   privada. No lo envíes por chat ni lo publiques.
-4. Abrí INICIAR-WAI.cmd y dejá abierta esa ventana y la PC encendida.
-   En el portal, Vincular mostrará el QR de WhatsApp si Node tiene
-   conexión. Escanealo con el teléfono de ensayo.
-   No usés los números comerciales de Mi Gusto en esta etapa.
-5. En macOS/Linux: ejecutá desde la carpeta npm ci --ignore-scripts
-   --no-audit --no-fund; node --test *.test.mjs; node setup.mjs;
-   node connector.mjs. El proceso guarda credenciales privadas en
-   la carpeta .gestlok-wai-pilot de tu usuario.
+ACTUALIZAR UNA INSTALACIÓN EXISTENTE (SOLO ADMINISTRACIÓN):
+1. Cerrá INICIAR-WAI. Conservá tu carpeta actual y node_modules.
+2. Extraé los archivos de actualización sobre esa misma carpeta.
+3. Ingresá a https://gestlok-prueba.vercel.app/chat/wai/
+   con tu cuenta administradora. En Servidor central WAI seleccioná
+   Preparar servidor central (una sola vez). Descargará un JSON privado.
+4. Abrí CONFIGURAR-WAI.cmd, arrastrá ese archivo y presioná Enter.
+   No lo compartas. Se guarda en la carpeta privada del usuario.
+5. Abrí INICIAR-WAI.cmd UNA SOLA VEZ. Dejá la PC encendida para esta
+   prueba. Las líneas existentes conservarán su carpeta de sesión.
+   Si WhatsApp revocó la sesión, el titular escanea un QR nuevo.
+6. En Comercios WAI registrá/activá los locales de prueba. El servicio
+   los detectará automáticamente. El usuario solo abre Vincular y
+   escanea su QR. En modo recepción entrante, un contacto nuevo que
+   escriba puede iniciar un chat sin autorización individual. Activá
+   este modo únicamente en un WhatsApp de ensayo autorizado.
+   Números excluidos: Configuración WAI > Números excluidos.
 
-No se incluyen claves ni sesiones de WhatsApp en el ZIP. El primer
-ensayo de mensajes exige autorización de un contacto y tiene límites.
-Cerrar el conector o suspender la PC interrumpe la conexión.
+No hay que descargar configuraciones ni abrir consolas por cada local.
+Esta actualización no contiene claves, QR ni credenciales de WhatsApp.
+No uses números comerciales para el modo de ensayo abierto.
+La recepción tiene límites de laboratorio (30 contactos activos por
+línea y 100 admisiones automáticas por día); no es una garantía de
+capacidad comercial. El bot nunca inicia mensajes a contactos que no
+escribieron ni importa la libreta de contactos.
+Cerrar el conector, perder internet, suspender/apagar la PC interrumpe
+la prueba. Para operar 24/7 se necesita un host persistente.

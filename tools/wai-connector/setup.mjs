@@ -12,7 +12,8 @@ try{
  if(!path)throw Error('No se seleccionó un archivo.');
  const next=validateConfig(JSON.parse(await readFile(path,'utf8')));
  let prev=null;try{prev=await loadConfig(defaultConfig());}catch(e){if(e.code!=='ENOENT')throw e;}
- if(prev){
+ if(prev&&next.central!==true){
+  if(prev.central)throw Error('El servidor central ya está configurado. No importes líneas individuales.');
   if(prev.anonKey!==next.anonKey||prev.url!==next.url)throw Error('La configuración no corresponde al mismo proyecto.');
   const merged=new Map(prev.sessions.map(s=>[s.id,s]));
   for(const s of next.sessions){
@@ -24,7 +25,7 @@ try{
   next.enableTestMessages=prev.enableTestMessages||next.enableTestMessages;
  }
  await saveConfig(next);
- console.log('Configuración importada: '+next.sessions.length+' sesión(es).');
+ console.log(next.central?'Configuración central importada. Las líneas se incorporarán automáticamente desde tu panel.':'Configuración importada: '+next.sessions.length+' sesión(es).');
  console.log('Guardada en tu carpeta privada. No compartas el JSON descargado; podés eliminar esa copia después de verificar.');
  console.log('Abrí INICIAR-WAI.cmd (Windows) o ejecutá node connector.mjs.');
 }catch(e){console.error('No se pudo importar: '+e.message);process.exitCode=1;}

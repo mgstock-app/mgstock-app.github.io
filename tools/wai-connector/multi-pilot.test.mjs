@@ -39,3 +39,24 @@ test('snapshot with duplicate phone numbers fails closed',async()=>{
  const multi=multiPilotTransport({rpc:async(name)=>name==='gestlok_chat_wai_ensayos_autorizados'?{ensayos:[a,{...a,id:'b'}]}:(received++,null),socket:{},active:()=>true,now:()=>t});
  await multi.tick('r');await multi.receive({type:'notify',messages:[{key:{remoteJid:jids[0],id:'a'},message:{conversation:'Hola'},messageTimestamp:Math.floor(t/1000)}]});await multi.tick('r');assert.equal(received,0);
 });
+test('recepción abierta admite únicamente mensajes directos nuevos y el servidor decide exclusiones',async()=>{
+ const t=Date.now(),grants=[],received=[],admitted=[],calls=[];
+ let open=true;
+ const multi=multiPilotTransport({active:()=>true,initialOpen:true,initialRevision:'r',now:()=>t,
+  socket:{signalRepository:{lidMapping:{getPNForLID:async l=>l==='555@lid'?jids[1]:null}}},
+  workerFactory:({initialGrant})=>({receive:async e=>{for(const m of e.messages)received.push([initialGrant.tester,m.key.id]);},tick:async()=>{},reset:()=>{},receipt:async()=>{},contacts:async()=>{}}),
+  rpc:async(name,args)=>{
+   if(name==='gestlok_chat_wai_ensayos_autorizados')return {ensayos:grants,recepcion_entrante:open};
+   if(name==='gestlok_chat_wai_admitir_entrada'){
+    calls.push(args.p_jid);
+    if(!jids.includes(args.p_jid))return null; // excluded/unknown
+    const grant={id:args.p_jid,tester:'+'+args.p_jid.split('@')[0],creado_at:new Date(t-1000).toISOString(),vence_at:new Date(t+60000).toISOString()};
+    admitted.push(grant);grants.push(grant);return grant;
+   }return null;
+  }});
+ const msg=(j,id,fromMe=false,alt)=>({key:{remoteJid:j,id,fromMe,remoteJidAlt:alt},message:{conversation:'Hola'},messageTimestamp:Math.floor(t/1000)});
+ await multi.tick('r');await multi.receive({type:'notify',messages:[msg(jids[0],'A'),msg('555@lid','B'),msg('5491100000999@s.whatsapp.net','X'),msg('123@g.us','group'),msg('5491100000998@s.whatsapp.net','out',true)]});
+ assert.equal(admitted.length,2);assert.deepEqual(received.sort(),[[numbers[0],'A'],[numbers[1],'B']].sort());
+ assert.equal(calls.length,3);
+ open=false;grants.length=0;await multi.tick('r');await multi.receive({type:'notify',messages:[msg(jids[0],'off')]});assert.equal(calls.length,3);
+});
