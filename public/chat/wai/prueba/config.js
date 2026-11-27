@@ -1,0 +1,2 @@
+/* Public client configuration for the isolated GESTLOK WAI trial project only. */
+window.GESTLOK_CHAT_CONFIG=Object.freeze({url:'https://irqeitzbfyerxcrogkyh.supabase.co',funcion:'https://irqeitzbfyerxcrogkyh.supabase.co/functions/v1/gestlok-chat',key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlycWVpdHpiZnllcnhjcm9na3loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzUzMzAsImV4cCI6MjExMDg1MTMzMH0.wm4Bqm4K3kpnkRQkPiZxXkjGdL-RZzSInguOfuHP7iM",entorno:'prueba'});

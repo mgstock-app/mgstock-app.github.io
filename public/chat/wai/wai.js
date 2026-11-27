@@ -5,6 +5,8 @@ const root=document.getElementById('wai-root');
 const valid=s=>typeof s==='string'&&s.length>=3&&s.length<=60&&/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s);
 const direct=/^\/gestlok-wai-([a-z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const params=new URLSearchParams(location.search);
+const trialPanel=/^\/chat\/wai\/prueba\/?$/.test(location.pathname);
+const portalBase=trialPanel?'/chat/wai/prueba/':'/chat/wai/';
 const query=params.get('local');
 const openConnection=params.get('vincular')==='1';
 const hostSlug=/^wai-([a-z0-9-]+)\.gestlok\.com\.ar$/.exec(location.hostname)?.[1];
@@ -22,7 +24,7 @@ const labels={sin_conector:'Conector pendiente',sin_senal:'Sin señal',conectado
 const access=(title,msg,...extra)=>root.replaceChildren(node('section',{class:'access'},brand(),node('h1',{},title),node('p',{},msg),...extra));
 if((hostSlug&&((query&&query!==hostSlug)||(direct&&direct!==hostSlug)))||(slug&&!valid(slug))){access('Enlace inválido','Revisá el enlace del local.');return;}
 let sb;
-try{const C=window.GESTLOK_CHAT_CONFIG;sb=window.supabase.createClient(C.url,C.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}
+try{const C=window.GESTLOK_CHAT_CONFIG;if(trialPanel&&(C.entorno!=='prueba'||C.url!=='https://irqeitzbfyerxcrogkyh.supabase.co'||hostSlug))throw Error('Entorno de prueba inválido');sb=window.supabase.createClient(C.url,C.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}
 catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la página.');return;}
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
@@ -32,18 +34,18 @@ let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,or
 let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
-const portalHref=s=>'/chat/wai/?local='+encodeURIComponent(s);
+const portalHref=s=>portalBase+'?local='+encodeURIComponent(s);
 function login(){
  const email=node('input',{type:'email',autocomplete:'email',required:true}),password=node('input',{type:'password',autocomplete:'current-password',required:true}),status=node('p',{role:'status',class:'hint'});
  const form=node('form',{onsubmit:async e=>{e.preventDefault();status.textContent='Ingresando…';submit.disabled=true;try{const r=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});password.value='';if(r.error)throw Error(r.error.code==='email_not_confirmed'?'Confirmá tu correo o solicitá un nuevo enlace.':'Revisá el email y la contraseña.');await init();}catch(x){status.textContent=x.message;}finally{submit.disabled=false;}}});
  const submit=node('button',{class:'btn primary',type:'submit'},'Ingresar');
  form.append(node('label',{},'Email',email),node('label',{},'Contraseña',password),submit);
- const google=button('Ingresar con Google',async()=>{try{const r=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/chat/wai/'+(slug?'?local='+encodeURIComponent(slug):'')}});if(r.error)throw r.error;}catch{status.textContent='No se pudo iniciar con Google. Ingresá desde GESTLOK.';}});
+ const google=button('Ingresar con Google',async()=>{try{const r=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+portalBase+(slug?'?local='+encodeURIComponent(slug):'')}});if(r.error)throw r.error;}catch{status.textContent='No se pudo iniciar con Google. Ingresá desde GESTLOK.';}});
  const resend=button('Reenviar confirmación de correo',async()=>{
   if(!email.value.trim()||!email.checkValidity()){status.textContent='Escribí el email de tu cuenta.';return;}
-  resend.disabled=true;try{await sb.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:location.origin+'/chat/wai/'}});status.textContent='Si la confirmación está pendiente, revisá tu correo y spam. No compartas el enlace.';}catch{status.textContent='No se pudo solicitar. Reintentá más tarde.';}finally{setTimeout(()=>resend.disabled=false,60000);}
+  resend.disabled=true;try{await sb.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:location.origin+portalBase}});status.textContent='Si la confirmación está pendiente, revisá tu correo y spam. No compartas el enlace.';}catch{status.textContent='No se pudo solicitar. Reintentá más tarde.';}finally{setTimeout(()=>resend.disabled=false,60000);}
  });
- access('Ingresá al espacio del local',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':'Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,resend,status,node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
+ access(trialPanel?'Ingresá al panel WAI de prueba':'Ingresá al espacio del local',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':'Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,resend,status,node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
 }
 async function init(){
  const mine=++generation;destroyed=false;clearInterval(navigatorTimer);
@@ -53,18 +55,18 @@ async function init(){
   if(error||!data?.user)return login();
   const result=await rpc('wai_portal_inicio',{p_slug:slug});
   if(mine!==generation)return;
-  portal=result;const locals=Array.isArray(result?.locales)?result.locales:[];
+  portal=result;if(trialPanel&&result?.administradora!==true){access('Acceso exclusivo de administración','Este laboratorio está reservado a la administradora de GESTLOK.',button('Cerrar sesión',()=>void logout()),node('a',{href:'/login/'},'Volver al panel'));return;}const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Solo gastronomía · habilitación exclusiva de la administración. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
    const central=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'}):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
-   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
+   access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/login/'},'Volver a administración de GESTLOK'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
    if(health){startAdminHealth(health,mine,central);}
    return;
   }
   sessionLocal=locals.find(s=>s.slug===slug&&['gestionar','configurar'].includes(s.nivel));
-  if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:hostSlug?'https://gestlok.com.ar/chat/wai/':'/chat/wai/'},'Mis locales'));return;}
+  if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:hostSlug?'https://gestlok.com.ar/chat/wai/':portalBase},'Mis locales'));return;}
   // Keep the local route scoped to the current host. Authentication remains server-side.
   renderShell();await refresh();if(openConnection&&mine===generation)openDrawer('conexion');
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
@@ -94,7 +96,7 @@ function startAdminHealth(host,mine,central){
  };
  let busy=false,actionBusy=false,last='',fail=false;
  const visible=()=>mine===generation&&host.isConnected&&!destroyed;
- const title=node('h2',{},'Centro de conexiones'),label=node('p',{class:'hint',role:'status'},'Comprobando los locales…'),list=node('div',{class:'wai-health-list'}),actionStatus=node('p',{class:'hint',role:'status'});
+ const title=node('h2',{},trialPanel?'Números de prueba · activar o pausar':'Centro de conexiones'),label=node('p',{class:'hint',role:'status'},'Comprobando los locales…'),list=node('div',{class:'wai-health-list'}),actionStatus=node('p',{class:'hint',role:'status'});
  const refreshNow=async()=>{
   if(!visible()||busy||actionBusy)return;busy=true;
   try{
@@ -112,6 +114,13 @@ function startAdminHealth(host,mine,central){
     const href=r.slug&&valid(r.slug)?(portalHref(r.slug)+(portalHref(r.slug).includes('?')?'&':'?')+'vincular=1'):null;
     return node('article',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),node('small',{},r.numero),node('span',{class:healthy?'wai-health-ok':warn?'wai-health-warn':'hint'},(healthy?'● ':warn?'⚠ ':'')+(labels[r.estado]||'Sin estado comprobado')),node('small',{class:'hint'},'Última comprobación: '+(r.wa_verificada_at?scheduledLabel(r.wa_verificada_at):'sin señal comprobada')),
      node('div',{class:'actions'},canRetry?button('Restablecer señal',async()=>{if(actionBusy)return;actionBusy=true;actionStatus.textContent='Solicitando reconexión…';try{await rpc('wai_conexiones',{p_accion:'reconectar',p_id:r.id});actionStatus.textContent='Solicitud enviada. Esperando una comprobación real.';}catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}},'btn'):null,
+     trialEnvironment()&&portal?.administradora===true?button(r.habilitada?'Desactivar número':'Activar número',async()=>{
+       if(actionBusy||!visible())return;
+       if(!confirm((r.habilitada?'¿Pausar ':'¿Activar ')+r.numero+' exclusivamente en el entorno de ensayo? No modifica ningún número comercial.'))return;
+       actionBusy=true;actionStatus.textContent='Guardando…';
+       try{await rpc('admin_whatsapp_premium',{p_accion:'estado',p_id:r.id,p_habilitada:!r.habilitada});actionStatus.textContent='Estado guardado. Comprobando la señal…';}
+       catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}
+     },'btn'):null,
      href?node('a',{class:'btn',href},healthy?'Ver vinculación':'Vincular / revisar QR'):null));
    }));
   }catch{if(visible()){fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();}}
@@ -180,8 +189,8 @@ function renderShell(){
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
- shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(label),node('div',{class:'top-actions'},
-  portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/chat/wai/':'/chat/wai/',title:'Ver el estado de todos los locales'},'Conexiones'):null,
+ shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(trialPanel?'PRUEBA · '+label:label),node('div',{class:'top-actions'},
+  portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/chat/wai/':portalBase,title:'Ver el estado de todos los locales'},'Conexiones'):null,
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
