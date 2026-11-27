@@ -38,3 +38,6 @@ supabase/migrations/20261126165000_gestlok_chat_premium_habilitacion.sql
 supabase/migrations/20261126125750_gestlok_chat_whatsapp_exclusiones.sql
 supabase/migrations/20261126180000_gestlok_chat_whatsapp_conexiones.sql
 supabase/migrations/20261126181000_gestlok_chat_whatsapp_bandeja_piloto.sql
+
+# El módulo Scanner es opcional: nunca bloquea la confirmación de correo del entorno de Chat.
+entornos/sql/auth-scanner-opcional.sql
