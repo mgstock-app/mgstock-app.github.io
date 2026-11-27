@@ -1,4 +1,4 @@
-// Only our own, explicitly authorized single-choice polls. Never persist
+// Only our own, explicitly authorized polls. Never persist
 // a customer's unrelated messages or their WhatsApp history.
 import {randomBytes,createHash} from 'node:crypto';
 import {join} from 'node:path';
@@ -8,16 +8,21 @@ const idOk=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id);
 const pn=j=>/^([1-9]\d{7,14})(?::\d+)?@s\.whatsapp\.net$/.exec(j||'')?.[1];
 const phone=j=>pn(j)?phoneKey('+'+pn(j)):null;
 export function normalizePoll(value){
- if(!value||typeof value.pregunta!=='string'||value.pregunta.length<2||value.pregunta.length>120||!Array.isArray(value.opciones)||value.opciones.length<2||value.opciones.length>6)return null;
+ if(!value||typeof value.pregunta!=='string'||value.pregunta.length<2||value.pregunta.length>120||!Array.isArray(value.opciones)||value.opciones.length<2||value.opciones.length>(value.multiple===true?12:6))return null;
  const items=value.opciones;
  if(items.some(o=>!o||!/^[-a-z0-9_]{1,40}$/.test(o.id||'')||typeof o.label!=='string'||!o.label.trim()||o.label.length>60)||new Set(items.map(o=>o.id)).size!==items.length||new Set(items.map(o=>o.label)).size!==items.length)return null;
- return {pregunta:value.pregunta,opciones:items.map(({id,label})=>({id,label}))};
+ if(value.multiple===true && !items.every(o=>/^sm_[12]_[1-6]$/.test(o.id)))return null;
+ return {pregunta:value.pregunta,opciones:items.map(({id,label})=>({id,label})),...(value.multiple===true?{multiple:true}:{})};
 }
-export function selectionFromVote(options,vote){
- if(!Array.isArray(vote?.selectedOptions)||vote.selectedOptions.length!==1)return null;
- const selected=Buffer.from(vote.selectedOptions[0]);
- if(selected.length!==32)return null;
- return options.find(o=>createHash('sha256').update(o.label,'utf8').digest().equals(selected))?.id||null;
+export function selectionFromVote(options,vote,multiple=false){
+ if(!Array.isArray(vote?.selectedOptions)||!vote.selectedOptions.length||vote.selectedOptions.length>(multiple?12:1))return null;
+ const chosen=[];
+ for(const raw of vote.selectedOptions){
+  const selected=Buffer.from(raw);if(selected.length!==32)return null;
+  const id=options.find(o=>createHash('sha256').update(o.label,'utf8').digest().equals(selected))?.id;
+  if(!id||chosen.includes(id))return null;chosen.push(id);
+ }
+ return multiple?chosen.sort().join(','):chosen[0];
 }
 export function createPollStore(dir,{now=Date.now}={}){
  const path=id=>join(dir,'wai-poll-'+id+'.json');
@@ -27,7 +32,7 @@ export function createPollStore(dir,{now=Date.now}={}){
   const record={id,route,canonical,pilot:grant.id,expires:Date.parse(grant.vence_at),...spec,secret:randomBytes(32).toString('base64')};
   // Persist before granting the network send, so a reconnect can decrypt a vote.
   await writeFile(path(id),JSON.stringify(record),{flag:'wx',mode:0o600});
-  return {poll:{name:spec.pregunta,values:spec.opciones.map(o=>o.label),selectableCount:1,messageSecret:Buffer.from(record.secret,'base64')}};
+  return {poll:{name:spec.pregunta,values:spec.opciones.map(o=>o.label),selectableCount:spec.multiple?0:1,messageSecret:Buffer.from(record.secret,'base64')}};
  }
  async function get(id,grant,route,canonical,currentTime=now(),verifiedRoute=false){
   if(!idOk(id)||!grant?.id||phone(canonical)!==phoneKey(grant.tester))return null;
