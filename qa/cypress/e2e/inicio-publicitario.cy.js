@@ -78,7 +78,7 @@ describe('Inicio publicitario', () => {
     cy.get('.glh-emma-lista').should('contain.text', 'Hacer un pedido');
     // El precio ya no se deriva: Emma lo dice e invita a registrarse.
     cy.get('#glh-emma-pregunta').type('¿Cuánto cuesta?{enter}');
-    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes por local').and('contain.text', '$ 59.500');
+    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes para el primer local').and('contain.text', '$ 59.500').and('contain.text', '$ 150.000 por mes').and('contain.text', 'Local adicional (opcional): $ 50.000 por mes');
     cy.contains('a', 'Registrarme y empezar').should('have.attr', 'href', '/login/#registrarme');
     cy.get('#glh-emma-pregunta').type('Hablar con una persona{enter}');
     cy.contains('button', 'Ir al formulario de contacto').click();
@@ -99,7 +99,7 @@ describe('Inicio publicitario', () => {
     cy.get('.glh-sugerencias button').should('have.length', 4);
     cy.contains('.glh-sugerencias button', '¿Qué es GESTLOK Chat?').should('not.exist');
     cy.contains('.glh-sugerencias button', '¿Cuánto cuesta?').click();
-    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes por local');
+    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes para el primer local');
     cy.get('.glh-sugerencias button').should('have.length', 4);
     cy.contains('.glh-sugerencias button', '¿Cuánto cuesta?').should('not.exist');
     cy.get('#glh-emma-pregunta').type('consulta desconocida xyz{enter}');
@@ -168,3 +168,4 @@ describe('Inicio publicitario', () => {
     });
   });
 });
+

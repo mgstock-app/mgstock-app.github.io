@@ -45,6 +45,10 @@ test('cada sucursal tiene selector y el estado Premium se obtiene por tenant y l
   assert.match(html,/data-tenant="b" data-local="uno"[\s\S]*?<option value="premium" selected>/);
   assert.equal((html.match(/data-ch-local-wa=/g)||[]).length,1);
   assert.match(html,/Premium se habilita al guardar el primer número/);
+  assert.match(html,/GESTLOK Chat \(web\) \$ 70\.000/);
+  assert.match(html,/GESTLOK Chat Premium \$ 150\.000/);
+  assert.match(html,/Local adicional \(opcional\) \$ 50\.000 por local/);
+  assert.match(html,/no modifican los cobros automáticamente/);
   assert.equal(writes(f).length,0);
 });
 test('el plan web crea solo el local elegido y Premium registra únicamente el número autorizado',async()=>{
@@ -67,3 +71,4 @@ test('una cuenta distinta o una sucursal inexistente no puede cambiar el plan',a
   const g=fixture();g.h.mode();await tick();g.h.setTab('locales');await tick();g.submit('a','inexistente','premium','+15550000001');await tick();
   assert.equal(writes(g).length,0);
 });
+
