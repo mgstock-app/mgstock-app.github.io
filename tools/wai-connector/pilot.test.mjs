@@ -136,3 +136,22 @@ test('en reconexión sincroniza envíos del teléfono y pendientes posteriores a
  queued={id:'pending',jid,texto:'Envío WAI'};await engine.tick('rev');
  await engine.receive({type:'append',messages:[msg('WAI-SENT',jid,true)]});await engine.tick('rev');assert.equal(calls.length,2);
 });
+
+test('un evento del contacto despierta el motor sin esperar el próximo heartbeat y drena la respuesta siguiente',async()=>{
+ const t=Date.now(),jobs=[],sent=[],calls=[];
+ let resolved;const completed=new Promise(r=>{resolved=r});
+ const engine=pilotTransport({immediate:true,now:()=>t,active:()=>true,socket:{sendMessage:async(j,m)=>{sent.push(m.text);return {key:{id:'WA'+sent.length}};}},
+  rpc:async(name,a)=>{
+   calls.push(a.p_accion);
+   if(a.p_accion==='control')return {id:'quick',tester:'+5491100000003',creado_at:new Date(t-5000).toISOString(),vence_at:new Date(t+60000).toISOString()};
+   if(a.p_accion==='recibir'){jobs.push({id:'one',jid,texto:'Primera respuesta'});return {ok:true};}
+   if(a.p_accion==='tomar')return jobs.shift()||null;
+   if(a.p_accion==='resultado'){if(a.p_mensaje==='one')jobs.push({id:'two',jid,texto:'Segunda respuesta'});else resolved();return {ok:true};}
+  }});
+ await engine.tick('revision');
+ await engine.receive({type:'notify',messages:[{key:{remoteJid:jid,id:'quick-message',fromMe:false},message:{conversation:'Hola'},messageTimestamp:Math.floor(t/1000)}]});
+ // No external tick after receive; bounded wait detects regression rather than polling every 5s.
+ await Promise.race([completed,new Promise((_,reject)=>setTimeout(()=>reject(Error('La respuesta quedó esperando el heartbeat')),500))]);
+ assert.deepEqual(sent,['Primera respuesta','Segunda respuesta']);
+ assert.ok(calls.includes('recibir'));
+});

@@ -40,7 +40,7 @@ function transportFor(s){
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
   const pollStore=createPollStore(privateDir);await pollStore.prune();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});

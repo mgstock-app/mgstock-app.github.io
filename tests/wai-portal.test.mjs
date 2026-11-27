@@ -358,6 +358,45 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  assert.equal(await order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000077'),true);
  cc=(await inbox(S)).chats[0];assert.equal(cc.pedido_pendiente,false);assert.equal(cc.pedidos[0].estado,'preparacion');
  await anon();assert.match((await job9('WA-PREP2')).texto,/en preparación/);
+ // New protocol: immediate responses, captionless image, follow-up after accepted photo,
+ // and never survey an old or not-yet-delivered order in another conversation.
+ await db.exec('reset role;'+read('entornos/sql/wai-respuestas-rapidas.sql'));
+ await role('gerente');const o5=(await inbox(S)).chats[0].pedidos[0];
+ await order('listo',o5.id);
+ await anon();assert.match((await job9('WA-READY3')).texto,/listo para retirar/);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '3 minutes' where id='${o5.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '3 minutes' where piloto_id='${p9}' and estado='aceptado'`);
+ await anon();await v9('control',null);assert.equal(await v9('tomar'),null); // not delivered yet
+ await role('gerente');await order('entregado',o5.id);
+ await anon();assert.match((await job9('WA-DELIVERED3')).texto,/entregado/);
+ await role('gerente');assert.equal(await att('finalizar'),true);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${o5.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '3 minutes' where piloto_id='${p9}' and estado='aceptado'`);
+ await anon();
+ await v9('recibir',p9,jid,'QUICK-MENU','Pasame el menú'); // no extra control request
+ const quickMenu=await job9('WA-QUICK-MENU');assert.equal(quickMenu.interaccion.pregunta,'Elegí qué parte de la carta querés ver');
+ await v9('voto',p9,jid,'WA-QUICK-MENU','carta_empanadas'); // selection immediately enqueues image
+ const quickPhoto=await job9('WA-QUICK-PHOTO');assert.equal(quickPhoto.imagen_url,photoUrl);assert.equal(quickPhoto.texto,'');
+ const follow=await job9('WA-FOLLOW');assert.equal(follow.interaccion.pregunta,'¿Qué te gustaría hacer ahora?');assert.equal(follow.interaccion.opciones[1].label,'Hacer un pedido');
+ await v9('voto',p9,jid,'WA-FOLLOW','menu_mas');
+ const more=await job9('WA-MORE');assert.equal(more.interaccion.pregunta,'Elegí qué parte de la carta querés ver');
+ await v9('voto',p9,jid,'WA-MORE','carta_pizzas');const pic2=await v9('tomar');
+ assert.ok(pic2.imagen_url);await v9('resultado',p9,null,null,null,pic2.id,'incierto');
+ assert.equal(await v9('tomar'),null); // never offer next actions after an unconfirmed image
+ await role('gerente');cc=(await inbox(S)).chats[0];assert.equal(cc.pedidos[0].consulta_cancelada,true);
+ assert.ok(cc.mensajes.some(m=>m.imagen_url===photoUrl&&m.estado==='aceptado'));
+ // A fresh delivered order receives a survey only after its configured delay.
+ await role('creadora');await authorize(S,H,null,'cancelar');const p10=await authorize(S,H,contact);
+ const v10=(action,pid=p10,j=null,event=null,txt=null,msg=null,state='opciones_imagen_v1')=>motor(H,keyA,action,pid,j,event,txt,msg,state,cmd.revision);
+ const job10=async id=>{const j=await v10('tomar');assert.ok(j);await v10('resultado',p10,jid,id,null,j.id,'aceptado');return j;};
+ await anon();await v10('control',null);await v10('recibir',p10,jid,'NEW-MODE','Retiro en el local');await job10('WA-NEW-MODE');
+ await v10('recibir',p10,jid,'NEW-PROD','Dos de jamón y queso');await job10('WA-NEW-PROD');
+ await role('gerente');assert.equal(await order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000066'),true);
+ const o6=(await inbox(S)).chats[0].pedidos[0];
+ await role('gerente');await order('listo',o6.id);await order('entregado',o6.id);
+ await anon();await job10('WA-NEW-PREP');await job10('WA-NEW-READY');await job10('WA-NEW-DELIVERY');assert.equal(await v10('tomar'),null);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${o6.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '4 minutes' where piloto_id='${p10}' and estado='aceptado'`);
+ await anon();await v10('control',null);const newSurvey=await job10('WA-VALID-SURVEY');assert.equal(newSurvey.interaccion.opciones[0].id,'bien');
+ await v10('voto',p10,jid,'WA-VALID-SURVEY','bien');assert.match((await job10('WA-THANK-YOU')).texto,/Muchas gracias/);
+
 
  }finally{await db.close();}
 });

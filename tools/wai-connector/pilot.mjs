@@ -14,9 +14,18 @@ const lidJid=jid=>{
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
-export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[],menuImage=loadMenuImage}){
+export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[],menuImage=loadMenuImage,immediate=false}){
  let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map(),pendingName=null,lastName=null,readyLogged=false,syncRequested=false;
  const known=new Map(),delivered=new Set();
+ let lastRevision=null,rerun=false,scheduled=false;
+ // Only a received authorized event or a confirmed send wakes this worker.
+ // Keep the regular verified heartbeat; never spin or retry an uncertain send.
+ function wake(){
+  if(!immediate||!lastRevision||!active())return;
+  if(working){rerun=true;return;}
+  if(scheduled)return;scheduled=true;
+  queueMicrotask(()=>{scheduled=false;if(active()&&lastRevision)void tick(lastRevision);});
+ }
  const keyId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id)?id:null;
  const routeOf=j=>pnJid(j)||lidJid(j);
  const serverNow=()=>now()+serverOffset;
@@ -29,7 +38,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
  function valid(){return !!pilot&&Date.parse(pilot.vence_at)>serverNow();}
  function note(code,message){const t=now();if(!lastLog.has(code)||t-lastLog.get(code)>=15000){lastLog.set(code,t);logger(message);}}
  function matches(jid){return valid()&&phone(jid)!==null&&phone(jid)===phoneKey(pilot.tester);}
- function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();pendingName=null;lastName=null;readyLogged=false;syncRequested=false;epoch++;}
+ function reset(){rerun=false;pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();pendingName=null;lastName=null;readyLogged=false;syncRequested=false;epoch++;}
  async function expectedLid(tester){
   const mapping=socket.signalRepository?.lidMapping;
   if(typeof mapping?.getLIDForPN!=='function')return null;
@@ -80,7 +89,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
  async function receive(event){
   if(!active()||!['notify','append'].includes(event?.type))return;
   if(!valid()){note('inactive','WhatsApp recibió un evento antes de que el ensayo esté autorizado; reenviá el mensaje cuando indique listo.');return;}
-  const mine=epoch,p=pilot;
+  const mine=epoch,p=pilot;let added=false;
   for(const m of event.messages||[]){
    if(!active()||mine!==epoch||!valid())return;
    if(m.broadcast||typeof m.key?.id!=='string'||m.key.id.length<1||m.key.id.length>200)continue;
@@ -110,7 +119,8 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
        if(choice)break;
       }if(choice)break;}
       if(choice&&active()&&mine===epoch&&valid()){
-       inbox.push({action:'voto',args:{p_piloto:p.id,p_jid:sender.pn,p_evento:id,p_texto:choice}});
+       inbox.push({action:'voto',args:{p_piloto:p.id,p_jid:sender.pn,p_evento:id,p_texto:choice}});added=true;
+       replyRoute={phone:phone(sender.pn),jid:sender.route};
        note('vote','Opción seleccionada en WhatsApp; sincronizando.');
       }
      }
@@ -120,6 +130,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    const text=content?.conversation??content?.extendedTextMessage?.text;
    if(typeof text!=='string'||!text.trim()||text.length>1000){note('text','Evento del contacto autorizado sin texto simple (puede estar pendiente de descifrado).');continue;}
    if(inbox.length<20){
+    added=true;
     // The server validates the canonical phone number again. Keep the verified LID
     // only in this transport's RAM to send replies to the same WhatsApp chat.
     const args={p_piloto:p.id,p_jid:sender.pn,p_evento:m.key.id,p_texto:text};
@@ -134,6 +145,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
     }
    }
   }
+  if(added)wake();
  }
  // Direct receipts only: no group/status metadata and no identifiers from unrelated messages.
  async function receipt(updates){
@@ -161,8 +173,9 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
   return null;
  }
  async function tick(revision){
-  if(working||!active())return;
-  working=true;
+  if(!active())return;
+  if(working)return;
+  lastRevision=revision;working=true;rerun=false;
   try{
    const call=(action,args={})=>rpc('gestlok_chat_wai_piloto_motor',{p_revision:revision,p_accion:action,...args});
    const capabilities=pollStore&&decryptVote?{p_estado:'opciones_imagen_v1'}:{};
@@ -228,13 +241,14 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
     }
    }else if(job.imagen_url){
     // Load an approved bounded public asset before attempting WhatsApp; do not retry ambiguous sends.
-    try{const media=await menuImage(job.imagen_url);if(active()&&valid()&&matches(job.jid))id=await transmit(target,{...media,caption:job.texto});}
+    try{const media=await menuImage(job.imagen_url);if(active()&&valid()&&matches(job.jid))id=await transmit(target,{...media});}
     catch{note('menu-media','No se pudo descargar la foto de carta. Revisá su configuración en Gestlok.');}
    }else id=await transmit(target,{text:job.texto});
    const state=id?'aceptado':'incierto';
    await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state,...(id?{p_evento:id,p_jid:target}:{})});
    logger(id?'Respuesta enviada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
-  }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;}
+   if(id)wake();
+  }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;if(rerun){rerun=false;wake();}}
  }
  return {receive,receipt,contacts,tick,reset};
 }
