@@ -15,7 +15,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  create table gestlok_tenancy.tenants(id uuid primary key,code text);
  create table public.docs(tenant_id uuid,col text,id text,data jsonb,primary key(tenant_id,col,id));
  create table gestlok_chat_private.empresas(tenant_id uuid primary key,nombre_publico text,habilitada boolean);
- create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text);
+ create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text,datos_transferencia text default '',mensajes jsonb default '{}'::jsonb);
  create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('test.uid',true),''),'${U}')::uuid$$;
  create function public.mi_rol() returns text language sql stable as $$select current_setting('test.role',true)$$;
  create function gestlok_platform.require_admin() returns uuid language plpgsql as $$begin if current_setting('test.role',true) is distinct from 'creadora' then raise exception 'Sin permiso';end if;return '${U}';end$$;
@@ -26,7 +26,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  create function public.gestlok_chat_srv_whatsapp_excluido(s uuid,n text) returns boolean language sql stable as $$select coalesce(current_setting('test.excluded',true)=n,false)$$;
  insert into gestlok_tenancy.tenants values ('${A}','a'),('${B}','b');
  insert into gestlok_chat_private.empresas values ('${A}','Empresa A',true),('${B}','Empresa B',true);
- insert into gestlok_chat_private.sucursales values ('${S}','${A}','uno','a-uno','Uno'),('${T}','${B}','uno','b-uno','Uno');
+ insert into gestlok_chat_private.sucursales(id,tenant_id,local_id,slug,nombre) values ('${S}','${A}','uno','a-uno','Uno'),('${T}','${B}','uno','b-uno','Uno');
  insert into public.docs values ('${A}','locales','uno','{"nombre":"A uno"}'),('${B}','locales','uno','{"nombre":"B uno"}');`);
  for(const path of ['20261126165000_gestlok_chat_premium_habilitacion.sql','20261127133630_gestlok_wai_centro_conexiones.sql','20261127140000_gestlok_chat_wai_portal.sql'])await db.exec(read('supabase/migrations/'+path));
  await db.exec(`insert into gestlok_chat_private.whatsapp_premium_habilitaciones(id,tenant_id,local_id,numero,creada_por,actualizada_por) values ('${H}','${A}','uno','+5491100000001','${U}','${U}'),('${I}','${B}','uno','+5491100000002','${U}','${U}');
@@ -173,6 +173,64 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await role('gerente');assert.equal((await inbox(S)).chats[0].mensajes.find(m=>m.origen==='telefono').entregado,true);
  await role('creadora');await authorize(S,H,null,'cancelar');await anon();assert.equal(await preflight(H,keyA,cmd.revision),null);
  await role('creadora');hist=(await inbox(S)).chats[0];assert.equal(hist.archivado,true);assert.equal(hist.mensajes.length,7);
+
+ // Order tracking: local settings, real scheduled messages, feedback and complaints.
+ const validator=read('supabase/migrations/20261120070000_gestlok_chat_resena_cierre.sql');
+ await db.exec('reset role;'+validator.slice(validator.indexOf('create or replace function gestlok_chat_private.url_resena_valida'),validator.indexOf('create or replace function gestlok_chat_private.mensajes_validos')));
+ await db.exec(read('entornos/sql/wai-pedidos-seguimiento.sql'));
+ await db.exec(`update gestlok_chat_private.sucursales set datos_transferencia='Alias: ejemplo.local',mensajes='{"resena_url":"https://g.page/ejemplo/review"}' where id='${S}'`);
+ await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');
+ await role('creadora');const p5=await authorize(S,H,contact);
+ const order=(action,o=null,mode=null,delay=2,event=E,local=S,hilo=p)=>call('wai_pedido',[local,hilo,action,o,mode,delay,event]);
+ const feedback=(token,a='ver',detail=null,photo=null)=>call('wai_valoracion',[token,a,detail,photo]);
+ const photo=(local,o)=>call('wai_pedido_foto',[local,o]);
+ const sendJob=async()=>{const j=await motor(H,keyA,'tomar',p5,null,null,null,null,null,cmd.revision);assert.ok(j);await motor(H,keyA,'resultado',p5,jid,'WA-'+j.id,null,j.id,'aceptado',cmd.revision);return j.texto;};
+ await role('gerente',T);await assert.rejects(order('transferencia'),/Sin permiso/);
+ await role('gerente');assert.equal(await order('transferencia'),true);assert.equal(await order('transferencia'),true);
+ assert.equal(await order('aceptar',null,'retiro',2),true);assert.equal(await order('aceptar',null,'retiro',2),true);
+ let o=(await inbox(S)).chats[0].pedidos[0];assert.equal(o.estado,'preparacion');
+ assert.equal((await inbox(S)).chats[0].transferencia_configurada,true);
+ await assert.rejects(order('entregado',o.id),/Primero/);
+ await anon();assert.match(await sendJob(),/Alias: ejemplo.local/);assert.match(await sendJob(),/en preparación/);
+ await role('gerente');assert.equal(await order('listo',o.id),true);assert.equal(await order('listo',o.id),true);
+ await anon();assert.match(await sendJob(),/listo para retirar/);
+ assert.ok((await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision)).id);
+ assert.equal(await motor(H,keyA,'tomar',p5,null,null,null,null,null,cmd.revision),null);
+ await role('gerente');assert.equal(await order('entregado',o.id),true);
+ await anon();assert.match(await sendJob(),/https:\/\/g\.page\/ejemplo\/review/);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${o.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '3 minutes' where piloto_id='${p5}' and estado='aceptado'`);
+ await anon();await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);
+ await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);
+ const survey=await sendJob();const token=survey.match(/#([a-f0-9]{64})$/)[1];assert.equal(await feedback('a'.repeat(64)),null);
+ assert.equal((await feedback(token)).valoracion,null);
+ assert.equal((await feedback(token,'problema')).valoracion,'problema');
+ assert.equal((await feedback(token,'bien')).valoracion,'problema');
+ assert.equal((await feedback(token,'detalle','Llegó frío','/9j/AAAA')).detalles_enviados,true);
+ await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);
+ assert.match(await sendJob(),/Lamentamos mucho/);
+ await role('gerente');let rowOrder=(await inbox(S)).chats[0];assert.equal(rowOrder.reclamo_pendiente,true);assert.equal(rowOrder.pedidos[0].detalle,'Llegó frío');assert.equal(await photo(S,o.id),'/9j/AAAA');
+ assert.ok(rowOrder.mensajes.some(m=>m.origen==='valoracion'&&m.texto.includes('Tuve un problema')));
+ await mark(S,rowOrder.id,rowOrder.mensajes.filter(m=>m.direccion==='entrada'&&!m.leido).map(m=>m.id));
+ assert.equal((await inbox(S)).chats[0].reclamo_pendiente,true);
+ await role('gerente',T);await assert.rejects(photo(S,o.id),/Sin permiso/);assert.equal(await photo(T,o.id),null);
+ await role('gerente');assert.equal(await order('resolver',o.id),true);assert.equal((await inbox(S)).chats[0].reclamo_pendiente,false);
+ // Reauthorization does not resend the earlier survey. Test positive with delivery.
+ await role('creadora');await authorize(S,H,null,'cancelar');const p6=await authorize(S,H,contact);
+ await role('gerente');assert.equal(await order('aceptar',null,'delivery',1,U),true);
+ const o2=(await inbox(S)).chats[0].pedidos[0];assert.equal(o2.modalidad,'delivery');assert.equal(await order('listo',o2.id),true);
+ await anon();const drain=async()=>{const j=await motor(H,keyA,'tomar',p6,null,null,null,null,null,cmd.revision);assert.ok(j);await motor(H,keyA,'resultado',p6,jid,'WA-'+j.id,null,j.id,'aceptado',cmd.revision);return j.texto;};
+ assert.match(await drain(),/preparación/);assert.match(await drain(),/en camino/);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${o2.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '2 minutes' where piloto_id='${p6}' and estado='aceptado'`);
+ await anon();await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);
+ const survey2=await drain(),token2=survey2.match(/#([a-f0-9]{64})$/)[1];
+ // Feedback is recorded even if WhatsApp goes offline, and acknowledgement waits for real signal.
+ await signal('wai_senal_v2',H,keyA,cmd.revision,'desconectado',null);
+ assert.equal((await feedback(token2,'bien')).valoracion,'bien');assert.equal(await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision),null);
+ await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');
+ await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);assert.match(await drain(),/Muchas gracias/);
+ await role('creadora');await authorize(S,H,null,'cancelar');
+ await anon();assert.equal(await feedback(token2),null);assert.equal(await feedback(token),null);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].pedidos.length,2);
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{
