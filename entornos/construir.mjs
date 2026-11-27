@@ -107,6 +107,7 @@ writeFileSync(join(salida, 'ingresar/index.html'), pagina('Ingresar · ' + ent.n
   '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script>' +
   '<script>(function(){var m=document.getElementById("m"),C=window.GESTLOK_CHAT_CONFIG;' +
   'if(!window.supabase||typeof window.supabase.createClient!=="function"||!C||!C.url||!C.key){m.textContent="No se pudo iniciar el acceso de pruebas. Revisá la conexión y recargá.";document.getElementById("n").disabled=true;document.getElementById("f").onsubmit=function(e){e.preventDefault();};return;}' +
+  'var h=new URLSearchParams(location.hash.slice(1)),t=h.get("type"),q=new URLSearchParams(location.search);if((h.has("access_token")&&["recovery","signup","email"].includes(t))||h.has("error")||h.has("error_code")||q.has("error_code")){location.replace("/chat/recuperar/"+location.search+location.hash);return;}' +
   'var sb=window.supabase.createClient(C.url,C.key,{auth:{persistSession:true}});' +
   'function d(){return{email:document.getElementById("e").value.trim(),password:document.getElementById("c").value}}' +
   'document.getElementById("f").onsubmit=async function(ev){ev.preventDefault();m.textContent="Entrando…";try{var r=await sb.auth.signInWithPassword(d());' +
@@ -145,7 +146,7 @@ writeFileSync(join(salida, 'dividida/index.html'), '<!doctype html><html lang="e
 mkdirSync(join(salida, 'chat/recuperar'), {recursive: true});
 cpSync(join(raiz, 'entornos/recuperar.js'), join(salida, 'chat/recuperar/recuperar.js'));
 writeFileSync(join(salida, 'chat/recuperar/index.html'), pagina('Recuperar acceso · ' + ent.nombre,
-  '<h1>Recuperar acceso</h1><p class="nota">Solo para tu cuenta de pruebas. Si aún no confirmaste el correo, solicitá primero la confirmación.</p>' +
+  '<h1 id="titulo">Recuperar acceso</h1><p id="intro" class="nota">Solo para tu cuenta de pruebas. Si aún no confirmaste el correo, solicitá primero la confirmación.</p>' +
   '<form id="solicitar"><label for="correo">Correo electrónico</label><input id="correo" type="email" autocomplete="email" required>' +
   '<button id="confirmar" type="button">Reenviar confirmación de correo</button>' +
   '<button id="enviar" class="p" type="submit">Enviar enlace para cambiar mi contraseña</button></form>' +
@@ -153,8 +154,8 @@ writeFileSync(join(salida, 'chat/recuperar/index.html'), pagina('Recuperar acces
   '<label for="repetir">Repetir contraseña</label><input id="repetir" type="password" autocomplete="new-password" minlength="8" required>' +
   '<button id="guardar" class="p" type="submit">Guardar nueva contraseña</button></form>' +
   '<p id="m" class="nota" role="status" aria-live="polite"></p><a class="b" href="/ingresar/">Volver a Ingresar</a>' +
-  '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script><script src="/chat/recuperar/recuperar.js?v=1"></script>',
-  '<meta name="referrer" content="no-referrer">'));
+  '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script><script src="/chat/recuperar/recuperar.js?v=2"></script>',
+  '<meta name="referrer" content="no-referrer"><style>[hidden]{display:none!important}</style>'));
 
 writeFileSync(join(salida, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: SAMEORIGIN\n');
 writeFileSync(join(salida, 'robots.txt'), 'User-agent: *\nDisallow: /\n');

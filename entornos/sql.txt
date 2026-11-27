@@ -45,3 +45,6 @@ supabase/migrations/20261123210000_gestlok_chat_cobros_primer_mes.sql
 entornos/sql/semilla.sql
 entornos/sql/catalogo-demo.sql
 supabase/migrations/20261126165000_gestlok_chat_premium_habilitacion.sql
+
+# El módulo Scanner es opcional: nunca bloquea la confirmación de correo del entorno de Chat.
+entornos/sql/auth-scanner-opcional.sql
