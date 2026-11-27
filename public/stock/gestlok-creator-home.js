@@ -13,6 +13,7 @@
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
     ['gestlok-chat', 'GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
+    ['habilitacion', 'Habilitación', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="m8 12 3 3 5-6M8 3v4M16 3v4"/>'],
     ['hq', 'GESTLOK HQ', '<path d="M3 20V5h18v15zM3 12h18M12 5v15"/>'],
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
@@ -21,6 +22,54 @@
     // Mensajes del formulario de Contacto de gestlok.com.ar (gestlok-contacto-web.js).
     ['contacto', 'Mensajes web', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
   ]);
+  // Agrupación exclusiva de la administradora: las rutas existentes y sus permisos no cambian.
+  const ADMIN_GROUPS = Object.freeze([
+    ['Inicio', 'inicio', ['inicio']],
+    ['Comercios', 'locales', ['locales','empresas','usuarios','empleados']],
+    ['GESTLOK Chat', 'gestlok-chat', ['gestlok-chat','habilitacion','chat-prueba']],
+    ['Oficina', 'hq', ['hq','contacto','resenas']],
+    ['Herramientas', 'herramientas', ['herramientas','nfc']]
+  ]);
+  const ADMIN_LEAF_LABELS = Object.freeze({'gestlok-chat':'Panel y entornos','chat-prueba':'Demostración','hq':'Oficina virtual','resenas':'Reseñas','herramientas':'Configuración general'});
+  function adminNavigation(cur,p) {
+    const unread = num(window.GestLokContactoWeb?.unread?.());
+    const pending = num(p.pending);
+    const badge = n => n > 0 ? '<b>'+esc(n)+'</b>' : '';
+    const main = ADMIN_GROUPS.map(([label,id,children]) => {
+      const active=children.includes(cur);
+      const icon=TABS.find(t=>t[0]===id)[2];
+      return '<button type="button" title="'+esc(label)+'" aria-label="'+esc(label)+'" data-ch-tab="'+id+'" data-ch-group="'+id+'"'+
+        (active?' class="on" aria-current="'+(id===cur?'page':'true')+'"':'')+'>'+svg(icon,20)+'<span>'+esc(label)+'</span>'+
+        badge(id==='locales'?pending:id==='hq'?unread:0)+'</button>';
+    }).join('');
+    const tools=ADMIN_GROUPS.filter(g=>g[2].length>1).map(([label,id,children])=>
+      '<nav class="gl-ch-section-tools" aria-label="Secciones de '+esc(label)+'"'+(children.includes(cur)?'':' hidden')+'>'+
+      children.map(id=>{
+        const leaf=TABS.find(t=>t[0]===id);
+        const label=ADMIN_LEAF_LABELS[id]||leaf[1];
+        return '<button type="button" data-ch-tab="'+id+'"'+(id===cur?' class="on" aria-current="page"':'')+'>'+
+          svg(leaf[2],18)+'<span>'+esc(label)+'</span>'+badge(id==='usuarios'?pending:id==='contacto'?unread:0)+'</button>';
+      }).join('')+'</nav>').join('');
+    return {main,tools};
+  }
+  function adminStart(p) {
+    const t=data.totals||{};
+    const shortcuts=[
+      ['locales','Locales y microapps','Administrá comercios, sucursales y aplicaciones.'],
+      ['habilitacion','Habilitación GESTLOK Chat','Activá comercios, autorizá números y ayudá con la configuración.'],
+      ['usuarios','Usuarios y accesos',num(p.pending)+' solicitudes pendientes.'],
+      ['contacto','Mensajes web',num(window.GestLokContactoWeb?.unread?.())+' mensajes sin leer.'],
+      ['hq','Oficina virtual','Áreas, tareas y asistencia.'],
+      ['herramientas','Configuración general','Ajustes administrativos y herramientas.']
+    ];
+    return '<section class="gl-ch-admin-summary" aria-label="Resumen de administración">'+
+      [['Empresas',t.companies],['Locales',t.locals],['Usuarios',t.users]].map(([label,value])=>
+        '<div><small>'+label+'</small><strong>'+num(value)+'</strong></div>').join('')+'</section>'+
+      '<section class="gl-ch-card gl-ch-admin-actions" aria-label="Accesos frecuentes"><header><h2>Accesos frecuentes</h2></header><div class="gl-ch-admin-grid">'+
+      shortcuts.map(([id,label,detail])=>'<button type="button" data-ch-tab="'+id+'">'+
+        '<span class="gl-ch-admin-action-icon">'+svg(TABS.find(t=>t[0]===id)[2],24)+'</span><span><b>'+esc(label)+'</b><small>'+esc(detail)+'</small></span><span aria-hidden="true">›</span></button>').join('')+
+      '</div></section>';
+  }
   const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
   const MOLINO_NEXT = 'gestlok:creator-molino-microapp:v1';
   const MOLINO_TOOLS = Object.freeze([
@@ -236,6 +285,151 @@
   let microapps=[],microappsLoaded=false,microappsBusy=false,microappsTried=false,microappsError='',companyBusy=false;
   const premiumAdmin=()=>api?.isCreadora?.() &&
     String(api?.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
+  // Habilitación comercial: no solicita credenciales ni llama al proveedor WhatsApp.
+  let premiumWAManualReady=false,premiumWAReady=false,premiumWAConnections={},premiumWALink=null,premiumWAProvider='sin_consultar';
+  let premiumWhatsApp=null,premiumWABusy=false,premiumWAError='',premiumWATried=false,premiumWALocal='',premiumWADraft='';
+  const premiumWAAllowed=()=>premiumAdmin();
+  const premiumWAKey=l=>JSON.stringify([l.tenant_id,l.local_id]);
+  const premiumWAValidPhone=p=>{
+    const n=String(p||'').trim().replace(/[ ()-]/g,'');
+    return /^\+[0-9 ()-]+$/.test(String(p||'').trim())&&/^\+[1-9][0-9]{7,14}$/.test(n)&&(!n.startsWith('+54')||/^\+54(9)?[0-9]{10}$/.test(n));
+  };
+  const premiumWAConfigLink=(l,section='ajustes')=>l?.sucursal_id?'/chat/panel/?configurar='+encodeURIComponent(l.sucursal_id)+'&seccion='+section:'';
+  const premiumWACompany=l=>(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===l.tenant_id)?.name||l.empresa;
+  async function premiumWARequest(params={p_accion:'listar'}){
+    if(!premiumWAAllowed()||premiumWABusy||!window.GestLokSupabase?.rpc)return;
+    premiumWABusy=true;premiumWATried=true;premiumWAError='';premiumWAReady=false;premiumWAManualReady=false;premiumWAProvider='consultando';premiumWALink=null;
+    if(params.p_accion!=='listar')api?.render?.();
+    try{
+      const {data:result,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_premium',params);
+      if(error)throw error;
+      if(!premiumWAAllowed())return;
+      if(!Array.isArray(result?.locales)||!Array.isArray(result?.numeros))throw new Error('Respuesta inválida.');
+      premiumWhatsApp=result;
+      premiumWAReady=false;premiumWAConnections={};premiumWALink=null;
+      // Fallar cerrado en la conexión oficial, sin impedir administrar el registro interno.
+      try{
+        const connections=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_conexiones');
+        const connectionsOK=!connections.error&&connections.data&&typeof connections.data==='object'&&!Array.isArray(connections.data);
+        if(connectionsOK)premiumWAConnections=connections.data;
+        const readiness=window.GestLokSupabase.functions?.invoke?await window.GestLokSupabase.functions.invoke('gestlok-ycloud-partner',{body:{action:'status'}}):null;
+        premiumWAReady=!!(connectionsOK&&!readiness?.error&&readiness?.data?.ready===true);
+        premiumWAManualReady=premiumWAReady&&readiness.data?.manualReady===true;
+        premiumWAProvider=premiumWAReady?'listo':connectionsOK&&!readiness?.error&&readiness?.data?.ready===false?'pendiente':'error';
+      }catch{premiumWAProvider='error';}
+      if(params.p_accion==='agregar'){premiumWADraft='';api?.toast?.('Números habilitados internamente. La conexión con WhatsApp sigue pendiente.');}
+      if(params.p_accion==='estado')api?.toast?.(params.p_habilitada?'Habilitación interna reactivada.':'Número pausado.');
+    }catch(e){premiumWAProvider='error';premiumWAError=['22023','23505','P0002'].includes(String(e?.code))?String(e.message):'No se pudo consultar o guardar. Revisá la conexión y los permisos.';}
+    finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
+  }
+  function premiumWAView(){
+    if(!premiumWAAllowed())return '';
+    if(!premiumWATried&&!premiumWABusy)queueMicrotask(()=>premiumWARequest());
+    const locales=premiumWhatsApp?.locales||[],numeros=premiumWhatsApp?.numeros||[];
+    const selected=locales.find(l=>premiumWAKey(l)===premiumWALocal);
+    const visible=selected?numeros.filter(n=>premiumWAKey(n)===premiumWAKey(selected)):numeros;
+    const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(selected===l?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
+    const configActions=l=>l?.sucursal_id?'<a class="btn" href="'+esc(premiumWAConfigLink(l))+'" target="_blank" rel="noopener">Configurar local</a> <a class="btn" href="'+esc(premiumWAConfigLink(l,'excluidos'))+'" target="_blank" rel="noopener">Números excluidos del bot</a>':'<small>Primero asigná GESTLOK Chat al local desde Locales para configurar el bot.</small>';
+    const active=visible.filter(n=>n.habilitada&&n.local_existe).length;
+    const statusNames={enlace_emitido:'Esperando autorización del comercio',enlace_vencido:'Enlace vencido',cuenta_autorizada:'Cuenta autorizada · falta comprobar número',numero_verificado:'Número comprobado · automatización apagada'};
+    const providerStatus={
+      listo:'Conexión oficial disponible: podés vincular los números.',
+      pendiente:'Vinculación oficial aún no habilitada por el proveedor. Podés cargar, activar o desactivar números y administrar exclusiones.',
+      error:'No se pudo comprobar la conexión oficial. Actualizá el estado y volvé a intentar. Los envíos permanecen bloqueados.',
+      consultando:'Comprobando conexión oficial…',
+      sin_consultar:'Comprobando conexión oficial…'
+    }[premiumWAProvider];
+    const rows=visible.map(n=>{
+      const l=locales.find(l=>premiumWAKey(l)===premiumWAKey(n)),c=premiumWAConnections[n.id];
+      const enabled=n.habilitada&&n.local_existe;
+      const state=c?.estado||'pendiente';
+      const canUse=premiumWAReady&&enabled&&!premiumWABusy;
+      const needsVerify=['cuenta_autorizada','numero_verificado'].includes(state);
+      const link=premiumWALink?.id===n.id&&premiumWALink.expiresAt>Date.now()&&canUse;
+      const connectionLabel=!enabled?'WhatsApp desactivado en GESTLOK':premiumWAProvider==='error'?'Estado de conexión no comprobado':statusNames[state]||'WhatsApp: pendiente de vinculación';
+      return '<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(enabled?'gl-wa-on':'gl-wa-off')+'">'+(enabled?'Activo en GESTLOK':'Desactivado')+'</strong><span>'+esc(connectionLabel)+'</span></p>'+
+        (state==='numero_verificado'&&c?.verificado_at?'<small>Última comprobación: '+esc(new Date(c.verificado_at).toLocaleString('es-AR'))+'</small>':'')+
+        (link?'<p><a class="btn primary" href="'+esc(premiumWALink.url)+'" target="_blank" rel="noopener noreferrer">Abrir autorización oficial</a><small> Vence: '+esc(new Date(premiumWALink.expiresAt).toLocaleTimeString('es-AR'))+'</small></p>':'')+
+        (!selected&&l?.sucursal_id?'<p>'+configActions(l)+'</p>':'')+
+        '</div><div class="gl-ch-chat-actions">'+
+        '<button type="button" class="btn '+(enabled?'':'primary')+'" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Desactivar número':'Activar número')+'</button>'+
+        (needsVerify?'<button type="button" class="btn" data-ch-wa-verify="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>Comprobar número</button>':'<button type="button" class="btn" data-ch-wa-link="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>'+(state==='enlace_emitido'||state==='enlace_vencido'?'Generar nuevo enlace':'Vincular WhatsApp')+'</button>')+
+        (needsVerify?'<button type="button" class="btn" data-ch-wa-pilot="'+esc(n.id)+'"'+(!canUse||!premiumWAManualReady||state!=='numero_verificado'?' disabled':'')+'>Autorizar prueba manual</button><button type="button" class="btn" data-ch-wa-cancel="'+esc(n.id)+'"'+(premiumWABusy?' disabled':'')+'>Cancelar prueba</button>':'')+
+        '</div></article>';
+    }).join('');
+    return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK WAI">'+
+      '<header><h2>GESTLOK WAI · Administrar WhatsApp</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar estado</button></header>'+
+      '<p>Elegí un local para registrar, activar o desactivar sus números comerciales, vincular WhatsApp y configurar el bot. Solo vos autorizás números comerciales; los gerentes pueden configurar su propio local.</p>'+
+      '<div class="gl-wa-notice" role="status"><strong>'+esc(providerStatus)+'</strong><p>Activar un número en GESTLOK no lo vincula a WhatsApp ni inicia envíos. La autorización oficial del titular es indispensable. La IA automática permanece apagada.</p></div>'+
+      (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
+      (premiumWABusy?'<p role="status">Consultando o guardando…</p>':'')+
+      (premiumWhatsApp?'<form data-ch-wa-form class="gl-wa-form"><label for="gl-wa-local">Empresa y local</label><select id="gl-wa-local" name="local" required'+(premiumWABusy?' disabled':'')+'><option value="">Todos los locales · elegí uno para agregar números</option>'+options+'</select>'+
+        (selected?'<p>'+configActions(selected)+'</p>':'')+
+        '<h3>Agregar número comercial</h3><label for="gl-wa-numeros">Número o números de WhatsApp del comercio</label><textarea id="gl-wa-numeros" name="numeros" required rows="3" maxlength="3050" placeholder="+5491100000000 (uno por línea)"'+(!selected||premiumWABusy?' disabled':'')+'>'+esc(premiumWADraft)+'</textarea><small>Siempre con + y código de país. Argentina: +549 para celulares o +54 para líneas fijas, seguido de 10 dígitos. Otros países: formato internacional. Uno por línea o separados por coma. Para dueños y otros contactos que no deben recibir respuestas, usá Números excluidos del bot.</small>'+
+        '<button type="submit" class="btn primary"'+(!selected||premiumWABusy?' disabled':'')+'>Agregar y activar número(s)</button></form>'+
+        '<h3>Números '+(selected?'del local':'registrados')+' · '+active+' activos / '+visible.length+' registrados</h3><div class="gl-ch-chat-list">'+(rows||'<p>Todavía no hay números registrados'+(selected?' en este local':'')+'.</p>')+'</div>':'')+'</section>';
+  }
+  async function premiumWAConnect(id,action){
+    if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy||!premiumWAReady)return;
+    const row=premiumWhatsApp?.numeros?.find(n=>n.id===id&&n.habilitada&&n.local_existe);
+    if(!row)return;
+    let onboardingType;
+    if(action==='link'){
+      const app=window.confirm('¿Este comercio usa la app WhatsApp Business en su celular y quiere conservarla? Aceptar: Sí. Cancelar: elegir la plataforma sin app.');
+      if(!app&&!window.confirm('¿Confirmás que el comercio desea usar la plataforma de WhatsApp Business sin vincular su app existente?'))return;
+      onboardingType=app?'WHATSAPP_BUSINESS_APP':'WHATSAPP_BUSINESS_PLATFORM';
+    }
+    premiumWABusy=true;premiumWAError='';premiumWALink=null;api?.render?.();
+    let pendingLink=null;
+    try{
+      const {data,error}=await window.GestLokSupabase.functions.invoke('gestlok-ycloud-partner',{body:{action,id,onboardingType}});
+      if(error||!data||!premiumWAAllowed())throw new Error();
+      if(action==='link'){
+        const url=new URL(data.onboardingUrl);
+        if(url.origin!=='https://connect.ycloud.com'||url.username||url.password||url.pathname!=='/open/whatsapp/onboard'||url.search||!new URLSearchParams(url.hash.slice(1)).get('token')||!Number.isFinite(data.expiresAt)||data.expiresAt<=Date.now())throw new Error();
+        pendingLink={id,url:url.href,expiresAt:data.expiresAt};
+      }
+    }catch{premiumWAError='No se pudo completar la vinculación. Verificá la autorización y el número del comercio.';}
+    finally{premiumWABusy=false;}
+    if(premiumWAAllowed()&&!premiumWAError){
+      await premiumWARequest();
+      if(pendingLink&&premiumWAAllowed()&&tab==='habilitacion'&&premiumWAReady)premiumWALink=pendingLink;
+    }
+    if(premiumWAAllowed())api?.render?.();
+  }
+  async function premiumWAPilot(id,cancel=false){
+    if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy||(!cancel&&!premiumWAManualReady))return;
+    const row=premiumWhatsApp?.numeros?.find(n=>n.id===id);if(!row)return;
+    let tester=null;
+    if(cancel){if(!window.confirm('¿Cancelar la prueba manual de este número?'))return;}
+    else {
+      const raw=window.prompt('Número personal de prueba, con + y código de país. No ingreses el de un cliente real.');
+      if(raw===null)return;tester=raw.replace(/[ ()-]/g,'');
+      if(!premiumWAValidPhone(raw)){premiumWAError='Ingresá el número internacional válido.';api?.render?.();return;}
+      if(!window.confirm('¿Autorizar una única respuesta manual a ese teléfono desde '+row.nombre+' durante 2 horas? No se habilitarán otros clientes ni IA automática.'))return;
+    }
+    premiumWABusy=true;premiumWAError='';api?.render?.();
+    try{
+      const {error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_piloto',{p_id:id,p_tester:tester,p_accion:cancel?'cancelar':'autorizar'});
+      if(error)throw error;
+      api?.toast?.(cancel?'Prueba cancelada.':'Prueba autorizada. Abrí WhatsApp en la Central de mensajes del local.');
+    }catch(e){premiumWAError=['22023','42501'].includes(String(e?.code))?String(e.message):'No se pudo autorizar la prueba.';}
+    finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
+  }
+  document.addEventListener('input',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-numeros')premiumWADraft=ev.target.value;});
+  document.addEventListener('change',ev=>{
+    if(hqAllowed()&&ev.target?.id==='gl-hq-chat-recipient'&&HQ_PEOPLE[ev.target.value]){hqMeetingRecipient=ev.target.value;hqChatError='';api?.render();return;}if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local'&&!premiumWABusy){if(premiumWALocal!==ev.target.value)premiumWADraft='';premiumWALocal=ev.target.value;premiumWAError='';api?.render?.();}});
+  document.addEventListener('submit',ev=>{
+    if(!ev.target?.matches?.('[data-ch-wa-form]'))return;
+    ev.preventDefault();if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy)return;
+    const f=ev.target,premiumLocal=(premiumWhatsApp?.locales||[]).find(l=>premiumWAKey(l)===f.elements.local.value);
+    if(!premiumLocal)return;
+    const phones=String(f.elements.numeros.value||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+    premiumWALocal=f.elements.local.value;premiumWADraft=f.elements.numeros.value;
+    if(!phones.length||phones.length>50||phones.some(p=>!premiumWAValidPhone(p))){premiumWAError='Ingresá de 1 a 50 números internacionales válidos. Ejemplo argentino: +5491100000000.';api?.render?.();return;}
+    if(!window.confirm('¿Habilitar '+phones.length+' número(s) de '+premiumLocal.nombre+' para GESTLOK WAI? No se conectará WhatsApp todavía.'))return;
+    void premiumWARequest({p_accion:'agregar',p_tenant:premiumLocal.tenant_id,p_local:premiumLocal.local_id,p_numeros:phones});
+  });
   async function loadMicroapps(force=false){
     if(!premiumAdmin()||!window.GestLokSupabase?.rpc||microappsBusy||(!force&&(microappsLoaded||microappsTried)))return;
     microappsBusy=true;microappsTried=true;microappsError='';
@@ -321,7 +515,7 @@
       '<a class="btn" href="https://gestlok.com.ar/chat/panel/" target="_blank" rel="noopener noreferrer">GESTLOK Chat · Panel</a>'+
       '<a class="btn" href="https://gestlok-prueba.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Prueba</a>'+
       '<a class="btn" href="https://gestlok-testing.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Testing</a>'+
-      '</div><p class="gl-ch-app-tip">Para habilitar GESTLOK Chat en una nueva empresa, ingresá a «Locales» → «+ Apps».</p></section>';
+      '</div><p class="gl-ch-app-tip">La habilitación y los números de WhatsApp se administran en una única sección.</p><button type="button" class="btn primary" data-ch-tab="habilitacion">Ir a Habilitación →</button></section>';
   }
 
   async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponAttempted=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
@@ -461,10 +655,10 @@
       ['Plan Scanner', 'Escaneo con cámara, ventas y control de stock'],
       ['Horarios', 'Turnos y planillas'],
       ['Empleados', 'Legajos y recibos autorizados'],
-      // GESTLOK Chat: se enciende empresa por empresa en Herramientas (gestlok_chat_admin_*).
+      // GESTLOK Chat: se enciende empresa por empresa en Habilitación (gestlok_chat_admin_*).
       ['GESTLOK Chat', 'Atención y pedidos por chat, un chat por local']
     ].map(([name,detail]) => name === 'GESTLOK Chat'
-      ? '<button type="button" class="gl-ch-microapp" data-ch-tab="herramientas" aria-label="Activar GESTLOK Chat por empresa">' +
+      ? '<button type="button" class="gl-ch-microapp" data-ch-tab="' + (premiumAdmin()?'habilitacion':'herramientas') + '" aria-label="Activar GESTLOK Chat por empresa">' +
         '<b>' + name + '</b><small>' + detail + ' · ' + esc(chatResumen()) + '</small><span>Activar por empresa →</span></button>'
       : '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
       '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
@@ -486,7 +680,7 @@
       ['Mensajes web', 'contacto', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
     ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
       '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
-    return '<div class="gl-ch-creator-start">' +
+    const content = '<div class="gl-ch-creator-start">' +
       '<section class="gl-ch-company-area" aria-label="Empresas activas">' +
       '<header class="gl-ch-company-area-head"><h2>Empresas activas</h2>' +
       '<button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header>' +
@@ -505,11 +699,119 @@
       '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
+    return premiumAdmin()?'<div class="gl-ch-creator-start">'+adminStart(p)+
+      '<details class="gl-ch-admin-more"><summary>Ver todas las empresas y otros accesos <span aria-hidden="true">⌄</span></summary>'+content+'</details></div>':content;
   }
+
+  // Plan por sucursal. La autorización de números en el servidor es la fuente real de Premium;
+  // seleccionar el plan no conecta WhatsApp ni habilita envíos. No hay datos comerciales en localStorage.
+  let localPlans=null,localPlansBusy=false,localPlansTried=false,localPlansError='',localPlanSaving=false,localPlansIndex='';
+  function localPlanIndex(){
+    const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
+    return JSON.stringify(companies.flatMap(c=>(Array.isArray(c.locals)?c.locals:[]).map(l=>[l.tenant_id||c.tenant_id,l.id])).sort());
+  }
+  const localPlanOpen=new Set(),localPlanDraft=new Map();
+  const localPlanKey=(tenant,id)=>JSON.stringify([tenant,id]);
+  function localPlanData(tenant,id){
+    const empresa=localPlans?.empresas.find(e=>e.tenant_id===tenant);
+    const local=localPlans?.locales.find(l=>l.tenant_id===tenant&&l.local_id===id);
+    const numbers=(localPlans?.numeros||[]).filter(n=>n.tenant_id===tenant&&n.local_id===id&&n.local_existe);
+    const enabled=numbers.filter(n=>n.habilitada);
+    return {empresa,local,numbers,enabled,plan:enabled.length?'premium':local?.sucursal_id?'chat':''};
+  }
+  async function loadLocalPlans(){
+    if(!premiumAdmin()||localPlansBusy||!window.GestLokSupabase?.rpc)return;
+    localPlansBusy=true;localPlansTried=true;localPlansIndex=localPlanIndex();localPlansError='';
+    try{
+      const sb=window.GestLokSupabase;
+      const [a,b]=await Promise.all([sb.rpc('gestlok_chat_admin_empresas'),sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'listar'})]);
+      if(!premiumAdmin())return;
+      if(a.error||b.error||!Array.isArray(a.data)||!Array.isArray(b.data?.locales)||!Array.isArray(b.data?.numeros))throw Error('No se pudieron consultar los planes.');
+      localPlans={empresas:a.data,locales:b.data.locales,numeros:b.data.numeros};
+    }catch{localPlans=null;localPlansError='No se pudieron consultar los planes de Chat. Reintentá.';}
+    finally{localPlansBusy=false;if(premiumAdmin()&&tab==='locales')api?.render?.();}
+  }
+  function localChatPlanView(c,l){
+    const tenant=l.tenant_id||c.tenant_id,id=l.id,key=localPlanKey(tenant,id);
+    const info=localPlanData(tenant,id),draft=localPlanDraft.get(key);
+    const chosen=draft?.plan||info.plan;
+    const pending=localPlansBusy||!localPlans||!info.local||localPlanSaving;
+    const paused=info.empresa?.habilitada===false;
+    const disabled=pending||paused?' disabled':'';
+    const label=info.plan==='premium'?'GESTLOK WAI · '+info.enabled.length+' número(s) habilitado(s) internamente':info.plan==='chat'?'GESTLOK Chat · web':'Sin Chat asignado';
+    return '<form class="gl-ch-local-chat-plan" data-ch-local-plan data-tenant="'+esc(tenant)+'" data-local="'+esc(id)+'">'+
+      '<label>Plan de '+esc(l.name||id)+'<select name="plan" aria-label="Plan GESTLOK Chat de '+esc(l.name||id)+'"'+disabled+'>'+
+      '<option value="" disabled'+(!chosen?' selected':'')+'>Elegir plan</option>'+
+      '<option value="chat"'+(chosen==='chat'?' selected':'')+'>GESTLOK Chat</option>'+
+      '<option value="premium"'+(chosen==='premium'?' selected':'')+'>GESTLOK WAI</option></select></label>'+
+      '<small role="status">'+esc(!localPlans?'Consultando plan…':!info.local?'Local pendiente de registro':paused?'Empresa pausada · gestioná su estado desde Habilitación':label)+'</small>'+
+      '<div data-ch-local-premium'+(chosen==='premium'?'':' hidden')+'>'+
+      '<label>Número(s) de WhatsApp del comercio<textarea name="numeros" rows="2" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+disabled+'>'+esc(draft?.numbers||'')+'</textarea></label>'+
+      '<small>GESTLOK WAI se habilita al guardar el primer número. No lo vincula ni activa la IA. Los números existentes se conservan.</small></div>'+
+      '<button type="submit" class="btn primary"'+disabled+'>Guardar plan</button>'+
+      (info.local?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WAI (WhatsApp)</button>':'')+
+      (info.local?.sucursal_id?'<a class="btn" href="'+esc(premiumWAConfigLink(info.local,'excluidos'))+'" target="_blank" rel="noopener">Números excluidos del bot</a>':'')+
+      (info.local?.sucursal_id?'<a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(info.local.sucursal_id)+'" target="_blank" rel="noopener">Configurar Chat</a>':'')+
+      '</form>';
+  }
+  function localPlanDraftSave(form){
+    const key=localPlanKey(form.dataset.tenant,form.dataset.local);
+    localPlanDraft.set(key,{plan:form.elements.plan.value,numbers:form.elements.numeros.value});
+  }
+  function openLocalWhatsApp(key){
+    if(!premiumAdmin()||tab!=='locales'||!localPlans?.locales.some(l=>premiumWAKey(l)===key))return;
+    premiumWALocal=key;premiumWADraft='';goTab('habilitacion');
+  }
+  async function saveLocalChatPlan(form){
+    if(!premiumAdmin()||tab!=='locales'||!localPlans||localPlansBusy||localPlanSaving)return;
+    const tenant=form.dataset.tenant,id=form.dataset.local,key=localPlanKey(tenant,id);
+    const info=localPlanData(tenant,id),plan=form.elements.plan.value;
+    if(!info.local||info.empresa?.habilitada===false||!['chat','premium'].includes(plan))return;
+    localPlanDraftSave(form);
+    const phones=plan==='premium'?String(form.elements.numeros.value||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean):[];
+    if(phones.length>50||phones.some(p=>!premiumWAValidPhone(p))){
+      api?.toast?.('Ingresá hasta 50 números válidos con + y código de país.',true);return;
+    }
+    if(plan==='premium'&&!info.enabled.length&&!phones.length){
+      api?.toast?.('Ingresá el número de WhatsApp para habilitar GESTLOK WAI.',true);return;
+    }
+    if(plan==='chat'&&info.enabled.length&&!window.confirm('¿Volver a GESTLOK Chat web y pausar los '+info.enabled.length+' número(s) de WhatsApp de este local? Los números y su información se conservan.'))return;
+    if(!info.local.sucursal_id&&!window.confirm('¿Asignar GESTLOK Chat solo a '+info.local.nombre+'? Su chat web queda cerrado hasta que lo configuren.'))return;
+    if(phones.length&&!window.confirm('¿Autorizar '+phones.length+' número(s) internos para '+info.local.nombre+'? No se vincularán ni se enviarán mensajes.'))return;
+    localPlanSaving=true;
+    let baseSaved=false;
+    try{
+      const sb=window.GestLokSupabase;
+      if(!info.local.sucursal_id){
+        const company=(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===tenant);
+        const r=await sb.rpc('gestlok_chat_admin_habilitar',{p_tenant:tenant,p_nombre:info.empresa?.nombre||company?.name||info.local.empresa,p_sucursales:[{local_id:id}]});
+        if(r.error)throw r.error;baseSaved=true;
+      }
+      if(plan==='premium'&&phones.length){
+        const r=await sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'agregar',p_tenant:tenant,p_local:id,p_numeros:phones});
+        if(r.error)throw r.error;
+      }
+      if(plan==='chat')for(const n of info.enabled){
+        const r=await sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'estado',p_id:n.id,p_habilitada:false});
+        if(r.error)throw r.error;
+      }
+      localPlanDraft.delete(key);chatTried=false;premiumWATried=false;microappsLoaded=false;
+      api?.toast?.(plan==='premium'?'GESTLOK WAI habilitado internamente. Vinculá y comprobá el número antes de usar WhatsApp.':'Plan GESTLOK Chat guardado para este local.');
+    }catch(e){api?.toast?.((baseSaved?'Chat web asignado; no se pudo completar GESTLOK WAI. ':'No se pudo completar el cambio de plan. ')+String(e?.message||'Revisá los números y la conexión.'),true);}
+    finally{localPlanSaving=false;await loadLocalPlans();if(premiumAdmin()&&tab==='locales')void loadMicroapps(true);}
+  }
+  document.addEventListener('toggle',ev=>{
+    const el=ev.target;
+    if(tab==='locales'&&el?.matches?.('details[data-creator-company]')){
+      if(el.open)localPlanOpen.add(el.dataset.creatorCompany);else localPlanOpen.delete(el.dataset.creatorCompany);
+    }
+  },true);
 
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
   // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
   function premiumLocales(p) {
+    if((!localPlansTried||localPlansIndex!==localPlanIndex())&&!localPlansBusy)queueMicrotask(()=>loadLocalPlans());
     const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
     const currentTenant=api.S?.me?.tenant_id;
@@ -533,11 +835,11 @@
         :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id||c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
       const appTenantIds=Array.isArray(c.tenant_ids)&&c.tenant_ids.length?c.tenant_ids:[c.tenant_id];
       const appsHTML=appTenantIds.map(t=>microappsEmpresa(t,c.name)).join('');
-      const localCards=locals.map(l=>'<button type="button" class="gl-ch-premium-local" '+attrs(l)+
+      const localCards=locals.map(l=>'<div class="gl-ch-premium-local-entry"><button type="button" class="gl-ch-premium-local" '+attrs(l)+
         ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
-        '<span aria-hidden="true">→</span></button>').join('');
-      return '<details class="gl-ch-premium-company gl-company-folder" data-creator-company="'+esc(c.tenant_id)+'">'+
+        '<span aria-hidden="true">→</span></button>'+localChatPlanView(c,l)+'</div>').join('');
+      return '<details class="gl-ch-premium-company gl-company-folder" data-creator-company="'+esc(c.tenant_id)+'"'+(localPlanOpen.has(c.tenant_id)?' open':'')+'>'+
         '<summary aria-label="Seleccionar empresa '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-company-icon">'+svg(businessIcon,27)+'</span>'+
         '<span class="gl-ch-premium-company-title"><b>'+esc(c.name)+'</b><small>Empresa · Sucursales</small></span>'+
@@ -550,7 +852,8 @@
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
       '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
-      '<header><div><h2>Locales</h2><p>Elegí una empresa y después un local.</p></div></header>'+crearEmpresaForm()+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p><p><b>Tarifas mensuales (ARS):</b> GESTLOK Chat (web) $ 70.000 · GESTLOK WAI $ 150.000 · Local adicional (opcional) $ 50.000 por local. Importes informativos; no modifican los cobros automáticamente.</p></div></header>'+crearEmpresaForm()+
+      (localPlansError?'<p role="alert">'+esc(localPlansError)+' <button type="button" class="btn" data-ch-local-plans-refresh>Reintentar</button></p>':'')+
       (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
         (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
       '</section></div>';
@@ -663,18 +966,98 @@
   ]);
   let hqAgent = 'desarrollo';
   const HQ_PEOPLE=Object.freeze({
-    desarrollo:{name:'Nicolás',animal:'Castor',role:'Producto GESTLOK Chat',skills:'Mejoras y nuevas funciones del chat, siempre primero en Prueba.'},
-    calidad:{name:'Camila',animal:'Coneja',role:'Calidad de la carta',skills:'Productos agotados, precios, descripciones claras y criterios de aceptación.'},
-    testing:{name:'Tomás',animal:'Rana',role:'Pruebas del chat',skills:'Recorridos de prueba en los dos locales, Cypress y CI en verde antes de publicar.'},
-    atencion:{name:'Renata',animal:'Gata',role:'Mesa de pedidos · GESTLOK Chat',skills:'Pedidos sin abrir, reclamos y experiencia de compra. No accede a conversaciones ni envía mensajes.'},
-    marketing:{name:'Martina',animal:'Zorra',role:'Promos y ventas',skills:'Promos del día, venta sugerida, reseñas y difusión del QR. No publica ni compra publicidad.'},
-    datos:{name:'Santiago',animal:'Pulpo',role:'Métricas de los locales',skills:'Conversión, ticket promedio, tiempos de confirmación y oportunidades por local.'},
-    difusion:{name:'Valentina',animal:'Loro',role:'Marketing de GESTLOK Chat',skills:'Investiga dónde publicitar la micro app gratis (redes, directorios de software, prensa) y deja los textos listos. No publica ni compra publicidad.'},
-    soporte_general:{name:'Lucas',animal:'Perro',role:'Soporte general de GESTLOK',skills:'Altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones y locales sin carta. Redacta respuestas; no envía mensajes ni aprueba altas.'},
-    soporte:{name:'Facundo',animal:'Robot',role:'Guardia técnica de los locales',skills:'Control preventivo del sitio, pruebas, Conteo y cierres automáticos. Solo lectura; toda modificación requiere aprobación de la administradora.'},
-    lider:{name:'Alex',animal:'Búho',role:'Directora de la oficina',skills:'Coordina al equipo, junta las ideas, prioriza y eleva informes. Solo propone: decide la administradora.'}
+    desarrollo:{name:'Nicolás',avatar:'Avatar humano · asistente IA',role:'Producto GESTLOK Chat',skills:'Mejoras y nuevas funciones del chat, siempre primero en Prueba.'},
+    calidad:{name:'Camila',avatar:'Avatar humano · asistente IA',role:'Calidad de la carta',skills:'Productos agotados, precios, descripciones claras y criterios de aceptación.'},
+    testing:{name:'Tomás',avatar:'Avatar humano · asistente IA',role:'Pruebas del chat',skills:'Recorridos de prueba en los dos locales, Cypress y CI en verde antes de publicar.'},
+    atencion:{name:'Renata',avatar:'Avatar humano · asistente IA',role:'Mesa de pedidos · GESTLOK Chat',skills:'Pedidos sin abrir, reclamos y experiencia de compra. No accede a conversaciones ni envía mensajes.'},
+    marketing:{name:'Martina',avatar:'Avatar humano · asistente IA',role:'Promos y ventas',skills:'Promos del día, venta sugerida, reseñas y difusión del QR. No publica ni compra publicidad.'},
+    datos:{name:'Santiago',avatar:'Avatar humano · asistente IA',role:'Métricas de los locales',skills:'Conversión, ticket promedio, tiempos de confirmación y oportunidades por local.'},
+    difusion:{name:'Valentina',avatar:'Avatar humano · asistente IA',role:'Marketing de GESTLOK Chat',skills:'Investiga dónde publicitar la micro app gratis (redes, directorios de software, prensa) y deja los textos listos. No publica ni compra publicidad.'},
+    soporte_general:{name:'Lucas',avatar:'Avatar humano · asistente IA',role:'Soporte general de GESTLOK',skills:'Altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones y locales sin carta. Redacta respuestas; no envía mensajes ni aprueba altas.'},
+    soporte:{name:'Facundo',avatar:'Avatar humano · asistente IA',role:'Guardia técnica de los locales',skills:'Control preventivo del sitio, pruebas, Conteo y cierres automáticos. Solo lectura; toda modificación requiere aprobación de la administradora.'},
+    lider:{name:'Alex',avatar:'Avatar humano · asistente IA',role:'Directora de la oficina',skills:'Coordina al equipo, junta las ideas, prioriza y eleva informes. Solo propone: decide la administradora.'}
   });
-  let hqRoom=false;
+  let hqRoom=false, hqMeetingRoom=false, hqMeetingRecipient='lider', hqChatDrafts={}, hqChatError='', hqChatBusy=false;
+  const HQ_CHAT_PREFIX='HQ_CHAT_V1\n';
+  function hqChatEntry(t){
+    if(!String(t?.instruction||'').startsWith(HQ_CHAT_PREFIX))return null;
+    try{const v=JSON.parse(t.instruction.slice(HQ_CHAT_PREFIX.length));return ['private','meeting'].includes(v.mode)&&typeof v.message==='string'&&v.message.trim()&&v.message.length<=1200&&HQ_PEOPLE[t.agent]?v:null;}catch{return null;}
+  }
+  const hqOperationalTasks=()=>hqTasks.filter(t=>!hqChatEntry(t));
+  const hqChatMode=()=>hqRoom?'private':'meeting';
+  const hqChatRecipient=()=>hqRoom?hqAgent:hqMeetingRecipient;
+  const hqChatKey=()=>hqRoom?'private:'+hqAgent:'meeting';
+  const hqEditing=()=>['gl-hq-task','gl-hq-scope','gl-hq-chat-text','gl-hq-chat-recipient'].includes(document.activeElement?.id);
+  function hqChatRows(mode,recipient){
+    return hqTasks.map(t=>({t,v:hqChatEntry(t),r:hqRuns.find(r=>r.task_id===t.id)})).filter(x=>x.v?.mode===mode&&(mode==='meeting'||x.t.agent===recipient)).sort((a,b)=>Date.parse(a.t.created_at)-Date.parse(b.t.created_at)).slice(-40);
+  }
+  const hqChatCanRun=recipient=>{
+    const q=hqQuota();
+    return hqAIReady===true&&!!q&&q.remaining>0&&(q.perAgent[recipient]||0)<hqAgentCap(recipient)&&(!q.tokens||q.tokens.used+5000<=q.tokens.limit);
+  };
+  function hqChatView(){
+    const mode=hqChatMode(),recipient=hqChatRecipient(),person=HQ_PEOPLE[recipient],rows=hqChatRows(mode,recipient),locked=hqChatBusy||hqBusy||hqAIBusy;
+    const ready=hqChatCanRun(recipient);
+    const history=rows.map(({t,v,r})=>{
+      const who=HQ_PEOPLE[t.agent]?.name||'Equipo';
+      const state=r?.state==='review'?'Respuesta de IA registrada':r?.state==='working'?'Consultando IA…':r?.state==='error'?'No se pudo responder':t.status==='cancelada'?'Cancelado':'Pregunta guardada · sin ejecutar';
+      return '<article style="display:grid;gap:5px;margin-bottom:12px"><div style="margin-left:12%;padding:10px 12px;background:#d9edf7;border-radius:12px 12px 3px 12px;overflow-wrap:anywhere;white-space:pre-wrap"><strong>Vos · para '+esc(who)+'</strong><br>'+esc(v.message)+'</div><div style="margin-right:10%;padding:10px 12px;background:#fff;border:1px solid #dce4eb;border-radius:12px 12px 12px 3px;overflow-wrap:anywhere;white-space:pre-wrap"><strong>'+esc(who)+'</strong><br>'+(r?.state==='review'&&r.result?esc(r.result):esc(state)+(r?.state==='error'&&r.result?' · '+esc(r.result):''))+
+        (!r&&t.status==='pendiente'?'<div style="margin-top:6px"><button type="button" class="btn" data-hq-chat-retry="'+esc(t.id)+'" '+(locked||!hqChatCanRun(t.agent)?'disabled':'')+'>Pedir respuesta</button></div>':'')+'</div><small style="color:#63798b">'+esc(new Date(t.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}))+' · '+esc(state)+'</small></article>';
+    }).join('');
+    return '<section id="gl-hq-conversation" aria-label="'+(mode==='meeting'?'Reunión del equipo':'Chat privado')+'" style="margin:12px 0;border:1px solid #cbdce7;border-radius:16px;overflow:hidden;background:#f4f8fb"><header style="background:#153b54;color:white;padding:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><strong style="font-size:17px">'+(mode==='meeting'?'Sala de reuniones · Equipo HQ':'Conversación privada · '+esc(person.name))+'</strong><div style="font-size:12px;color:#d2e4f1">'+(mode==='meeting'?'Elegí quién toma la palabra. Cada respuesta usa una consulta real.':'Historial de esta sala · no se mezcla con otras conversaciones.')+'</div></div>'+(mode==='meeting'?'<button type="button" class="btn" data-hq-chat-end>Finalizar reunión</button>':'')+'</header><div style="padding:12px">'+
+      (mode==='meeting'?'<label for="gl-hq-chat-recipient"><strong>¿A quién le hablás?</strong></label><select id="gl-hq-chat-recipient" style="display:block;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #b7cbd9;border-radius:9px" '+(locked?'disabled':'')+'>'+Object.entries(HQ_PEOPLE).map(([id,x])=>'<option value="'+id+'" '+(recipient===id?'selected':'')+'>'+esc(x.name+' · '+x.role)+'</option>').join('')+'</select>':'')+
+      '<div role="log" aria-label="Historial de la conversación" aria-live="polite" style="max-height:400px;overflow-y:auto;min-height:100px;padding:8px 0">'+(history||'<p style="color:#577188">Todavía no hay mensajes. Escribí tu primera pregunta para '+esc(person.name)+'.</p>')+'</div>'+
+      '<form data-hq-chat-form style="display:grid;gap:8px"><label for="gl-hq-chat-text">Tu mensaje</label><textarea id="gl-hq-chat-text" maxlength="1200" rows="3" required style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #b7cbd9;border-radius:12px;font:inherit;color:#10243a;background:#fff" placeholder="Preguntá, conversá o pedí una propuesta…">'+esc(hqChatDrafts[hqChatKey()]||'')+'</textarea><button class="btn primary" type="submit" '+(locked||!hqLoaded||!hqRunsLoaded?'disabled':'')+'>'+(hqChatBusy?'Procesando…':ready?'Enviar y conversar':'Guardar consulta')+'</button><p role="status" style="margin:0;font-size:13px;color:#425970">'+esc(hqChatError||(ready?'IA gratuita disponible · una consulta por respuesta.':'IA o cupo no disponible. Podés guardar tu consulta y pedir la respuesta cuando se libere.'))+'</p><small>No incluyas datos personales de clientes, claves ni códigos. Solo análisis: ningún asistente modifica GESTLOK.</small></form></div></section>';
+  }
+  function hqOpenConversation(mode,id){
+    if(!hqAllowed())return;
+    hqChatError='';
+    if(mode==='private'&&hqArea(id)){hqAgent=id;hqRoom=true;hqMeetingRoom=false;}
+    else{hqRoom=false;hqMeetingRoom=true;}
+    api?.render();
+    queueMicrotask(()=>{try{document.getElementById?.('gl-hq-conversation')?.scrollIntoView?.({block:'start',behavior:'smooth'});}catch{}});
+  }
+  async function hqChatSend(message,retryId){
+    if(!hqAllowed()||(!hqRoom&&!hqMeetingRoom)||hqChatBusy||hqBusy||hqAIBusy||!hqLoaded||!hqRunsLoaded)return;
+    const mode=hqChatMode(),key=hqChatKey(),recipient=hqChatRecipient(),raw=String(message||'').trim();
+    const existing=retryId&&hqChatRows(mode,recipient).find(x=>x.t.id===retryId&&x.t.status==='pendiente'&&!x.r);
+    if(retryId&&!existing)return;
+    const agent=existing?existing.t.agent:recipient;
+    if(!existing&&(!raw||raw.length>1200))return;
+    if(!existing&&/(?:\b(?:sk-|gsk_|whsec_|eyJ)[A-Za-z0-9_-]{12,}|(?:contraseña|password|api[_ -]?key|token|secreto)\s*[=:]\s*\S{6,})/i.test(raw)){hqChatError='Quitá las claves o credenciales antes de enviar.';api?.render();return;}
+    const ready=hqChatCanRun(agent);
+    if(existing&&!ready)return;
+    if(ready&&!window.confirm('¿Enviar esta consulta al motor gratuito de IA de HQ? Se usa una consulta. No incluyas datos privados ni secretos.'))return;
+    const epoch=hqEpoch,alive=()=>epoch===hqEpoch&&hqAllowed();
+    hqChatBusy=true;hqChatError='';api?.render();
+    let taskId=existing?.t.id;
+    try{
+      const sb=window.GestLokSupabase;
+      const refresh=async()=>{const [tasks,runs]=await Promise.all([sb.rpc('gestlok_hq_list_tasks'),sb.rpc('gestlok_hq_list_runs')]);if(!alive())return false;if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('No se confirmó el historial');hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;return true;};
+      if(!taskId){
+        const res=await sb.rpc('gestlok_hq_add_task',{p_agent:agent,p_instruction:HQ_CHAT_PREFIX+JSON.stringify({mode,message:raw})});
+        if(res.error||typeof res.data!=='string')throw Error('No se confirmó el mensaje');
+        taskId=res.data;if(!alive())return;hqChatDrafts[key]='';
+      }
+      if(!await refresh())return;
+      if(!ready){hqChatError='Consulta guardada. Pedí respuesta cuando haya cupo.';return;}
+      api?.render();
+      const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action:'chat',task_id:taskId}});
+      if(!alive())return;
+      if(!await refresh())return;
+      if(res.error||res.data?.state!=='review'){hqChatError=res.data?.diagnostic||'No se confirmó la respuesta. Revisá el historial antes de volver a intentar.';return;}
+      // The response is stored in the existing private ledger, never simulated.
+      const saved=hqRuns.find(r=>r.task_id===taskId&&r.state==='review');
+      if(!saved){hqChatError='La respuesta todavía no figura en el historial.';return;}
+      const done=await sb.rpc('gestlok_hq_close_task',{p_id:taskId,p_status:'cerrada'});
+      if(!alive())return;
+      if(done.error||done.data!==true)hqChatError='Respuesta guardada; el cierre de la consulta sigue pendiente.';
+      else await refresh();
+    }catch{if(alive())hqChatError='No se confirmó la operación. Actualizá el historial antes de repetir.';}
+    finally{if(epoch===hqEpoch){hqChatBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqKnowledgeView(){return '<details style="margin:12px 0;padding:12px;background:#edf5f8;border:1px solid #c3dce5;border-radius:12px"><summary style="cursor:pointer;font-weight:800">Conocimiento compartido del equipo</summary><p>Todos los asistentes reciben la misma base de GESTLOK y el pulso de los locales habilitados. Contexto común: módulos y roles, GESTLOK Chat y WAI, circuito de pedidos y confirmación por gerente, Mi Gusto Munro y Don Torcuato, ambientes de Prueba/Testing, decisiones y reglas de seguridad. Las conversaciones privadas no se mezclan con la sala de reuniones. No se copian chats personales de ChatGPT, credenciales ni datos de clientes. Cada asistente diferencia decisiones de hechos verificados.</p></details>';}
+
   const HQ_LEADER=['lider','Dirección de IA','Coordina las nueve áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
@@ -683,7 +1066,7 @@
   // Read-only provider status; never requests completion tokens or starts tasks.
   async function hqCheckConnection(force=false){
     if(!hqAllowed()||!hqLoaded||hqBusy||hqAIBusy||hqAIStatusBusy||document.visibilityState==='hidden')return;
-    if(!force&&(Date.now()-hqAIStatusAt<(hqAIReady===true?300000:60000)||['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)))return;
+    if(!force&&(Date.now()-hqAIStatusAt<(hqAIReady===true?300000:60000)||hqEditing()))return;
     const epoch=hqEpoch;hqAIStatusBusy=true;hqAIStatusAt=Date.now();
     const before=JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]);
     try{
@@ -694,7 +1077,7 @@
       hqAIConfigured=res.data?.configured===true;hqAIReady=hqAIConfigured&&res.data?.verified===true;
       hqAIStatusError=String(res.data?.diagnostic||(!hqAIConfigured?'Falta configurar la clave gratuita de Groq.':!hqAIReady?'Groq todavía no confirmó la conexión.':''));
     }catch{if(epoch===hqEpoch){hqAIReady=false;hqAIStatusError='No se pudo verificar la conexión con Groq. Volvé a comprobar.';}}
-    finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
+    finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!hqEditing())api?.render();}}
   }
   setInterval(()=>{void hqCheckConnection();},2000);
   // Límites diarios para no salir nunca del plan gratuito de Groq (openai/gpt-oss-20b Free:
@@ -714,7 +1097,7 @@
   async function hqReadSupport(){
     if(!hqAllowed()||!hqLoaded||hqSupportBusy||document.visibilityState==='hidden'||Date.now()-hqSupportAt<60000)return;
     const epoch=hqEpoch;hqSupportBusy=true;hqSupportAt=Date.now();
-    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_support_status');if(epoch!==hqEpoch||!hqAllowed())return;if(res.error||!Array.isArray(res.data?.checks))return;const changed=JSON.stringify(hqSupport)!==JSON.stringify(res.data);hqSupport=res.data;if(changed&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}
+    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_support_status');if(epoch!==hqEpoch||!hqAllowed())return;if(res.error||!Array.isArray(res.data?.checks))return;const changed=JSON.stringify(hqSupport)!==JSON.stringify(res.data);hqSupport=res.data;if(changed&&!hqEditing())api?.render();}
     catch{/* keep last observed data */}
     finally{if(epoch===hqEpoch)hqSupportBusy=false;}
   }
@@ -757,7 +1140,7 @@
     finally{if(epoch===hqEpoch){hqDailyBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqTeam(id){
-    if(!hqAllowed()||hqBusy||hqAIBusy||!hqTasks.some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
+    if(!hqAllowed()||hqBusy||hqAIBusy||hqChatBusy||!hqOperationalTasks().some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
     const initial=!hqTasks.some(t=>t.parent_task_id===id);
     if(hqTasks.some(t=>t.id===id&&t.auto_enabled))return;
     if(!initial&&(!hqAIReady||!window.confirm('¿Continuar las tareas pendientes del equipo con Groq gratuito? Se conserva cada resultado y se detiene al alcanzar la cuota o un error. No se modifica GESTLOK.')))return;
@@ -800,7 +1183,8 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqAI(action,taskId){
-    if(!hqAllowed()||hqAIBusy||hqBusy)return;
+    if(!hqAllowed()||hqAIBusy||hqBusy||hqChatBusy)return;
+    if(action==='run'&&hqTasks.some(t=>t.id===taskId&&hqChatEntry(t)))return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
     if(action==='run'){const q=hqQuota(),ag=hqTasks.find(t=>t.id===taskId)?.agent,cost=ag==='lider'&&!hqTasks.some(t=>t.parent_task_id===taskId)?8:1;
       if(q&&ag&&(q.perAgent[ag]||0)+cost>hqAgentCap(ag)){hqAIError='Límite diario de '+(HQ_PEOPLE[ag]?.name||'este empleado')+': '+hqAgentCap(ag)+' consultas por 24 horas (plan gratuito). La tarea sigue pendiente.';api?.render();return;}
@@ -911,7 +1295,7 @@
     return '<div style="margin:10px 0;padding:10px;border:1px solid #cbd8e2;border-radius:8px"><strong>Avisos de Alex en tu teléfono</strong><p style="font-size:13px">Desde el teléfono, activá las notificaciones. Solo se avisará que hay un informe nuevo; el detalle queda en tu oficina privada.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-push="on" '+(hqPushBusy?'disabled':'')+'>Activar en este dispositivo</button><button type="button" class="btn" data-ch-hq-push="off" '+(hqPushBusy?'disabled':'')+'>Desactivar</button></div><p role="status">'+esc(hqPushMessage)+'</p></div>';
   }
   function hqExecutiveInbox(){
-    const pending=hqTasks.filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
+    const pending=hqOperationalTasks().filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
     const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
     return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
       '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para revisar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
@@ -991,11 +1375,11 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
+  function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqMeetingRoom=false;hqMeetingRecipient='lider';hqChatDrafts={};hqChatError='';hqChatBusy=false;hqOfficeMod?.reset?.();hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
-    if(!hqAllowed()||!hqAttempted||hqBusy||hqSyncBusy||document.visibilityState==='hidden')return;
+    if(!hqAllowed()||!hqAttempted||hqBusy||hqChatBusy||hqSyncBusy||document.visibilityState==='hidden')return;
     const epoch=hqEpoch;hqSyncBusy=true;
     try{
       const sb=window.GestLokSupabase;if(!sb?.rpc)throw Error('sin conexión');
@@ -1004,15 +1388,15 @@
       if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('sin resultados');
       const changed=!hqLoaded||!hqRunsLoaded||hqSyncError||JSON.stringify(tasks.data)!==JSON.stringify(hqTasks)||JSON.stringify(runs.data)!==JSON.stringify(hqRuns);
       // Do not interrupt active editing or overwrite a draft.
-      if(changed&&['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))return;
+      if(changed&&hqEditing())return;
       hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;hqSyncError='';hqRunsError='';
       if(changed)api?.render();
-    }catch{if(epoch===hqEpoch&&hqAllowed()&&!hqSyncError){hqSyncError='Sincronización interrumpida. Se volverá a consultar.';if(!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
+    }catch{if(epoch===hqEpoch&&hqAllowed()&&!hqSyncError){hqSyncError='Sincronización interrumpida. Se volverá a consultar.';if(!hqEditing())api?.render();}}
     finally{if(epoch===hqEpoch)hqSyncBusy=false;}
   }
   setInterval(()=>{void hqSync();},4000);
   async function hqRequest(fn,args){
-    if(!hqAllowed()||hqBusy||hqAIBusy)return;
+    if(!hqAllowed()||hqBusy||hqAIBusy||hqChatBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
     api?.render();
     try{
@@ -1037,7 +1421,7 @@
     const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(hqArea(t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+hqRunView(t)+
       (t.status==='pendiente'?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||(t.agent==='lider'&&!hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))?'disabled':'')+'>'+(t.agent==='lider'?'Aprobar informe':'Marcar cerrada')+'</button><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy?'disabled':'')+'>'+(t.agent==='lider'?'Descartar informe':'Cancelar tarea')+'</button></div>':'')+'</article>';
     return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Sincronización automática cada 4 segundos · ejecución de servidor solo en misiones autorizadas'))+'</p>'+
-      (hqLoaded?'<h4>Pendientes</h4>'+(hqTasks.filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqTasks.filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
+      (hqLoaded?'<h4>Pendientes</h4>'+(hqOperationalTasks().filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqOperationalTasks().filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
   }
   // HQ 3.0 · La Oficina: pixel art animado (gestlok-hq-office.mjs). Las animaciones son visuales;
   // los estados de ejecución salen solo de tareas reales y los comentarios, de datos reales.
@@ -1052,16 +1436,16 @@
       if(res.error||!Array.isArray(res.data?.sucursales)){
         const msg=String(res.error?.message||'')+' '+String(res.error?.code||'');
         hqPulseError=/gestlok_hq_pulso|PGRST202|42883/i.test(msg)?'El pulso de los locales todavía no está activo: falta aplicar la migración gestlok_hq_pulso.':'No se pudo leer el pulso de los locales. Se vuelve a intentar en un minuto.';
-      }else{const before=JSON.stringify(hqPulse?.jornada||null);hqPulse=res.data;hqPulseError='';if(before!==JSON.stringify(hqPulse.jornada||null)&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)){api?.render();return;}}
+      }else{const before=JSON.stringify(hqPulse?.jornada||null);hqPulse=res.data;hqPulseError='';if(before!==JSON.stringify(hqPulse.jornada||null)&&!hqEditing()){api?.render();return;}}
       hqOfficeSync();
     }catch{if(epoch===hqEpoch){hqPulseError='No se pudo leer el pulso de los locales.';hqOfficeSync();}}
     finally{if(epoch===hqEpoch)hqPulseBusy=false;}
   }
   setInterval(()=>{void hqReadPulse();},30000);
   let hqOfficeMod=null,hqOfficeLoading=false;
-  const hqMeetingActive=()=>hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
+  const hqMeetingActive=()=>hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqOperationalTasks().some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
   function hqOfficeModel(){
-    return {tasks:hqLoaded?hqTasks:[],runs:hqRunsLoaded?hqRuns:[],support:hqSupport,pulse:hqPulse,pulseError:hqPulseError,
+    return {tasks:hqLoaded?hqOperationalTasks():[],runs:hqRunsLoaded?hqRuns.filter(r=>hqOperationalTasks().some(t=>t.id===r.task_id)):[],support:hqSupport,pulse:hqPulse,pulseError:hqPulseError,
       aiReady:hqAIReady,quota:hqQuota(),meeting:hqMeetingActive(),focus:hqRoom?hqAgent:null};
   }
   function hqFocusForm(){
@@ -1069,9 +1453,10 @@
   }
   const hqOfficeHandlers=Object.freeze({
     onAssign:id=>{if(!hqAllowed()||!hqArea(id))return;if(hqAgent!==id)hqDraft='';hqAgent=id;api?.render();hqFocusForm();},
-    onPrivate:id=>{if(!hqAllowed()||!hqArea(id))return;if(hqAgent!==id)hqDraft='';hqAgent=id;hqRoom=true;api?.render();},
+    onPrivate:id=>hqOpenConversation('private',id),
+    onMeeting:()=>hqOpenConversation('meeting'),
     // La idea solo precarga el formulario: la creadora la revisa y decide si la guarda.
-    onIdea:(id,text)=>{if(!hqAllowed()||!hqArea(id))return;hqAgent=id;hqRoom=false;hqDraft=String(text||'').slice(0,4000);api?.render();hqFocusForm();},
+    onIdea:(id,text)=>{if(!hqAllowed()||!hqArea(id))return;hqAgent=id;hqRoom=false;hqMeetingRoom=false;hqDraft=String(text||'').slice(0,4000);api?.render();hqFocusForm();},
     onSelect:()=>{},
     // Mapa de difusión: la creadora marca dónde ya publicó GESTLOK Chat. No publica nada por ella.
     onCanal:(id,estado)=>{void hqSetCanal(id,estado);}
@@ -1095,7 +1480,7 @@
     if(hqOfficeMod){try{hqOfficeMod.attach(slot,hqOfficeModel(),hqOfficeHandlers);}catch{slot.textContent='No se pudo dibujar la oficina. El Centro de control sigue disponible.';}return;}
     if(hqOfficeLoading)return;
     hqOfficeLoading=true;
-    import('./gestlok-hq-office.mjs?rev=hq-office-20261125b').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
+    import('./gestlok-hq-office.mjs?rev=hq-office-20261127-human-v1').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
       .catch(()=>{const s=document.querySelector('[data-hq-office-slot]');if(s)s.textContent='No se pudo cargar la oficina animada. El Centro de control sigue disponible.';})
       .finally(()=>{hqOfficeLoading=false;});
   }
@@ -1116,7 +1501,7 @@
     const meetingActive=hqMeetingActive();
     const anyWorking=hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.status==='pendiente'));
     const activityText=hqSyncError?hqSyncError:meetingActive?'Reunión de IA en ejecución':anyWorking?'Tareas en ejecución':!hqRunsLoaded?'Consultando actividad':'Sin tareas en ejecución · equipo disponible';
-    const missionBoard='<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:#112c43;color:#f3f8fc;border-radius:12px 12px 0 0"><strong>GESTLOK HQ · Centro de misiones</strong><small>'+esc(hqLoaded?hqTasks.filter(t=>t.status==='pendiente').length+' pendientes · '+(hqRunsLoaded?hqRuns.filter(r=>r.state==='working').length+' en ejecución':'consultando ejecuciones'):'Tareas sin consultar')+'</small></div>';
+    const missionBoard='<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:#112c43;color:#f3f8fc;border-radius:12px 12px 0 0"><strong>GESTLOK HQ · Centro de misiones</strong><small>'+esc(hqLoaded?hqOperationalTasks().filter(t=>t.status==='pendiente').length+' pendientes · '+(hqRunsLoaded?hqRuns.filter(r=>r.state==='working').length+' en ejecución':'consultando ejecuciones'):'Tareas sin consultar')+'</small></div>';
     queueMicrotask(hqOfficeSync);
     const slot='<div data-hq-office-slot data-hq-focus="'+esc(hqRoom?selected[0]:'')+'" data-hq-meeting="'+meetingActive+'" style="padding:10px;min-height:120px"><p role="status" style="margin:0;color:#425970">Abriendo la oficina…</p></div>';
     const personButton=a=>{const st=states(a),p=HQ_PEOPLE[a[0]],leader=a[0]==='lider';
@@ -1125,16 +1510,16 @@
     const legend='<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;border-top:1px solid #e3ebf2;font-size:11px;color:#425970"><span>● IA no verificada o no disponible</span><span style="color:#87621c">● Tarea pendiente · sin iniciar</span><span style="color:#28765a">● Disponible</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div>';
     const office='<div data-hq-scene-shell aria-label="Plano interactivo de la oficina" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f6f9fb">'+missionBoard+'<p role="status" style="padding:8px 12px;margin:0">'+esc(activityText)+'</p>'+slot+roster+legend+'</div>';
     const person=HQ_PEOPLE[selected[0]];
-    const roomTasks=hqTasks.filter(t=>t.agent===selected[0]);
+    const roomTasks=hqOperationalTasks().filter(t=>t.agent===selected[0]);
     const room='<section data-hq-scene-shell aria-label="Oficina privada del empleado" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f3f7fa">'+
       '<header style="padding:12px;background:#112c43;color:#fff"><strong>Oficina privada · '+esc(person.name)+'</strong><small style="display:block">'+esc(person.role)+'</small></header>'+slot+
-      '<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>'+esc(person.name)+' · '+esc(person.animal)+'</strong><p>'+esc(person.skills)+'</p><small>'+esc(states(selected)[0])+'</small></div>'+
+      '<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>'+esc(person.name)+' · '+esc(person.avatar)+'</strong><p>'+esc(person.skills)+'</p><small>'+esc(states(selected)[0])+'</small></div>'+
       (selected[0]==='soporte'?'<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>Control preventivo · solo lectura</strong><p>Prioridad: todos los roles y los locales activos de GESTLOK Chat. Verificar accesos, stock, conteo, pagos, staff, historial y sincronización. Registrar evidencia y elevar a Alex; ninguna configuración o reparación automática.</p></div>':'')+
       '<div style="padding:12px;border-top:1px solid #cbd8e2"><strong>Proyectos del sector</strong><p>'+esc(hqLoaded?roomTasks.length+' registrados · '+roomTasks.filter(t=>t.status==='pendiente').length+' pendientes':'Sin consultar')+'</p>'+roomTasks.slice(0,5).map(t=>'<p style="overflow-wrap:anywhere;margin:6px 0">'+esc(t.status+' · '+t.instruction.slice(0,100))+'</p>').join('')+'</div></section>';
     const navigation='<div role="group" aria-label="Ambientes de GESTLOK HQ" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><button type="button" class="btn" data-ch-hq-room="general" aria-pressed="'+!hqRoom+'">Oficina general</button><button type="button" class="btn" data-ch-hq-room="private" aria-pressed="'+hqRoom+'">Oficina privada de '+esc(person.name)+'</button></div>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>GESTLOK HQ · La Oficina</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tu equipo de IA trabaja enfocado en GESTLOK Chat y en los locales activos. Caminan, toman café, charlan, hacen reuniones y anotan ideas: eso es animación. Lo que dicen sale de datos reales de los locales o de informes de IA registrados; los estados de ejecución corresponden únicamente a tareas reales. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos.</p>'+
-      navigation+(hqRoom?room:office)+hqExecutiveInbox()+hqSupportView()+
+      '<p>Tu equipo de asistentes con avatares humanos trabaja para GESTLOK y sus locales activos. Caminan, toman café, charlan, hacen reuniones y anotan ideas: eso es animación. Lo que dicen sale de datos reales de los locales o de informes de IA registrados; los estados de ejecución corresponden únicamente a tareas reales. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos.</p>'+
+      navigation+(hqRoom?room:office)+(hqRoom||hqMeetingRoom?hqChatView():'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button type="button" class="btn primary" data-hq-chat-open="meeting">Conversar en reunión</button><button type="button" class="btn" data-hq-chat-open="private">Hablar en privado con '+esc(person.name)+'</button></div>')+hqKnowledgeView()+hqExecutiveInbox()+hqSupportView()+
       '<h3 style="margin-top:20px">Centro de control</h3>'+
       '<div aria-label="Ficha del empleado" style="margin-top:8px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
@@ -1143,12 +1528,13 @@
 
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
-    const cur = validTab(tab) && (!['gestlok-chat','hq'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
+    const cur = validTab(tab) && (!['gestlok-chat','habilitacion','hq'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
     void window.GestLokContactoWeb?.prefetch?.();
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
-    const nav = TABS.filter(t=>!['gestlok-chat','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const groupedNav=premium?adminNavigation(cur,p):null;
+    const nav = premium?groupedNav.main:TABS.filter(t=>!['gestlok-chat','habilitacion','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
       (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -1157,31 +1543,33 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
-    else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
+    else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+'</div>';
+    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+chatAdminView()+'</div>';
     else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'contacto') body = '<div class="gl-ch-stack">' + (window.GestLokContactoWeb?.view?.() || '<section class="gl-admin-card"><p role="status">Mensajes web se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
-    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + chatAdminView() + dailySettingsView() + (parts.tools || '') + '</div>';
+    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + (premium?'':chatAdminView()) + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
-    const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
+    const title = cur === 'inicio' ? (premium?'Panel de administración':'¡Hola!') : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
       cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
       cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
+      cur === 'habilitacion' ? 'Habilitación de GESTLOK Chat, números y configuración por local.' :
       cur === 'contacto' ? 'Mensajes del formulario de Contacto de gestlok.com.ar.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
       '<button type="button" class="gl-ch-collapse" data-ch-collapse aria-controls="gl-ch-navigation" aria-expanded="' + (!navCollapsed) + '" title="' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '" aria-label="' + (navCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral') + '">' + svg('<path d="M4 5h16v14H4zM9 5v14M13 9l-3 3 3 3"/>', 20) + '<span>' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '</span></button>' +
-      '<nav class="gl-ch-nav" id="gl-ch-navigation">' + nav + '</nav>' +
+      '<nav class="gl-ch-nav'+(premium?' gl-ch-group-nav':'')+'" id="gl-ch-navigation" aria-label="Secciones de administración">' + nav + '</nav>' +
       '<div class="gl-ch-me"><span class="gl-ch-av">' + initial + '</span><div><b>Creadora</b><small>' + esc(api.S?.me?.email || '') + '</small><em>ADMINISTRADORA</em></div></div>' +
       '<p class="gl-ch-quote">Gestión simple<br>para negocios reales</p></aside>' +
       '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' && !premium ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
       '<div class="gl-ch-topr"><div class="gl-ch-date"><span>' + esc(d.date) + '</span><span>' + esc(d.time) + '</span></div>' +
       '<button type="button" class="gl-ch-bell" data-act="share" aria-label="Solicitudes pendientes: ' + num(p.pending) + '">' + svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>', 22) + (p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>' +
-      '</div></header>' + body +
+      '</div></header>' + (groupedNav?.tools||'') + body +
       '<footer class="gl-ch-foot">GESTLOK · Panel privado de la creadora · Accesos protegidos · Datos al ' + esc(dmy(data.generated_at)) + ' ' + esc(new Date(data.generated_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})) + '</footer></main></div>';
   }
   function empleados(p) {
@@ -1192,18 +1580,34 @@
       '<p><a class="btn primary" href="empleados/">Abrir Administración de empleados →</a></p></section>';
   }
   function goTab(v) {
-    if (!validTab(v) || (['gestlok-chat','hq'].includes(v)&&!premiumAdmin())) return;
+    if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
+    if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';premiumWAProvider='sin_consultar';}
     if(v !== 'hq') hqReset();
-    if(v !== 'chat-prueba') showroomExpandido = false;
-    if(v==='locales')void loadMicroapps(true);
+    if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
+    else if(v !== 'chat-prueba') showroomExpandido = false;
+    if(v==='locales'){void loadMicroapps(true);void loadLocalPlans();}
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
+    if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;premiumWAProvider='sin_consultar';}
     tab = v; store.set(v);
     api?.render();
     if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest().then(()=>hqReadSupport());
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
-  document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
+  document.addEventListener('change',ev=>{
+    if(!premiumAdmin()||tab!=='locales')return;
+    const f=ev.target?.closest?.('[data-ch-local-plan]');
+    if(!f||ev.target.name!=='plan')return;
+    localPlanDraftSave(f);
+    const fields=f.querySelector('[data-ch-local-premium]');if(fields)fields.hidden=f.elements.plan.value!=='premium';
+  });
+  document.addEventListener('input',ev=>{
+    if(!premiumAdmin()||tab!=='locales')return;
+    const f=ev.target?.closest?.('[data-ch-local-plan]');if(f&&ev.target.name==='numeros')localPlanDraftSave(f);
+  });
+  document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-chat-text')hqChatDrafts[hqChatKey()]=String(ev.target.value||'').slice(0,1200);if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-hq-chat-form]')){ev.preventDefault();void hqChatSend(ev.target.querySelector('textarea')?.value);return;}
+    if(ev.target?.matches?.('[data-ch-local-plan]')){ev.preventDefault();void saveLocalChatPlan(ev.target);return;}
     if(ev.target?.matches?.('[data-ch-hq-form]')){
       ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
       const input=ev.target.querySelector('textarea');const feedback=ev.target.querySelector('[data-ch-hq-feedback]');
@@ -1217,6 +1621,9 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const chatOpen=ev.target.closest?.('[data-hq-chat-open]');if(chatOpen){ev.preventDefault();hqOpenConversation(chatOpen.dataset.hqChatOpen,hqAgent);return;}
+    const chatEnd=ev.target.closest?.('[data-hq-chat-end]');if(chatEnd){ev.preventDefault();if(hqAllowed()){hqMeetingRoom=false;api?.render();}return;}
+    const retry=ev.target.closest?.('[data-hq-chat-retry]');if(retry){ev.preventDefault();void hqChatSend('',retry.dataset.hqChatRetry);return;}
     const artifact=ev.target.closest?.('[data-ch-hq-download],[data-ch-hq-piece],[data-ch-hq-issue]');if(artifact){ev.preventDefault();hqDownloadArtifact(artifact.dataset.chHqDownload||artifact.dataset.chHqPiece||artifact.dataset.chHqIssue,artifact.dataset.chHqPiece?'piece':artifact.dataset.chHqIssue?'issue':'text');return;}
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
@@ -1228,11 +1635,13 @@
     const hqPush=ev.target.closest?.('[data-ch-hq-push]');if(hqPush){ev.preventDefault();void hqPushToggle(hqPush.dataset.chHqPush==='on');return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
     const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status)&&!(hqTasks.some(t=>t.id===hqClose.dataset.chHqClose&&t.agent==='lider')&&hqClose.dataset.status==='cerrada'&&!hqRuns.some(r=>r.task_id===hqClose.dataset.chHqClose&&r.state==='review')))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
-    const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';api?.render();}return;}
-    const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;api?.render();}return;}
+    const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';hqMeetingRoom=false;api?.render();}return;}
+    const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;hqMeetingRoom=false;api?.render();}return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
     if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
       if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
+    const localWA=ev.target.closest?.('[data-ch-local-wa]');if(localWA){ev.preventDefault();openLocalWhatsApp(localWA.dataset.chLocalWa);return;}
+    const localRefresh=ev.target.closest?.('[data-ch-local-plans-refresh]');if(localRefresh){ev.preventDefault();if(tab==='locales')void loadLocalPlans();return;}
     const refreshApps=ev.target.closest?.('[data-ch-app-refresh]');
     if(refreshApps&&premiumAdmin()){ev.preventDefault();void loadMicroapps(true);return;}
     const appAdd=ev.target.closest?.('[data-ch-app-add]');
@@ -1257,6 +1666,18 @@
     if(cobroBtn&&api?.isCreadora?.()){ev.preventDefault();void cobroAccion(cobroBtn);return;}
     const altaChat=ev.target.closest?.('[data-ch-chat-alta]');
     if(altaChat&&api?.isCreadora?.()){ev.preventDefault();void altaChatAction(altaChat.dataset.chChatAlta,altaChat.dataset.v==='si');return;}
+    const waLink=ev.target.closest?.('[data-ch-wa-link]');
+    if(waLink&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWAConnect(waLink.dataset.chWaLink,'link');return;}
+    const waVerify=ev.target.closest?.('[data-ch-wa-verify]');
+    if(waVerify&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWAConnect(waVerify.dataset.chWaVerify,'verify');return;}
+    const waPilot=ev.target.closest?.('[data-ch-wa-pilot]');
+    if(waPilot&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWAPilot(waPilot.dataset.chWaPilot);return;}
+    const waCancel=ev.target.closest?.('[data-ch-wa-cancel]');
+    if(waCancel&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWAPilot(waCancel.dataset.chWaCancel,true);return;}
+    const waRefresh=ev.target.closest?.('[data-ch-wa-refresh]');
+    if(waRefresh&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWARequest();return;}
+    const waState=ev.target.closest?.('[data-ch-wa-state]');
+    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Activar este número en GESTLOK WAI? No se inicia la automatización.':'¿Desactivar este número en GESTLOK WAI? Se conservan su vinculación y sus datos; no se permiten respuestas desde GESTLOK.'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
@@ -1308,8 +1729,9 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
 })();
+

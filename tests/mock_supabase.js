@@ -230,6 +230,22 @@
         sucursales: [{local_id: 'munro', nombre: 'Munro', slug: 'mi-gusto-munro', activa: false, productos: 0, pendientes: pend('munro')},
           {local_id: 'torcuato', nombre: 'Don Torcuato', slug: 'mi-gusto-torcuato', activa: false, productos: 0, pendientes: pend('torcuato')}]}];
       if (fn === 'gestlok_chat_admin_empresas') return {data: C.admin, error: null};
+      if (fn === 'gestlok_chat_admin_whatsapp_conexiones') return {data:{},error:null};
+      if (fn === 'gestlok_chat_admin_whatsapp_premium') {
+        C.premium=C.premium||[];
+        const tenant='cb0dc04a-9a13-434f-a3d0-47f1d8f39670',other='00000000-0000-4000-8000-000000000222';
+        const locales=[{tenant_id:tenant,local_id:'munro',nombre:'Munro',empresa:'Mi Gusto'},
+          {tenant_id:tenant,local_id:'torcuato',nombre:'Torcuato',empresa:'Mi Gusto'},
+          {tenant_id:other,local_id:'otro',nombre:'Otro local',empresa:'Otra empresa ficticia'}].map(l=>({...l,
+            sucursal_id:C.admin.find(c=>c.tenant_id===l.tenant_id)?.sucursales.some(s=>s.local_id===l.local_id)?'suc-'+l.local_id:null}));
+        if(x.p_accion==='agregar'){
+          if(!locales.some(l=>l.tenant_id===x.p_tenant&&l.local_id===x.p_local))return sinPermiso;
+          for(const n of x.p_numeros||[])C.premium.push({id:'premium-'+(C.premium.length+1),tenant_id:x.p_tenant,local_id:x.p_local,numero:n,habilitada:true,local_existe:true});
+        }else if(x.p_accion==='estado'){
+          const n=C.premium.find(n=>n.id===x.p_id);if(!n)return sinPermiso;n.habilitada=x.p_habilitada;
+        }
+        return {data:{locales,numeros:C.premium,conexion_meta:'pendiente'},error:null};
+      }
       const e = C.admin.find(q => q.tenant_id === x.p_tenant);
       if (fn === 'gestlok_chat_admin_habilitar') {
         if (!e) C.admin.push({tenant_id: x.p_tenant, nombre: x.p_nombre, habilitada: true,

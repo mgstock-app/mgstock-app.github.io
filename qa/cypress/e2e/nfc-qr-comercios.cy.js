@@ -14,7 +14,8 @@ describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  it('crea comercio y sucursal con su link, genera placas activas y cambia el destino sin cambiar el código',()=>{
   cy.viewport(1440,1000);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch-nav [data-ch-tab="nfc"]',{timeout:12000}).click();
+  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]',{timeout:12000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="nfc"]').click();
   cy.get('[aria-label="Comercios"]',{timeout:10000}).should('contain.text','Todavía no hay comercios');
   cy.contains('[aria-label="Comercios"] button','Nuevo comercio').click();
   cy.get('form[data-nfc-form="com"] input[name="nombre"]').type('Café de Prueba');
@@ -98,7 +99,8 @@ describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
  });
  it('el link general de placas sin comercio se puede quitar y en celular no hay desbordes',()=>{
   cy.viewport(390,844);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch-nav [data-ch-tab="nfc"]',{timeout:12000}).click();
+  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]',{timeout:12000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="nfc"]').click();
   cy.get('[aria-label="Placas sin comercio"]',{timeout:10000}).should('contain.text','belisaparfum');
   cy.contains('[aria-label="Placas sin comercio"] button','Quitar').click();
   cy.get('[aria-label="Placas sin comercio"]').should('contain.text','Ningún link').and('not.contain.text','belisaparfum');
@@ -108,7 +110,8 @@ describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
  });
  it('QR impresos sin activar: se asignan después al chat de un local de GESTLOK Chat',()=>{
   cy.viewport(1440,1000);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch-nav [data-ch-tab="nfc"]',{timeout:12000}).click();
+  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]',{timeout:12000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="nfc"]').click();
   cy.get('select[data-nfc-sel="mkcom"]').should('have.value','');
   cy.get('form[data-nfc-form="create"] input[name="cantidad"]').clear().type('2');
   cy.get('form[data-nfc-form="create"] button[type="submit"]').click();

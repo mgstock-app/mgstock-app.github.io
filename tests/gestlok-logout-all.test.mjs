@@ -99,7 +99,7 @@ test('Se reutiliza siempre el cierre local de auth.js, sin cambiar permisos ni e
 test('La app renueva caché de perfil y cierre para PWA',()=>{
  assert.match(runtime,/\/stock\/gestlok-logout\.js\?rev=logout-profile-menu-20261107/);
  assert.match(runtime,/\/stock\/gestlok-role-switcher\.js\?rev=roles-logout-profile-20261107/);
- assert.match(runtime,/\/stock\/gestlok-creator-home\.js\?rev=hq-reporte-20261125/);
+ assert.match(runtime,/\/stock\/gestlok-creator-home\.js\?rev=hq-human-chat-20261127/);
  assert.match(sw,/'\/stock\/gestlok-logout\.js'/);
  assert.match(sw,/'\/stock\/gestlok-logout\.css'/);
 });
@@ -121,3 +121,4 @@ test('Empleados: perfil aprobado conserva la salida dentro del diálogo; pendien
  assert.match(css,/min-height:44px/);
  assert.doesNotMatch(css,/#gl-empleados-universal-logout\.gl-empleados-universal-logout\{\s*position:fixed/);
 });
+
