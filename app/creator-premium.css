@@ -346,3 +346,14 @@
   #hub .gl-ch-premium .gl-ch-admin-summary strong{font-size:23px}
   #hub .gl-ch-premium .gl-ch-admin-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Plan comercial por local, solo en el directorio privado de la creadora. */
+#hub .gl-ch.gl-ch-premium .gl-ch-premium-local-entry{display:grid;gap:10px;min-width:0;border:1px solid #d6e4ef;border-radius:13px;padding:10px;background:#fff}
+#hub .gl-ch.gl-ch-premium .gl-ch-premium-local-entry>.gl-ch-premium-local{width:100%}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan{display:grid;gap:8px;min-width:0;padding:0 4px 5px;text-align:left}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan label{display:grid;gap:6px;font-size:13px;color:#173b57;font-weight:700;min-width:0}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan select,#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:44px;padding:9px 10px;border:1px solid #bdd0e4;border-radius:9px;background:#fff;color:#173b57;font-size:16px}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan [data-ch-local-premium]{display:grid;gap:6px}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan [hidden]{display:none!important}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan small{font-size:12px;color:#546c81;overflow-wrap:anywhere;line-height:1.4}
+#hub .gl-ch.gl-ch-premium .gl-ch-local-chat-plan .btn{min-height:44px;white-space:normal;justify-content:center}
