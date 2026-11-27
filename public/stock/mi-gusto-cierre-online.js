@@ -39,6 +39,8 @@ function changeScale(delta){
  if(plus)plus.disabled=pageScale>=110;
 }
 let cashOkSaving=false;
+let archivedShift=null, archivedMovement=null, archivedSaving=false;
+function clearArchivedEdit(){archivedShift=null;archivedMovement=null;}
 let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', activeMethodFilter='todos', historyMethodFilter='todos', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, emptyCheckedFor=null, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
@@ -46,11 +48,11 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local()))||
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
-const writable=()=>allowed()&&online()&&!saving;
+const writable=()=>allowed()&&online()&&!saving&&!archivedSaving;
 const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>!m.pya&&(m.method==='getnet'||m.method==='mercado_pago'));
 const emptySelected=s=>!!s&&!hasPosnet(s)&&emptyCheckedFor===s.id;
-function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;activeMethodFilter='todos';emptyCheckedFor=null;error='';}
-function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';activeMethodFilter='todos';historyMethodFilter='todos';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
+function openForEntry(){clearArchivedEdit();modalDay=null;tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;activeMethodFilter='todos';emptyCheckedFor=null;error='';}
+function reset(){++gen;cashOkSaving=false;archivedSaving=false;clearArchivedEdit();snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';activeMethodFilter='todos';historyMethodFilter='todos';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -77,14 +79,14 @@ function stateAfterCashOk(before,result,shift,id,checked){
  return {...before,active:result};
 }
 async function refresh(){
- if(!allowed()||loading||saving||cashOkSaving||uploading||choosingPhoto||!online())return;
+ if(!allowed()||loading||saving||archivedShift||archivedSaving||cashOkSaving||uploading||choosingPhoto||!online())return;
  const loc=local(),token=gen;
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
-   if(loc!==local()||token!==gen)return;
+   if(loc!==local()||token!==gen||archivedShift)return;
    snapshot=safeShiftState(value);if(emptyCheckedFor!==snapshot.active.id||hasPosnet(snapshot.active))emptyCheckedFor=null;error='';
  }catch(e){if(token===gen&&!choosingPhoto&&!uploading)error=e.message||'No pudimos consultar los cierres';}
- finally{loading=false;if(token===gen&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
+ finally{loading=false;if(token===gen&&!archivedShift&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
 }
 function status(){
  const s=snapshot?.active;
@@ -177,22 +179,22 @@ function cashMovementDetail(s=snapshot?.active){
 function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
 function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
 function formatAmountTyping(value){const cleaned=String(value??'').replace(/[^0-9,]/g,'');const comma=cleaned.indexOf(',');const integer=(comma<0?cleaned:cleaned.slice(0,comma)).slice(0,11);const cents=comma<0?'':','+cleaned.slice(comma+1).replace(/,/g,'').slice(0,2);return integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+cents;}
-function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.pya?.checked){out.hidden=false;out.textContent='PYA simbólico: no se suma a ninguna forma de pago ni al total online.';return;}if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
-function entry(){
- const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
- return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
+function updateCashPreview(f=document.querySelector('#mg-online-form')){if(!f)return;const out=f.querySelector('#mg-on-cash-preview')||f.querySelector('#mg-on-history-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.pya?.checked){out.hidden=false;out.textContent='PYA simbólico: no se suma a ninguna forma de pago ni al total online.';return;}if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
+function entry(archive=null){
+ const s=archive||snapshot?.active,r=(s?.movements||[]).find(x=>x.id===(archive?archivedMovement:editing));
+ return (archive?'<form id="mg-online-history-form" data-draft-key="'+esc(s.id+':'+r.id)+'" class="mg-on-entry" autocomplete="off">':'<form id="mg-online-form" class="mg-on-entry" autocomplete="off">')+'<div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
   '<h3>'+(r?'Editar comanda':'Cargar pedido')+'</h3></div>'+
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
- '<label>Monto ($)<input type="text" inputmode="decimal" name="amount" autocomplete="off" maxlength="18" value="'+esc(r?.gross_amount!=null?formatAmountInput(r.gross_amount):'')+'" placeholder="0,00" required></label>'+
+ '<label>Monto ($)<input type="text" inputmode="decimal" name="amount" autocomplete="off" maxlength="18" value="'+esc(r?formatAmountInput(r.gross_amount??r.amount):'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label>'+ 
  '<label class="mg-on-check mg-on-check-pya"><input type="checkbox" name="pya" '+(r?.pya?'checked':'')+'><span>PYA <small>Simbólico · no suma</small></span></label></div>'+
- '<p class="mg-on-cash-preview" id="mg-on-cash-preview" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
+ '<p class="mg-on-cash-preview" id="'+(archive?'mg-on-history-cash-preview':'mg-on-cash-preview')+'" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
  '<textarea name="observacion" maxlength="300" autocomplete="off" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
  '<div class="mg-on-actions mg-on-save-actions"><button class="mg-on-primary mg-on-save" type="submit" '+(!writable()?'disabled':'')+'>'+
   '<span aria-hidden="true">✓</span> '+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
- (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
+ (r?'<button type="button" '+(archive?'data-mgon-archive-cancel':'data-mgon-cancel')+'>Cancelar edición</button>':'')+'</div></form>';
 }
 function movements(){
  const s=snapshot?.active;
@@ -346,12 +348,53 @@ function dayHistoryCard(d){
   '<div class="mg-on-day-amount"><small>Online Local</small><strong>'+cash(d.online_local)+'</strong></div>'+
   '<button type="button" class="mg-on-day-open" data-mgon-open-day="'+esc(d.day)+'">Ver detalle</button></article>';
 }
+function archivedEditor(s){
+ if(!allowed()||s.status!=='cerrado')return '';
+ if(archivedShift!==s.id)return '<div class="mg-on-history-edit"><button type="button" class="mg-on-primary" data-mgon-archive-edit="'+esc(s.id)+'" '+(!writable()||archivedSaving||!s.movements?.length?'disabled':'')+'>Editar cierre</button></div>';
+ const selected=(s.movements||[]).find(m=>m.id===archivedMovement);
+ return '<div class="mg-on-history-edit"><strong>Editar cierre · '+date(s.day)+' · '+shiftName(s.turno)+'</strong>'+
+ '<p>Corregí una comanda por vez. El turno seguirá cerrado y se conservarán los demás movimientos.</p>'+
+ '<label>Elegí la comanda<select data-mgon-archive-select aria-label="Comanda a corregir" '+(archivedSaving?'disabled':'')+'><option value="">Seleccionar comanda</option>'+
+ (s.movements||[]).map(m=>'<option value="'+esc(m.id)+'" '+(m.id===archivedMovement?'selected':'')+'>#'+esc(m.comanda)+' · '+esc(METHODS[m.method]||m.method)+' · '+cash(m.amount)+'</option>').join('')+
+ '</select></label><p class="mg-on-error" data-mgon-archive-error role="alert" hidden></p>'+
+ (selected?entry(s):'<button type="button" data-mgon-archive-cancel>Cancelar edición</button>')+'</div>';
+}
+async function saveArchived(form){
+ if(!writable()||archivedSaving)return;
+ const s=snapshot?.history?.find(x=>x.id===archivedShift&&x.status==='cerrado');
+ const m=s?.movements?.find(x=>x.id===archivedMovement);
+ const alert=form.closest('.mg-on-history-edit')?.querySelector('[data-mgon-archive-error]');
+ const fail=message=>{if(alert){alert.hidden=false;alert.textContent=message;}api.toast?.(message);};
+ if(!s||!m)return fail('No se encontró la comanda en este cierre.');
+ const d=new FormData(form),comanda=String(d.get('comanda')||'').trim(),
+ amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),
+ observacion=String(d.get('observacion')||'').trim();
+ if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)||observacion.length>300)
+  return fail('Revisá comanda, monto y forma de pago.');
+ const token=gen,loc=local();
+ archivedSaving=true;
+ const controls=[...(form.closest('.mg-on-history-edit')||form).querySelectorAll('button,input,select,textarea')];
+ const disabled=controls.map(el=>el.disabled);
+ controls.forEach(el=>el.disabled=true);
+ try{
+  const result=await rpc('gestlok_mg_online_edit_closed',{p_shift:s.id,p_id:m.id,p_expected_updated_at:m.updated_at,
+   p_comanda:comanda,p_method:method,p_amount:amount,p_app:d.has('app'),p_pya:d.has('pya'),p_observacion:observacion});
+  if(token!==gen||loc!==local())return;
+  if(result?.id!==s.id||result.status!=='cerrado'||!Array.isArray(result.movements)||
+    result.movements.length!==s.movements.length||s.movements.some(row=>!result.movements.some(next=>next.id===row.id)))
+   throw Error('No se pudo confirmar el cierre completo. Volvé a abrir el reporte.');
+  window.GestLokFormDraftGuard?.saved?.(form);
+  snapshot={...snapshot,history:snapshot.history.map(x=>x.id===s.id?result:x)};
+  clearArchivedEdit();archivedSaving=false;api.render();document.querySelector('[data-mgon-archive-edit="'+s.id+'"]')?.focus();api.toast?.('Cierre actualizado correctamente.');
+ }catch(err){if(token===gen&&loc===local())fail(err.message||'No se pudo actualizar el cierre.');}
+ finally{if(token===gen){archivedSaving=false;controls.forEach((el,i)=>el.disabled=disabled[i]);}}
+}
 function reportTurn(s,turno){
  const rows=filterPayments(s?.movements||[],historyMethodFilter);
  if(!s)return '<div class="mg-on-report-turn"><h3>'+esc(shiftName(turno))+'</h3><p class="mg-on-empty">Sin cierre registrado para este turno.</p></div>';
  return '<section class="mg-on-report-turn"><header><h3>'+esc(shiftName(turno))+'</h3>'+
  '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</span></header>'+
- historyTotals(s)+
+ archivedEditor(s)+historyTotals(s)+
  '<h4>Movimientos individuales'+(historyMethodFilter==='todos'?'':' · '+esc(METHODS[historyMethodFilter]))+' ('+rows.length+')</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>PYA</th><th>Observaciones</th></tr></thead><tbody>'+
  (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
@@ -445,14 +488,18 @@ function attach(h){
  // Observar solo hijos directos de #view evita reaccionar al texto del aviso.
  const root=document.getElementById?.('view');
  if(root&&typeof MutationObserver!=='undefined'){
-  new MutationObserver(()=>{if(api?.S?.view==='cierre-online')updateCashPreview();}).observe(root,{childList:true});
+  new MutationObserver(()=>{if(api?.S?.view==='cierre-online'){updateCashPreview();updateCashPreview(document.querySelector('#mg-online-history-form'));}}).observe(root,{childList:true});
  }
  document.addEventListener('click',e=>{
+  if(archivedSaving&&e.target.closest?.('.mg-on-page')){e.preventDefault();return;}
   // Evitar que una actualización del estado desmonte el selector nativo de fotos.
   if(e.target.closest?.('.mg-on-photo-upload')){choosingPhoto=true;return;}
   // Al volver a ingresar desde el menú, la pantalla principal siempre es Cargar pedidos.
   if(e.target.closest?.('[data-go="cierre-online"]'))openForEntry();
   if(!allowed())return;
+  const archiveEdit=e.target.closest('[data-mgon-archive-edit]');
+  if(archiveEdit&&writable()){++gen;archivedShift=archiveEdit.dataset.mgonArchiveEdit;archivedMovement=null;api.render();document.querySelector('[data-mgon-archive-select]')?.focus();return;}
+  if(e.target.closest('[data-mgon-archive-cancel]')){clearArchivedEdit();api.render();void refresh();return;}
   const size=e.target.closest('[data-mgon-scale]');
   if(size){changeScale(size.dataset.mgonScale==='up'?5:-5);return;}
   const noteSave=e.target.closest('[data-mgon-save-note]');
@@ -498,11 +545,11 @@ function attach(h){
   const clear=e.target.closest('[data-mgon-clear-filters]');
   if(clear){filter='';shiftFilter='todos';historyMethodFilter='todos';opened=null;api.render();return;}
   const day=e.target.closest('[data-mgon-open-day]');
-  if(day){modalDay=day.dataset.mgonOpenDay;modalTab='dia';photoError='';api.render();document.querySelector('[data-mgon-modal-close]')?.focus();return;}
+  if(day){clearArchivedEdit();modalDay=day.dataset.mgonOpenDay;modalTab='dia';photoError='';api.render();document.querySelector('[data-mgon-modal-close]')?.focus();return;}
   if(e.target.closest('[data-mgon-modal-close]')||e.target.hasAttribute?.('data-mgon-modal-backdrop')){
-   const prior=modalDay;modalDay=null;photoError='';api.render();document.querySelector('[data-mgon-open-day="'+prior+'"]')?.focus();return;}
+   const prior=modalDay;clearArchivedEdit();modalDay=null;photoError='';api.render();document.querySelector('[data-mgon-open-day="'+prior+'"]')?.focus();return;}
   const modalTabButton=e.target.closest('[data-mgon-modal-tab]');
-  if(modalTabButton){modalTab=modalTabButton.dataset.mgonModalTab;photoError='';api.render();return;}
+  if(modalTabButton){clearArchivedEdit();modalTab=modalTabButton.dataset.mgonModalTab;photoError='';api.render();return;}
   const photoView=e.target.closest('[data-mgon-view-photo]');
   if(photoView){
    const id=photoView.dataset.mgonViewPhoto;
@@ -543,6 +590,7 @@ function attach(h){
   }
  });
  document.addEventListener('submit',e=>{
+  if(e.target.id==='mg-online-history-form'){e.preventDefault();void saveArchived(e.target);return;}
   if(e.target.id!=='mg-online-form'||!writable())return;
   e.preventDefault();const d=new FormData(e.target),comanda=String(d.get('comanda')||'').trim(),
    amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),pya=d.has('pya'),
@@ -553,10 +601,11 @@ function attach(h){
    p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion,p_pya:pya},'Movimiento guardado.');
  });
  document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&modalDay){modalDay=null;photoError='';api.render();}
+  if(e.key==='Escape'&&modalDay&&!archivedSaving){clearArchivedEdit();modalDay=null;photoError='';api.render();}
  });
  document.addEventListener('change',e=>{
-  if(!allowed())return;
+  if(!allowed()||archivedSaving)return;
+  if(e.target.matches?.('[data-mgon-archive-select]')){archivedMovement=e.target.value||null;api.render();updateCashPreview(document.querySelector('#mg-online-history-form'));document.querySelector('#mg-online-history-form input[name=comanda]')?.focus();return;}
   const payment=e.target.closest?.('[data-mgon-payment-filter]');
   if(payment){
    const selected=PAYMENT_FILTERS.some(([key])=>key===payment.value)?payment.value:'todos';
@@ -591,7 +640,7 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
-document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
-document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
+document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')||e.target?.matches?.('#mg-online-history-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}const form=e.target?.closest?.('#mg-online-form, #mg-online-history-form');if(form)updateCashPreview(form);});
+document.addEventListener('change',e=>{const form=e.target?.closest?.('#mg-online-form, #mg-online-history-form');if(form)updateCashPreview(form);});
 window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf,safeShiftState,stateAfterCashOk,filterPayments,paymentFilterControl}});
 })();
