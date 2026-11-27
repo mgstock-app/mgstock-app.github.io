@@ -87,9 +87,11 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
 
  // Real WhatsApp key, delivery receipt and explicit correction workflow only within this pilot.
  await db.exec('reset role;'+read('entornos/sql/wai-acciones-y-entrega.sql'));
+ await anon();assert.deepEqual((await motor()).salientes,[]);
  await role('gerente');await inbox(S,'responder',p2,'Texto original',E);
  await anon();const out=await motor(H,keyA,'tomar',p2);assert.ok(out.id);
  assert.equal((await motor(H,keyA,'resultado',p2,jid,'WA-ORIGINAL',null,out.id,'aceptado')).ok,true);
+ await anon();assert.deepEqual((await motor()).salientes,[{wa_id:'WA-ORIGINAL',ruta:jid,accion_id:null}]);
  await role('gerente');let row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.entregado,false);assert.equal(row.puede_editar,true);assert.equal(row.puede_eliminar,true);
  const action=(s,p,m,a,t=null)=>call('wai_mensaje_accion',[s,p,m,a,t]);
  await role('gerente',T);await assert.rejects(action(S,p2,out.id,'editar','Robo'),/Sin permiso/);
@@ -109,6 +111,8 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
 
  // Alias survives a new pilot and belongs to the local; phone agenda belongs to the line.
  await db.exec('reset role;'+read('entornos/sql/wai-contactos-alias-agenda.sql'));
+ await db.exec(read('entornos/sql/wai-control-salientes-correccion.sql'));
+ await anon();assert.deepEqual((await motor()).salientes,[{wa_id:'WA-ORIGINAL',ruta:jid,accion_id:'WA-DELETE'}]);
  const alias=(s,p,a)=>call('wai_contacto_alias',[s,p,a]);
  await role('gerente');assert.equal(await alias(S,p2,'Cliente frecuente'),true);
  await role('gerente',T);await assert.rejects(alias(S,p2,'Otro local'),/Sin permiso/);
