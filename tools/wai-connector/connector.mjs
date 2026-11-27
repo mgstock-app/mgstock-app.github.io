@@ -4,6 +4,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
+import {createCentral} from './central.mjs';
 import {multiPilotTransport} from './multi-pilot.mjs';
 import {createPollStore} from './poll-store.mjs';
 import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
@@ -13,11 +14,12 @@ const root=await protectDirectory(privateRoot());
 const configFile=resolve(process.argv[2]||defaultConfig());
 const config=await loadConfig(configFile);
 const url=new URL(config.url);
-async function rpc(s,name,args){
- const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_id:s.id,p_clave:s.key,...args}),signal:AbortSignal.timeout(7000),redirect:'error'});
+async function remote(name,args){
+ const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(7000),redirect:'error'});
  if(!r.ok)throw Error('Control remoto no disponible');
  return r.json();
 }
+const rpc=(s,name,args)=>remote(name,{p_id:s.id,p_clave:s.key,...args});
 // Bounded media stream, not a public image URL. Do not request view-once
 // media or re-upload old messages. The server rechecks file signature.
 async function receiveAuthorizedImage(message,metadata){
@@ -55,14 +57,15 @@ function transportFor(s){
   const privateDir=join(path,sub);
   await protectDirectory(privateDir);
   const {state,saveCreds}=await useMultiFileAuthState(privateDir);
-  const initialGrants=config.enableTestMessages===true&&revision?(await rpc(s,'gestlok_chat_wai_ensayos_autorizados',{p_revision:revision,p_activo:false}).catch(()=>null))?.ensayos||[]:[];
+  const initial=config.enableTestMessages===true&&revision?await rpc(s,'gestlok_chat_wai_ensayos_autorizados',{p_revision:revision,p_activo:false}).catch(()=>null):null;
+  const initialGrants=initial?.ensayos||[];
   const sock=makeWASocket({auth:state,logger:pino({level:'silent'}),browser:Browsers.appropriate('Chrome'),
     markOnlineOnConnect:false,syncFullHistory:false,shouldSyncHistoryMessage:()=>false,
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
   const pollStore=createPollStore(privateDir);await pollStore.prune();
-  const pilot=config.enableTestMessages===true?multiPilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrants,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pilot=config.enableTestMessages===true?multiPilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrants,initialOpen:config.central&&initial?.recepcion_entrante===true,initialRevision:revision,centralAllowed:config.central===true,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});
@@ -93,14 +96,16 @@ function transportFor(s){
   return {close,verify,pilotTick:revision=>pilot?.tick(revision)};
  };
 }
-const sessions=config.sessions.map(s=>createSession({id:s.id,number:s.number,transport:transportFor(s),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m),
- exchange:report=>rpc(s,'gestlok_chat_wai_senal_v2',report)}));
-console.log('GESTLOK WAI · ensayo aislado · '+sessions.length+' sesiones. Mensajes de prueba: '+(config.enableTestMessages===true?'permitidos solo por autorización temporal':'desactivados'));
-console.log('La conexión no oficial puede ocasionar restricciones. Usá solo números de ensayo autorizados.');
-const tick=()=>Promise.allSettled(sessions.map(s=>s.tick()));
-await tick();
-const timer=setInterval(()=>void tick(),5000);
+const log=msg=>console.log('[WAI Central] '+msg);
+const create=s=>createSession({id:s.id,number:s.number,transport:transportFor(s),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m),exchange:report=>rpc(s,'gestlok_chat_wai_senal_v2',report)});
+const instance=randomUUID();
+const central=config.central?createCentral({inventory:action=>remote('gestlok_chat_wai_central_sync',{p_clave:config.centralKey,p_instancia:instance,p_accion:action}),create,log}):null;
+const sessions=central?[]:config.sessions.map(create);
+console.log('GESTLOK WAI · '+(central?'servidor central de ensayo · altas automáticas':sessions.length+' sesiones de ensayo')+'. Mensajes de prueba: '+(config.enableTestMessages===true?'según autorización':'desactivados'));
+console.log('La conexión no oficial puede ocasionar restricciones. Usá solo líneas de ensayo autorizadas.');
+const tick=()=>central?central.tick():Promise.allSettled(sessions.map(s=>s.tick()));
 let stopping=false;
-async function stop(){if(stopping)return;stopping=true;clearInterval(timer);await Promise.allSettled(sessions.map(s=>s.close()));process.exit(0);}
+const timer=setInterval(()=>void tick(),5000);
+async function stop(){if(stopping)return;stopping=true;clearInterval(timer);if(central)await central.close();else await Promise.allSettled(sessions.map(s=>s.close()));process.exit(0);}
 process.on('SIGINT',()=>void stop());process.on('SIGTERM',()=>void stop());
-
+await tick();
