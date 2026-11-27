@@ -745,7 +745,6 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .menu-nota-efectivo{margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#FFF8DC;color:#5C4400;font-size:13px;line-height:1.4}
 .menu-editando .menu-nota-efectivo{display:none}
 
-
 /* Carta visual gastronómica · piloto Prueba, sin imágenes por ahora. */
 .cv-eleccion{display:grid;gap:12px;padding:8px 0}
 .carta-visual{display:grid;gap:12px;min-width:0;color:#1e293b}
@@ -775,7 +774,6 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 @keyframes cv-giro{from{transform:perspective(420px) rotateY(-35deg) scale(.92);opacity:.65}to{transform:perspective(420px) rotateY(0) scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.cv-giro .cv-plato{animation:none}}
 
-/* Imágenes de carta Mi Gusto: referencia en el chat, sin alterar carrito. */
 .mg-carta-visual{display:grid;gap:9px;width:min(360px,88%);max-width:100%;box-sizing:border-box}
 .mg-carta-visual p{margin:0}
 .mg-carta-visual a{display:block;border-radius:10px;overflow:hidden;background:#080808;line-height:0}

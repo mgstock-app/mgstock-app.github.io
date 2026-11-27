@@ -262,11 +262,38 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .gerentes .fila-gerente{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e3e8ee}
 .gerentes .fila-gerente span{flex:1 1 200px;overflow-wrap:anywhere}
 
-/* Agenda privada de exclusiones WhatsApp */
-.excluidos-form{display:grid;gap:12px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:end}
-.excluidos-form .boton{justify-self:start}
-.excluidos-lista{display:grid;gap:8px}
-.excluidos-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--borde,#ddd)}
-.excluidos-fila>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
-.excluidos-fila .boton{flex-shrink:0}
-@media(max-width:560px){.excluidos-form{grid-template-columns:minmax(0,1fr)}}
+/* Bandeja de atención manual, separada de pedidos. */
+.wa-bandeja{display:grid;gap:12px}
+.wa-bandeja-lista{display:grid;gap:12px}
+.wa-bandeja-card{border:1px solid var(--linea,#dbe2ea);border-radius:14px;padding:14px;display:grid;gap:10px}
+.wa-bandeja-card h3,.wa-bandeja-card p{margin:0;overflow-wrap:anywhere}
+.wa-bubble{border-radius:12px;max-width:90%;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.wa-bubble.in{background:#eef2f8;color:#13294b;justify-self:start}
+.wa-bubble.out{background:#def7e8;color:#145332;justify-self:end}
+.wa-bubble small{display:block;font-weight:700;margin-bottom:5px}
+.wa-bandeja-card textarea{box-sizing:border-box;width:100%;font-size:16px;min-height:80px;padding:10px}
+.excluidos-panel{display:grid;gap:12px}
+.excluidos-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--linea,#dbe2ea);padding:12px 0}
+.excluidos-fila div{display:grid;gap:4px;min-width:0}
+.excluidos-fila span{overflow-wrap:anywhere}
+
+/* Navegación de la Central: tres secciones principales y herramientas relacionadas. */
+.navegacion-panel{position:sticky;top:58px;z-index:4;background:var(--papel);border-bottom:1px solid var(--linea)}
+.navegacion-panel .pestanas{position:static;display:flex;gap:4px;padding:4px 6px 0}
+.navegacion-panel .pestanas button{flex:1 1 0;min-width:0;padding:11px 5px;font-weight:750;font-size:clamp(13px,3.7vw,17px)}
+.navegacion-panel .pestanas button[aria-selected="true"]{background:var(--azul-suave);border-radius:9px 9px 0 0}
+.embebido .navegacion-panel{top:0;border-radius:12px 12px 0 0}
+.subpestanas{display:flex;gap:6px;padding:8px;overflow-x:auto;scrollbar-width:thin}
+.subpestanas button{flex:0 0 auto;border:1px solid var(--linea);border-radius:8px;background:var(--papel);color:var(--gris);padding:8px 12px;min-height:42px;font-size:14px;font-weight:650}
+.subpestanas button[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:white}
+.pedidos-titulo h2{margin:0 0 4px;font-size:21px;color:var(--azul)}
+/* Cada estado tiene color de tarjeta y etiqueta textual (no depende solo del color). */
+.tarjeta.pendiente,.filtro-estado.pendiente{--estado-fondo:#fff8e8;--estado-borde:#95600a;--estado-texto:#854b07}
+.tarjeta.confirmado,.filtro-estado.confirmado{--estado-fondo:#edf5ff;--estado-borde:#2563b8;--estado-texto:#1e4b90}
+.tarjeta.terminado,.filtro-estado.terminado{--estado-fondo:#eaf9ef;--estado-borde:#23804a;--estado-texto:#176039}
+.tarjeta.rechazado,.filtro-estado.rechazado{--estado-fondo:#fff0f0;--estado-borde:#b91c1c;--estado-texto:#922121}
+.tarjeta.cancelado,.filtro-estado.cancelado{--estado-fondo:#f1f3f6;--estado-borde:#64748b;--estado-texto:#475569}
+.tarjeta[class]{background:var(--estado-fondo,var(--papel));border-left-width:6px;border-left-color:var(--estado-borde,var(--linea))}
+.tarjeta .estado{background:var(--estado-borde,var(--azul));color:#fff;padding:4px 9px}
+.filtro-estado:not(.todos){background:var(--estado-fondo);color:var(--estado-texto);border-color:var(--estado-borde)}
+.filtro-estado:not(.todos)[aria-pressed="true"]{background:var(--estado-borde);color:white}

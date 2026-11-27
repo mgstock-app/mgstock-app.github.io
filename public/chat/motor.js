@@ -792,9 +792,62 @@ export function textoDemora(s = {}) {
     'El tiempo estimado de entrega todavía no está configurado para este local.';
 }
 
+// Only known payment-domain spelling variants, not fuzzy matching the entire
+// catalog: a misspelled product name must not silently become a payment inquiry.
+const aliases = new Map(Object.entries({
+ tranferir:'transferir',trasferir:'transferir',transfirir:'transferir',transferrir:'transferir',
+ tranferirte:'transferirte',trasferirte:'transferirte',tranferirles:'transferirles',
+ tranferencia:'transferencia',trasferencia:'transferencia',transfrencia:'transferencia',
+ tranferencias:'transferencias',trasferencias:'transferencias',transfe:'transferencia',transf:'transferencia',
+ abogo:'abono',abnaar:'abonar',abonr:'abonar',abnar:'abonar',abonoo:'abono',
+ pgo:'pago',pagoo:'pago',paggar:'pagar',tarjta:'tarjeta',targeta:'tarjeta',
+ debio:'debito',debto:'debito',credto:'credito',efetivo:'efectivo',efectvo:'efectivo',
+ mercadopago:'mercado_pago',mercadopgo:'mercado_pago',mp:'mercado_pago'
+}));
+const normalize=value=>normalizar(value).split(' ').map(t=>aliases.get(t)??t).join(' ').replace(/\bmercado pago\b/g,'mercado_pago');
+const method='(?:tarjetas?|debito|credito|efectivo|transferencias?|transferir(?:te|les|lo)?|mercado_pago|qr|alias|cbu|cvu)';
+const payVerb='(?:pagar(?:te|les|lo)?|pago|paga[ns]?|abonar(?:te|les|lo)?|abono|abona[ns]?|transferir(?:te|les|lo)?|transfiero|transfiere[ns]?)';
+const pronoun='(?:(?:te|les|le|se|lo|la|os|me) )?';
+const queryMethod=new RegExp('\\b(?:aceptan|aceptas|acepta|reciben|recibis|toman|tomas|trabajan con|tienen|tenes|hay|admiten|permiten|puedo usar|se puede usar) (?:pago |pagar |abonar |con |por |en |una? |la |el |las |los )*'+method+'\\b');
+const queryVerb=new RegExp('\\b(?:como|con que|de que manera|de que forma|de que modo) (?:me recomendas |puedo |podemos |se puede |tengo que |hay que |debo |deberia |debo de |hago para |hacemos para )*'+pronoun+payVerb+'\\b');
+const possibleVerb=new RegExp('\\b(?:(?:yo )?(?:te |les |le |lo )?(?:puedo|podria|podemos|quisiera|quiero|podre|se puede|es posible|esta bien si|sirve si|esta ok si|te sirve si|les sirve si|te molesta si|me dejan) (?:hacer(?:te|les)? |mandar(?:te|les)? |enviar(?:te|les)? |una |un |el |la |por |con |en |te |les |le |lo )*(?:'+payVerb+'|transferencias?)|(?:puedo|podria|podemos|se puede) (?:hacer(?:te|les)? |mandar(?:te|les)? |enviar(?:te|les)? )?(?:una |la )?transferencia)\\b');
+const paymentBy=new RegExp('\\b(?:pago|pagar|abono|abonar|abonamos|pagamos|se paga|se abona|te pago|te abono|les pago) (?:con|por|en|via|mediante|a traves de) '+method+'\\b');
+const accountInfo=/\b(?:pasas|pasan|pasame|pasenme|pasar|pasar(?:me|nos)|mandas|mandan|mandame|envi(?:as|an|ame)|cual es|cual seria|que|dame|decime|necesito|me das|me dan) (?:los datos de |tu |su |el |la |un |una )*(?:alias|cbu|cvu|datos bancarios|datos para transferir)\b/;
+export function paymentInquiry(value,stage='menu'){
+ const n=normalize(value);
+ if(!n||clasificarSoporte({texto:value}))return false;
+ // A reported/completed payment, proof or disputed payment is not a FAQ.
+ if(/\b(?:confirmar|confirme|confirmado|comprobante|ya (?:te |les |le |lo )?(?:pague|abone|transferi|hice la transferencia|mande la transferencia)|(?:te |les |le )?(?:pague|abone|transferi)(?: de mas| hace| ayer| recien| hoy)?|me cobraron|me debitaron|no me (?:acepta|toma|deja|funciona)|devolucion|reintegro|reclamo|error de pago)\b/.test(n))return false;
+ if(/\b(?:medios?|formas?|metodos?|opciones?|alternativas?|maneras?) (?:de |para )?(?:pagos?|abono|abonar|pagar)\b/.test(n))return true;
+ if(queryVerb.test(n)||possibleVerb.test(n)||queryMethod.test(n)||accountInfo.test(n))return true;
+ if(/\b(?:te hago|les hago|te mando|les mando|hago|hacemos) (?:una |la )?transferencia\b/.test(n)&&stage==='menu')return true;
+ // A naked payment method in checkout is an answer, not a new inquiry.
+ if(stage==='menu'){
+  if(paymentBy.test(n))return true;
+  if(new RegExp('^(?:(?:medios?|formas?|metodos?|opciones?) (?:de )?pagos?|pagos?|abono|pagar|abonar|'+method+')$').test(n))return true;
+ }
+ return false;
+}
+
+export function scheduleInquiry(value,stage='menu'){
+ const n=normalizar(value).replace(/\borarios?\b/g,'horario').replace(/\b(?:abrierto|avi[o]?erto)\b/g,'abierto').replace(/\btravajando\b/g,'trabajando');
+ if(!n||clasificarSoporte({texto:value})||/\b(?:mi pedido|pedido llega|llega el pedido|cuando llega|a que hora llega|hora de entrega|tiempo de entrega|demora del envio|pedido demorado|horario de mi pedido|programar|agendar|reservar)\b/.test(n))return false;
+ if(/\b(?:horarios?|horario de atencion|horas de atencion)\b/.test(n))return true;
+ if(/\b(?:a que hora|hasta que hora|desde que hora|a partir de que hora|que hora|cuando|hasta cuando) (?:es que |se |ustedes |suelen |van a )*(?:abren|abris|abre|abrir|abrieron|cierran|cerras|cierra|cerrar|cerraron|atienden|atiende|atender|trabajan|trabaja|empiezan|terminan|arrancan|toman pedidos)\b/.test(n))return true;
+ if(/\b(?:estan|estas|esta|siguen|seguimos|sigues|sigue|ya estan|todavia estan|aun estan|se encuentran|se encuentra|se encuentran ya) (?:ya |todavia |aun |ahora )*(?:abiert[oa]s?|cerrad[oa]s?|trabajando|atendiendo|tomando pedidos|recibiendo pedidos|en servicio|en funcionamiento)\b/.test(n))return true;
+ if(/\b(?:abren|abris|abre|cierran|cerras|cierra|atienden|atendes|atiende|trabajan|trabajas|trabaja|toman pedidos|reciben pedidos) (?:de corrido|hoy|ahora|manana|a la noche|a la tarde|al mediodia|esta noche|esta tarde|este mediodia|los? (?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?|feriados?)|el (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo|feriado)|todos los dias|de lunes a lunes|hasta|desde)\b/.test(n))return true;
+ if(/\b(?:ya|todavia|aun) (?:abrieron|cerraron|abren|cierran|atienden|trabajan|toman pedidos|reciben pedidos)\b/.test(n))return true;
+ if(/\b(?:puedo|podemos|se puede|se podra|puede) (?:hacer |realizar |dejar |mandar |enviar )?(?:un pedido|pedir|comprar|encargar) (?:ahora|hoy|todavia|aun)\b/.test(n))return true;
+ if(/\b(?:a que hora|desde que hora|hasta que hora) (?:puedo|podemos|se puede) (?:pedir|comprar|hacer un pedido|encargar)\b/.test(n))return true;
+ if(/\b(?:hoy|ahora|manana|los domingos|los sabados|los feriados) (?:abren|abris|abre|cierran|atienden|trabajan|estan abiertos|estan trabajando)\b/.test(n))return true;
+ return stage==='menu'&&/^(?:horarios?|abren|cierran|atienden|trabajan|abierto|cerrado|abiertos|cerrados|atienden ahora|abren ahora|trabajan ahora)$/.test(n);
+}
+
 function intencion(t) {
   const n = normalizar(t);
   if (!n) return 'vacio';
+  if (paymentInquiry(t)) return 'pago';
+  if (scheduleInquiry(t)) return 'horario';
   if (/\b(cuanto tarda|cuanto demora|cuanta demora|tiempo de entrega|demora del delivery)\b/.test(n)) return 'demora';
   if (/\b(estado|como va|ya esta|confirmaron|cuanto falta|llego)\b/.test(n) ||
       (/\bmi pedido\b/.test(n) && n.split(' ').length <= 5 && !/\d/.test(n))) return 'estado';
@@ -802,10 +855,11 @@ function intencion(t) {
   if (/\b(finaliz|terminar|termine|listo|eso es todo|nada mas|confirmar|cerrar pedido|enviar pedido)\b/.test(n)) return 'finalizar';
   if (/\b(carrito|ver pedido|que pedi|resumen)\b/.test(n)) return 'carrito';
   if (/\b(vaciar|borrar todo|empezar de nuevo)\b/.test(n)) return 'vaciar';
-  if (/\b(horario|hora|abren|abierto|cierran|atienden)\b/.test(n)) return 'horario';
+  if (/\b(horario|hora|abren|abierto|cierran|atienden|horarios)\b/.test(n)) return 'horario';
   if (/\b(envio|envian|delivery|domicilio|zona|llevan|mandan)\b/.test(n)) return 'envio';
   if (/\b(pago|pagar|tarjeta|efectivo|transferencia|mercado ?pago|debito|credito|alias|cbu)\b/.test(n)) return 'pago';
-  if (/\b(direccion|donde estan|ubicacion|donde queda)\b/.test(n)) return 'direccion';
+  if (/\b(direccion|donde estan|ubicacion|donde queda|donde quedan|donde se encuentran|como llego|maps)\b/.test(n)) return 'direccion';
+  if (/\b(reservas?|reservar|reservacion|mesa para)\b/.test(n)) return 'reservas';
   if (/\b(carta|menu|que tienen|que hay|productos|opciones)\b/.test(n)) return 'carta';
   if (/\b(precio|cuanto|sale|cuesta|valor)\b/.test(n)) return 'precio';
   if (/\b(persona|humano|alguien|atencion|hablar)\b/.test(n)) return 'humano';
@@ -860,8 +914,10 @@ export function botonesCarrito(carrito) {
 }
 
 export function textoHorario(s) {
-  return (s.horario ? 'Horario: ' + s.horario + '.' : 'El local todavía no cargó su horario.') +
-    (s.direccion ? '\nEstamos en ' + s.direccion + '.' : '');
+  const dias=['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+  const d=Array.isArray(s.dias_apertura)&&s.dias_apertura.length<7 ? 'Días de apertura: '+s.dias_apertura.map(x=>dias[x-1]).filter(Boolean).join(', ')+'.' : '';
+  const actual=s.atencion?.habilitado ? (s.atencion.abierto ? 'Estamos atendiendo en este momento.' : 'Ahora estamos cerrados.'+(s.atencion.proximo_texto?' Próxima apertura: '+s.atencion.proximo_texto+'.':'')) : '';
+  return [actual,s.horario?'Horario: '+s.horario+'.':'El local todavía no cargó la descripción de su horario.',d,s.direccion?'Estamos en '+s.direccion+'.':''].filter(Boolean).join('\n');
 }
 export function textoEnvio(s) {
   const partes = [];
@@ -1193,11 +1249,12 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
       return fin();
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'pago': decir(textoPago(s), {botones: botonesCarrito(e.carrito)}); return fin();
-    case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'direccion': decir([s.direccion ? 'Estamos en '+s.direccion+'.':'El local todavía no cargó su dirección.',s.ubicacion_url].filter(Boolean).join('\n'), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'reservas': decir(s.reservas_info || 'Consultá la disponibilidad de reservas con el gerente.', {botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
     case 'carta': {
       const c = entrada.boton ? null : categoriaNombrada(catalogo, texto);
       decir(c ? 'Estas son nuestras opciones de ' + c.nombre.toLowerCase() + '. Toque una para agregarla.'
-        : 'Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta', ...(c ? {categoria: c.id} : {})});
+        : (s.carta_texto || s.carta_imagen_url ? 'Te muestro la carta de este local. También puede consultar los productos y precios del menú interactivo.' : 'Esta es nuestra carta. Tocá un producto para agregarlo.'), {tipo: 'carta', ...(c ? {categoria: c.id} : {})});
       return fin();
     }
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();

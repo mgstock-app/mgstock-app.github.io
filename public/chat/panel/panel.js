@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261126pruebaqr1';
+  const VERSION_CSS = '20261127portal1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261124carta1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261126comercial1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -39,21 +39,30 @@
   const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
+  const WAI_SLUG = !DEMO && EMBED && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(op.waiSlug||'') ? op.waiSlug : '';
+  const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
+  const GRUPOS_PANEL = [
+    {id:'pedidos', titulo:'Pedidos', items:[['pedidos','Tarjetas de pedidos'],['whatsapp','WAI (WhatsApp)'],['reporte','Historial diario'],['stock','Stock'],['clientes','Clientes']]},
+    {id:'ajustes', titulo:'Configuración', items:[['ajustes','Datos del local'],['carta','Carta y precios'],['mensajes','Bot y mensajes'],['excluidos','Números excluidos']]},
+    {id:'soporte', titulo:'Reclamos', items:[['soporte','Reclamos']]}
+  ];
+  const grupoDe = pestana => GRUPOS_PANEL.find(g=>g.items.some(([id])=>id===pestana));
   const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
     el('header', {class: 'tope'},
       el('a', {class: 'volver', href: DEMO ? '#' : '/',
         onclick: DEMO ? e => e.preventDefault() : undefined,
         'aria-label': DEMO ? 'Demostración de GESTLOK Chat' : 'Volver a GESTLOK', text: '‹'}),
       el('img', {class: 'tope-marca', src: '/chat/gestlok-monograma.svg', alt: '', width: 29, height: 32, 'aria-hidden': 'true'}),
-      el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
+      el('div', {class: 'tope-texto'}, el('h1', {text: WAI_SLUG ? 'Configuración WAI' : 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
-    el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['excluidos', 'Números excluidos'], ['clientes','Clientes']].map(([k, t], i) =>
-        el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
-          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
-          k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
+    el('div', {class:'navegacion-panel', id:'navegacion-panel', hidden:true},
+      el('nav', {class:'pestanas', id:'pestanas', role:'tablist', 'aria-label':'Secciones principales'},
+        GRUPOS_PANEL.map(({id, titulo}) => el('button',{role:'tab',type:'button','data-grupo':id,'aria-selected':String(id==='pedidos')},titulo,
+          id==='pedidos' ? el('span',{class:'globo',id:'globo',hidden:true}) :
+          id==='soporte' ? el('span',{class:'globo',id:'globo-soporte',hidden:true}) : null))),
+      el('nav',{class:'subpestanas',id:'subpestanas','aria-label':'Herramientas de la sección'} ,
+        GRUPOS_PANEL.flatMap(g=>g.items.map(([id,titulo])=>el('button',{type:'button','data-p':id,'aria-pressed':'false',text:titulo}))))),
     EMBED ? null : el('aside', {id:'comandas-resumen', class:'comandas-resumen sin-comandas', role:'status', 'aria-live':'polite'},
       el('strong',{text:'Comandas activas'}),
       el('span',{id:'comandas-pendientes',text:'Por confirmar: 0'}),
@@ -108,7 +117,7 @@
     S.suc.pendientes=pend;S.suc.en_preparacion=prep;
   }
   async function revisarComandas() {
-    if(EMBED||DEMO||document.hidden||!marco.isConnected||!S.suc)return;
+    if(ADMIN_CONFIG||EMBED||DEMO||document.hidden||!marco.isConnected||!S.suc)return;
     const sucursal=S.suc.id;
     try{
       const data=await rpc('panel_inicio');
@@ -176,6 +185,26 @@
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
     }
+    if (WAI_SLUG) {
+      try {
+        const r=await rpc('wai_portal_inicio',{p_slug:WAI_SLUG});
+        const a=(r?.locales||[]).find(s=>s.slug===WAI_SLUG);
+        if(!a||!['gestionar','configurar'].includes(a.nivel))throw Error('Tu cuenta no tiene acceso a este local.');
+        S.suc=a; S.sucursales=[a]; S.pestana='ajustes';
+        $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
+        $('panel').setAttribute('aria-busy','false'); $('navegacion-panel').hidden=false; mostrar();return;
+      }catch(e){return fijo('Sin acceso a la configuración',e.message);}
+    }
+    if (ADMIN_CONFIG) {
+      try {
+        const a=await rpc('panel_config',{p_sucursal:ADMIN_CONFIG});
+        if(!a.administradora_chat)throw Error('Configuración administrativa exclusiva de la creadora.');
+        S.suc={id:ADMIN_CONFIG,nivel:a.nivel,nombre:a.nombre,slug:a.slug}; S.pestana=new URLSearchParams(location.search).get('seccion')==='excluidos'?'excluidos':'ajustes';
+        $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
+        $('panel').setAttribute('aria-busy','false'); $('comandas-resumen')?.remove();
+        $('navegacion-panel').hidden=false; mostrar(); return;
+      }catch(e){return fijo('Sin acceso a la configuración',e.message,['Ir a GESTLOK','/']);}
+    }
     let r;
     try { r = await rpc('panel_inicio'); } catch (e) { return fijo('No pudimos abrir el panel', e.message); }
     if (!r.habilitado) return fijo('GESTLOK Chat no está activo', 'GESTLOK Chat no está habilitado para la empresa que tenés elegida en GESTLOK. Si tenés varias empresas, elegí la correcta en GESTLOK y volvé.', ['Ir a GESTLOK', '/']);
@@ -196,7 +225,7 @@
       try { localStorage.setItem(sucursalPref, S.suc.id); } catch { /* nada */ }
       mostrar();pintarComandas(S.suc);void revisarComandas();
     };
-    $('pestanas').hidden = false;
+    $('navegacion-panel').hidden = false;
     $('panel').setAttribute('aria-busy', 'false');
     mostrar();pintarComandas(S.suc);
     if(!EMBED&&!DEMO){
@@ -204,33 +233,145 @@
       timerComandas=setInterval(revisarComandas,15000);
     }
   }
+  function seccionPermitida(pestana) {
+    if (WAI_SLUG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&(pestana!=='excluidos'||puede('configurar'));
+    if (ADMIN_CONFIG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&puede('configurar');
+    if (pestana==='excluidos') return puede('configurar')&&!DEMO;
+    if (pestana==='whatsapp') return puede('gestionar')&&!DEMO;
+    if (['charlas','soporte','clientes'].includes(pestana)) return puede('gestionar');
+    if (['ajustes','mensajes'].includes(pestana)) return puede('ver');
+    return !!grupoDe(pestana);
+  }
   $('pestanas').addEventListener('click', e => {
-    const b = e.target.closest('[data-p]'); if (!b) return;
-    S.pestana = b.dataset.p; mostrar();
+    const b=e.target.closest('[data-grupo]'); if(!b)return;
+    const g=GRUPOS_PANEL.find(g=>g.id===b.dataset.grupo);
+    if(g && seccionPermitida(g.id)){S.pestana=g.id;mostrar();}
+  });
+  $('subpestanas').addEventListener('click',e=>{
+    const b=e.target.closest('[data-p]');if(!b||!seccionPermitida(b.dataset.p))return;
+    S.pestana=b.dataset.p;mostrar();
   });
   function mostrar() {
-    if (S.pestana === 'excluidos' && (!puede('configurar') || SHOWROOM)) S.pestana = 'pedidos';
-    for (const b of $('pestanas').querySelectorAll('[data-p]')) {
-      b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
-      if (b.dataset.p === 'excluidos') b.hidden = !puede('configurar') || !!SHOWROOM;
-      if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
-      if (['charlas','soporte','clientes'].includes(b.dataset.p)) b.hidden = !puede('gestionar');
+    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG||WAI_SLUG?'ajustes':'pedidos';
+    const grupo=grupoDe(S.pestana);
+    for(const b of $('pestanas').querySelectorAll('[data-grupo]')){
+      b.hidden=!seccionPermitida(b.dataset.grupo);
+      b.setAttribute('aria-selected',String(b.dataset.grupo===grupo?.id));
     }
+    let visibles=0;
+    for(const b of $('subpestanas').querySelectorAll('[data-p]')){
+      b.hidden=grupoDe(b.dataset.p)?.id!==grupo?.id||!seccionPermitida(b.dataset.p);
+      if(!b.hidden)visibles++;
+      b.setAttribute('aria-pressed',String(b.dataset.p===S.pestana));
+    }
+    $('subpestanas').hidden=visibles<=1;
     clearTimeout(S.sondeo);
     const avisoSoporte = $('globo-soporte');
     if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
       avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
     ({pedidos: verPedidos, soporte: verSoporte, reporte:verReporte, stock: verStock, carta: verCarta,
-      mensajes: verMensajes, ajustes: verAjustes, excluidos: verExcluidos, charlas: verCharlas,clientes:verClientes})[S.pestana]();
+      whatsapp:verWhatsApp, excluidos:verExcluidos,mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas,clientes:verClientes})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
+  function waiLocalView(sucursal,active){
+    const box=el('section',{class:'bloque'},el('h2',{text:'Recuperar conexión de WhatsApp'}),el('p',{class:'nota',text:'Solo los números autorizados de esta sucursal. Intentá recuperar la sesión; si WhatsApp pide autorización, escaneá el QR desde el celular del local. No activa envíos.'}));
+    const list=el('div'),status=el('p',{role:'status',class:'nota',text:'Consultando conexión…'}),refresh=el('button',{class:'boton',type:'button',text:'Actualizar señal'});
+    box.append(status,refresh,list);
+    const labels={pausado:'⚪ Pausado',sin_conector:'⚪ Conector pendiente de instalación',sin_senal:'🔴 Sin señal del conector',conectado:'🟢 Sesión conectada',reconectando:'🟡 Recuperando sesión',qr:'🟡 Escanear QR',qr_vencido:'🟡 QR vencido',desconectado:'🔴 Sesión desconectada'};
+    let busy=false;
+    async function load(accion='listar',id=null){
+      if(!active()||busy)return;
+      busy=true;refresh.disabled=true;
+      list.querySelectorAll('button').forEach(b=>b.disabled=true);
+      try{
+        const rows=await rpc('wai_conexiones',{p_sucursal:sucursal,p_accion:accion,p_id:id});
+        if(!active())return;
+        if(!Array.isArray(rows))throw Error();
+        status.textContent='Última consulta: '+new Date().toLocaleTimeString('es-AR')+' · conexión no equivale a IA activa.';
+        poner(list,...(rows.length?rows.map(r=>{
+          const card=el('article',{class:'wa-bandeja-card'},el('h3',{text:r.numero}),el('p',{text:labels[r.estado]||'Sin estado comprobado'}),el('small',{text:'Última señal: '+(r.senal_at?hora(r.senal_at):'Nunca')}));
+          if(r.estado==='qr'&&typeof r.qr==='string'&&r.qr.length<=2048&&Date.parse(r.qr_vence)>Date.now()){
+            try{const q=window.qrcode(0,'M');q.addData(r.qr);q.make();card.append(el('img',{src:q.createDataURL(5,4),alt:'QR privado de vinculación del local',width:'220',style:'max-width:100%;height:auto'}),el('p',{class:'nota',text:'Vence: '+new Date(r.qr_vence).toLocaleTimeString('es-AR')}));}catch{/* No QR ficticio */}
+          }
+          if(r.habilitada&&r.preparada&&['desconectado','qr','qr_vencido'].includes(r.estado)){
+            for(const [a,label] of [['reconectar','Restablecer señal'],['qr','Generar nuevo QR']]){
+              card.append(el('button',{type:'button',class:'boton',text:label,onclick:()=>void load(a,r.id)}));
+            }
+          }
+          if(r.estado==='sin_senal'||r.estado==='sin_conector')card.append(el('p',{class:'nota',text:'Avisale a soporte GESTLOK. El conector necesita estar en línea.'}));
+          return card;
+        }):[el('p',{class:'nota',text:'No hay números WAI registrados en este local.'})]));
+      }catch(e){if(active()){status.textContent=e.message||'No se pudo comprobar la conexión.';poner(list);}}
+      finally{busy=false;if(active())refresh.disabled=false;}
+    }
+    refresh.onclick=()=>void load();
+    // Se comparte el sondeo de la bandeja; no hay un intervalo que quede activo al cambiar de local.
+    return {box,load:()=>{if(!document.hidden)void load();}};
+  }
+  async function verWhatsApp(){
+    if(DEMO||!puede('gestionar'))return;
+    const id=S.suc.id, box=el('section',{class:'bloque wa-bandeja'});
+    const status=el('p',{class:'nota',role:'status',text:'Consultando autorización…'});
+    const list=el('div',{class:'wa-bandeja-lista'});
+    const refresh=el('button',{type:'button',class:'boton',text:'Actualizar'});
+    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('a',{href:'/chat/wai/?local='+encodeURIComponent(S.suc.slug),class:'boton principal',text:'Abrir espacio WAI del local'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
+    contenido.replaceChildren(box);
+    const active=()=>marco.isConnected&&box.isConnected&&S.suc?.id===id&&S.pestana==='whatsapp';
+    const support=waiLocalView(id,active);box.prepend(support.box);
+    let busy=false, sending=false, lastKey='', ready=false;
+    const drafts=new Map(),locked=new Set();
+    const labels={procesando:'Envío reservado · no repetir',aceptada:'Aceptado por WhatsApp · entrega aún no confirmada',bloqueada:'Envío bloqueado',error:'Proveedor rechazó el envío',incierta:'Resultado incierto · no repetir'};
+    function draw(rows){
+      list.replaceChildren(...(rows.length?rows.map(row=>{
+        const card=el('article',{class:'wa-bandeja-card'},el('h3',{text:'Cliente '+row.cliente}),el('p',{class:'nota',text:'Número del comercio: '+row.numero+' · Vence '+new Date(row.vence_at).toLocaleTimeString('es-AR')}));
+        if(!row.recibido_at){card.append(el('p',{class:'nota',text:'Esperando el mensaje del teléfono de prueba.'}));return card;}
+        card.append(el('div',{class:'wa-bubble in'},el('small',{text:'Cliente · WhatsApp'}),el('p',{text:row.texto||''})));
+        if(row.respuesta_estado){card.append(el('div',{class:'wa-bubble out'},el('small',{text:labels[row.estado]||labels[row.respuesta_estado]||'Respuesta'}),el('p',{text:row.respuesta||''})));return card;}
+        if(row.estado){card.append(el('div',{class:'wa-bubble out'},el('small',{text:labels[row.estado]||'Respuesta'}),el('p',{text:row.respuesta||''})));return card;}
+        const text=el('textarea',{rows:'3',maxlength:'1000',placeholder:'Escribí tu respuesta…','aria-label':'Respuesta de WhatsApp'});
+        text.value=drafts.get(row.id)||'';text.oninput=()=>drafts.set(row.id,text.value);
+        const button=el('button',{type:'button',class:'boton principal ancho',text:'Enviar por WhatsApp',disabled:!ready||!row.puede_responder||locked.has(row.id)});
+        text.disabled=button.disabled;
+        button.onclick=async()=>{
+          if(sending||!active()||!ready||locked.has(row.id)||!text.value.trim())return;
+          if(!confirm('¿Enviar esta única respuesta al teléfono de prueba por WhatsApp?'))return;
+          sending=true;locked.add(row.id);button.disabled=true;text.disabled=true;status.textContent='Enviando una única respuesta…';
+          try{
+            const {data,error}=await sb.functions.invoke('gestlok-ycloud-inbox',{body:{action:'reply',sucursal:id,id:row.id,text:text.value.trim()}});
+            if(error||!data?.status)throw Error('Resultado sin confirmar.');
+            aviso(labels[data.status]||'Respuesta procesada',data.status!=='aceptada');
+          }catch{aviso('No se pudo confirmar el resultado. No repitas el envío.',true);}
+          finally{sending=false;lastKey='';if(active())void load();}
+        };
+        card.append(text,button);return card;
+      }):[el('p',{class:'nota',text:'No hay pruebas vigentes. La administradora debe autorizar un número comprobado en Habilitación.'})]));
+    }
+    async function load(){
+      if(!active()||busy||sending)return;
+      busy=true;support.load();
+      try{
+        const r=await rpc('panel_whatsapp_bandeja',{p_sucursal:id});
+        if(!active())return;
+        if(!Array.isArray(r?.pilotos))throw Error('No se pudo consultar la bandeja.');
+        const check=await sb.functions.invoke('gestlok-ycloud-inbox',{body:{action:'status',sucursal:id}});
+        if(!active())return;
+        ready=!check.error&&check.data?.ready===true;
+        status.textContent=ready?'Canal de prueba disponible · una única respuesta manual.':'Vinculación oficial o canal de prueba pendiente. No se pueden enviar mensajes todavía.';
+        const key=JSON.stringify([ready,r.pilotos,Array.from(locked)]);
+        if(lastKey!==key){draw(r.pilotos);lastKey=key;}
+      }catch(e){if(active()){ready=false;status.textContent='No se pudo comprobar la conexión y los permisos. Envíos bloqueados.';for(const b of list.querySelectorAll('button,textarea'))b.disabled=true;lastKey='';}}
+      finally{busy=false;if(active()){clearTimeout(S.sondeo);S.sondeo=setTimeout(()=>{if(active()){if(document.hidden){S.sondeo=setTimeout(load,15000);}else void load();}},10000);}}
+    }
+    refresh.onclick=()=>void load();await load();
+  }
+
   async function verPedidos() {
-    const filtros = [['pendiente', 'Por confirmar'], ['confirmado', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
+    const filtros = [['pendiente', 'Por confirmar'], ['confirmado', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']];
     const cabeza = el('div', {class: 'filtros', role: 'toolbar', 'aria-label': 'Filtrar pedidos'}, filtros.map(([v, t]) =>
-      el('button', {type: 'button', class: 'chip', 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
+      el('button', {type: 'button', class: 'chip filtro-estado '+v, 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
     const lista = el('div', {class: 'tarjetas'}, el('p', {class: 'nota', text: 'Cargando pedidos…'}));
-    contenido.replaceChildren(cabeza, lista);
+    contenido.replaceChildren(el('div',{class:'pedidos-titulo'},el('h2',{text:'Pedidos'}),el('p',{class:'nota',text:'Cada tarjeta indica el estado. Los pedidos nuevos requieren la confirmación del gerente.'})), cabeza, lista);
     await cargarPedidos(lista);
   }
   async function cargarPedidos(lista) {
@@ -443,14 +584,17 @@
   // ------------------------------------------------------------------------------------------- carta
   async function verCarta() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando la carta…'}));
+    const sucCarta=S.suc.id;
+    const vigente=()=>S.suc?.id===sucCarta&&S.pestana==='carta';
     let c;
-    try { c = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    try { c = await rpc('panel_catalogo', {p_sucursal: sucCarta}); } catch (e) { if(vigente())contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
+    if(!vigente())return;
     // Carta: dueño, administradora y gerente del local (lo valida la base).
     const config = puede('gestionar');
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
+      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para marcar faltantes, el local puede usar Stock dentro de Pedidos.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)}),
@@ -729,11 +873,14 @@
     ['despedida', 'Despedida', 'Cuando el cliente agradece.'],
   ];
   async function verMensajes() {
+    const sucMensajes=S.suc.id;
+    const vigente=()=>S.suc?.id===sucMensajes&&S.pestana==='mensajes';
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261124carta1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261126comercial1').catch(() => null);
     let a, cat = {categorias: []};
-    try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    try { cat = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch { /* sin categorías: venta sugerida automática */ }
+    try { a = await rpc('panel_config', {p_sucursal: sucMensajes}); } catch (e) { if(vigente())contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
+    try { cat = await rpc('panel_catalogo', {p_sucursal: sucMensajes}); } catch { /* sin categorías: venta sugerida automática */ }
+    if(!vigente())return;
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
     const editable = puede('gestionar');
     const ejemplo = {nombre: 'Ana', codigo: (a.prefijo || 'P') + '-0012', total: '$ 8.400', direccion: 'Av. Mitre 2200', local: a.direccion || ('el local de ' + a.nombre), motivo: 'nos quedamos sin stock'};
@@ -799,10 +946,10 @@
         mensajes.sugerir_categorias = ids.join(',');
       }
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
+        await rpc('panel_config_guardar', {p_sucursal: sucMensajes, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
           bienvenida: bienvenida.value, mensajes}});
-        aviso('Mensajes guardados'); verMensajes();
+        aviso('Mensajes guardados'); if(vigente())verMensajes();
       } catch (err) { aviso(err.message, true); }
     }},
     el('section', {class: 'bloque'}, el('h3', {text: 'Asistente con inteligencia artificial'}),
@@ -909,9 +1056,12 @@
   }
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
+    const sucAjustes=S.suc.id;
     let a;
-    try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    const editable = puede('configurar');
+    try { a = await rpc('panel_config', {p_sucursal: sucAjustes}); } catch (e) { if(S.suc.id===sucAjustes&&S.pestana==='ajustes')contenido.replaceChildren(el('p', {class: 'error', text: e.message})); return; }
+    const editable = a.nivel === 'configurar';
+    const adminNumero = a.administradora_chat === true;
+    if(S.suc.id!==sucAjustes||S.pestana!=='ajustes')return;
     const enlace = 'https://gestlok.com.ar/chat/?s=' + encodeURIComponent(a.slug);
     const final = 'https://chat.gestlok.com.ar/' + a.slug;
     const qr = el('div', {class: 'qr', 'aria-label': 'Código QR del chat'});
@@ -919,11 +1069,44 @@
     const f = {};
     const inp = (k, attrs) => { const i = el(attrs.tag || 'input', {...attrs, tag: undefined, disabled: !editable}); i.value = a[k] ?? ''; f[k] = i; return i; };
     const chk = (k, texto) => { const i = el('input', {type: 'checkbox', checked: !!a[k], disabled: !editable}); f[k] = i; return el('label', {class: 'check'}, i, ' ' + texto); };
-    const medios = Object.entries(PAGOS).map(([v, t]) => { const i = el('input', {type: 'checkbox', value: v, checked: (a.medios_pago || []).includes(v), disabled: !editable}); return el('label', {class: 'check'}, i, ' ' + t); });
+    const diasNombres=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    const dias=diasNombres.map((d,i)=>el('label',{class:'check'},el('input',{type:'checkbox',value:String(i+1),checked:(a.dias_apertura||[1,2,3,4,5,6,7]).includes(i+1),disabled:!editable}),' '+d));
+    const turnos=Array.from({length:3},(_,i)=>{
+      const inicio=el('input',{type:'time',disabled:!editable}),fin=el('input',{type:'time',disabled:!editable});
+      inicio.value=a.turnos_chat?.[i]?.inicio||'';fin.value=a.turnos_chat?.[i]?.fin||'';
+      return {inicio,fin,vista:el('div',{class:'dos'},campo('Turno '+(i+1)+' · Desde',inicio),campo('Hasta',fin))};
+    });
+    const seleccionPagos=(k)=>Object.entries(PAGOS).map(([v,t])=>el('label',{class:'check'},el('input',{type:'checkbox',value:v,checked:(a[k]||a.medios_pago||[]).includes(v),disabled:!editable}),' '+t));
+    const retiro=seleccionPagos('medios_pago_retiro'),envio=seleccionPagos('medios_pago_envio');
+    const seleccion=ls=>ls.map(l=>l.querySelector('input')).filter(i=>i.checked).map(i=>i.value);
+    const foto=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp',disabled:!editable||DEMO});
+    const fotoEstado=el('small',{class:'nota',text:'JPG, PNG o WebP · hasta 2 MB. Solo publicá imágenes de tu carta.'});
+    const subirFoto=el('button',{type:'button',class:'boton',text:'Subir foto de la carta',disabled:!editable||DEMO,onclick:async()=>{
+      if(!editable||DEMO||S.suc.id!==sucAjustes)return;
+      const file=foto.files?.[0],ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file?.type];
+      if(!file||!ext||file.size>2097152)return aviso('Elegí una imagen JPG, PNG o WebP de hasta 2 MB.',true);
+      subirFoto.disabled=true;
+      try{
+        const path=sucAjustes+'/'+crypto.randomUUID()+'.'+ext;
+        const bucket=sb.storage.from('gestlok-chat-cartas');
+        const {error}=await bucket.upload(path,file,{contentType:file.type,upsert:false});
+        if(error)throw error;
+        f.carta_imagen_url.value=bucket.getPublicUrl(path).data.publicUrl;
+        fotoEstado.textContent='Foto cargada. Tocá Guardar ajustes para publicarla en esta carta.';
+      }catch(e){aviso('No pudimos subir la foto. Probá con otra imagen.',true);}
+      finally{subirFoto.disabled=false;}
+    }});
     const form = el('form', {class: 'ajustes', onsubmit: async e => {
       e.preventDefault();
-      const elegidos = medios.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value);
-      if (!elegidos.length) return aviso('Elegí al menos un medio de pago.', true);
+      if(!editable||S.suc.id!==sucAjustes)return;
+      const diasElegidos=seleccion(dias).map(Number),horas=turnos.filter(t=>t.inicio.value||t.fin.value).map(t=>({inicio:t.inicio.value,fin:t.fin.value}));
+      if(!diasElegidos.length)return aviso('Elegí al menos un día de apertura.',true);
+      if(horas.some(t=>!t.inicio||!t.fin||t.inicio>=t.fin))return aviso('Completá cada turno: desde y hasta, dentro del mismo día.',true);
+      horas.sort((a,b)=>a.inicio.localeCompare(b.inicio));
+      if(horas.some((t,i)=>i&&horas[i-1].fin>t.inicio))return aviso('Los turnos se superponen.',true);
+      const pagosRetiro=seleccion(retiro),pagosEnvio=seleccion(envio);
+      const elegidos=[...new Set([...pagosRetiro,...pagosEnvio])];
+      if(!pagosRetiro.length||!pagosEnvio.length||!elegidos.length)return aviso('Seleccioná al menos un medio de pago por modalidad.',true);
       if (!f.acepta_retiro.checked && !f.acepta_envio.checked) return aviso('Elegí retiro, envío o ambos.', true);
       const costoEnvio = Number(f.envio_costo.value || 0);
       const pedidoMinimo = Number(f.pedido_minimo.value || 0);
@@ -935,8 +1118,12 @@
       if (!Number.isFinite(pedidoMinimo) || pedidoMinimo < 0 || pedidoMinimo >= 10000000)
         return aviso('El pedido mínimo debe estar entre $0 y $9.999.999.', true);
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
-          activa: f.activa.checked, horario: f.horario.value, direccion: f.direccion.value,
+        await rpc('panel_config_guardar', {p_sucursal: sucAjustes, p_version: a.version, p_config: {
+          activa: f.activa.checked, horario: horas.length ? (diasElegidos.length===7?'Todos los días':diasElegidos.map(d=>diasNombres[d-1]).join(', '))+' · '+horas.map(t=>t.inicio+' a '+t.fin).join(' y ') : f.horario.value, direccion: f.direccion.value,
+          dias_apertura:diasElegidos, turnos_chat:horas,
+          medios_pago_retiro:pagosRetiro, medios_pago_envio:pagosEnvio,
+          datos_transferencia:f.datos_transferencia.value, carta_texto:f.carta_texto.value,
+          carta_imagen_url:f.carta_imagen_url.value.trim(), ubicacion_url:f.ubicacion_url.value.trim(), reservas_info:f.reservas_info.value,
           acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: costoEnvio,
           envio_zona: f.envio_zona.value, pedido_minimo: pedidoMinimo, medios_pago: elegidos,
           descuento_efectivo_pct: Math.round(pctEfectivo * 100) / 100,
@@ -952,15 +1139,29 @@
       qr, el('p', {class: 'nota', text: 'Cuando esté listo el subdominio, el enlace será ' + final + '.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Estado'}), chk('activa', 'Chat abierto: los clientes pueden escribir y pedir')),
     el('section', {class: 'bloque'}, el('h3', {text: 'Lo que ve el cliente'}),
-      campo('Horario', inp('horario', {type: 'text', maxlength: '300', placeholder: 'Ej.: Todos los días de 11 a 15 y de 19 a 23'})),
-      campo('Dirección del local', inp('direccion', {type: 'text', maxlength: '200'}))),
+      campo('Horario descriptivo (si no usás turnos)', inp('horario', {type: 'text', maxlength: '300', placeholder: 'Ej.: Todos los días de 11 a 15 y de 19 a 23'})),
+      campo('Dirección del local', inp('direccion', {type: 'text', maxlength: '200'})),
+      campo('Ubicación · enlace de Maps',inp('ubicacion_url',{type:'url',maxlength:1500,placeholder:'https://maps.app.goo.gl/…'})),
+      campo('Reservas · instrucciones del local',inp('reservas_info',{tag:'textarea',rows:3,maxlength:500,placeholder:'Si acepta reservas, indicá cómo solicitarlas. No se confirman automáticamente.'}))),
+    el('section',{class:'bloque'},el('h3',{text:'Días y horarios de apertura'}),
+      el('p',{class:'nota',text:'Elegí los días hábiles y hasta tres turnos diarios. Si dejás los turnos vacíos, el estado seguirá siendo manual. Los turnos deben terminar el mismo día.'}),
+      el('div',{class:'medios'},dias),turnos.map(t=>t.vista)),
+    el('section',{class:'bloque'},el('h3',{text:'Carta para clientes'}),
+      el('p',{class:'nota',text:'La carta con precios y productos se edita en Carta. También podés mostrar un texto o una foto propia de esta sucursal.'}),
+      campo('Carta en texto',inp('carta_texto',{tag:'textarea',rows:6,maxlength:6000})),
+      campo('Foto de carta (URL HTTPS)',inp('carta_imagen_url',{type:'url',maxlength:1500,placeholder:'https://…/carta.jpg'})),
+      campo('O subí tu foto',foto),subirFoto,fotoEstado,
+      el('p',{class:'nota',text:'Para importar productos y precios desde una foto, usá Carta → Importar carta. La foto de referencia no cambia los precios del carrito.'})),
+
     el('section', {class: 'bloque'}, el('h3', {text: 'Entrega y pago'}), chk('acepta_retiro', 'Retiro en el local'), chk('acepta_envio', 'Envío a domicilio'),
       el('div', {class: 'dos'}, campo('Costo de envío', inp('envio_costo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'})),
         campo('Pedido mínimo', inp('pedido_minimo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'}))),
       campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: barrios o localidades a los que llegás'})),
-      el('p', {class: 'etiqueta', text: 'Medios de pago'}),
-      el('p', {class: 'nota', text: 'Si quitás un medio, también se quitará de las opciones de retiro y delivery de esta sucursal.'}),
-      el('div', {class: 'medios'}, medios)),
+      el('p', {class:'nota',text:'Configurá los medios de pago independientemente para retiro y delivery.'}),
+      el('p',{class:'etiqueta',text:'Medios de pago · retiro'}),el('div',{class:'medios'},retiro),
+      el('p',{class:'etiqueta',text:'Medios de pago · delivery'}),el('div',{class:'medios'},envio),
+      campo('Alias / datos de transferencia',inp('datos_transferencia',{tag:'textarea',rows:3,maxlength:700,placeholder:'Alias, titular, CBU/CVU. Los datos se comparten cuando el gerente lo autoriza.'})),
+      el('p',{class:'nota',text:'Los datos bancarios no se publican ni se confirman pagos automáticamente.'})),
     // Descuento por pagar en efectivo: lo define cada local (0 = sin descuento). No es una regla de la app.
     el('section', {class: 'bloque'}, el('h3', {text: 'Descuento por pago en efectivo'}),
       el('div', {class: 'dos'}, campo('Descuento (%)', inp('descuento_efectivo_pct', {type: 'number', min: '0', max: '50', step: '0.5', inputmode: 'decimal'})),
@@ -971,7 +1172,7 @@
       chk('precio_efectivo_en_carta', 'Mostrar en la carta el precio de las promos pagando en efectivo'),
       el('p', {class: 'nota', text: 'Con 0 % no se aplica ningún descuento. Las promos marcadas «sin descuento» nunca lo llevan.'})),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
-      : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
+      : el('p', {class: 'nota', text: 'Los ajustes del local los cambia el dueño, gerente autorizado o la administradora.'}));
     // Link de reseñas de Google: lo cambian el dueño, el gerente del local y la administradora (por ejemplo, si el
     // local se muda). Es el mismo dato de Mensajes → «Al terminar el pedido»; se manda la configuración de mensajes
     // completa para no borrar las otras plantillas.
@@ -986,7 +1187,7 @@
       for (const [k, v] of Object.entries(a.mensajes || {})) if (typeof v === 'string' && v.trim()) mensajes[k] = v;
       mensajes.resena_url = url;
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {mensajes}});
+        await rpc('panel_config_guardar', {p_sucursal: sucAjustes, p_version: a.version, p_config: {mensajes}});
         aviso(url ? 'Link de reseñas guardado' : 'Link de reseñas quitado'); verAjustes();
       } catch (err) { aviso(err.message, true); }
     }},
@@ -1030,15 +1231,16 @@
       el('p', {class: 'nota', text: 'El cartel sirve para el mostrador, la vidriera, las bolsas y los volantes. Imprimilo en A4 o guardalo como PDF.'}));
     // Contacto externo por sucursal. No sincroniza pedidos ni mensajes con WhatsApp.
     const numeroWhatsApp = el('input', {type:'tel', inputmode:'tel', maxlength:'24',
-      placeholder:'Ej.: 5491171446654', disabled:!editable});
+      placeholder:'Ej.: 5491100000000', disabled:!adminNumero});
     numeroWhatsApp.value = a.whatsapp_local || '';
     const contactoWhatsApp = el('form', {class:'ajustes', onsubmit:async e=>{
       e.preventDefault();
+      if(!adminNumero)return;
       const telefono = numeroWhatsApp.value.replace(/\D/g,'');
       if (telefono && !/^[1-9][0-9]{7,14}$/.test(telefono))
         return aviso('Ingresá un número internacional válido, por ejemplo 5491171446654.',true);
       try {
-        await rpc('panel_whatsapp_guardar', {p_sucursal:S.suc.id,p_whatsapp:telefono,p_version:a.version});
+        await rpc('panel_whatsapp_guardar', {p_sucursal:sucAjustes,p_whatsapp:telefono,p_version:a.version});
         aviso('WhatsApp del local guardado');verAjustes();
       } catch(err) {aviso(err.message,true);}
     }},
@@ -1046,54 +1248,41 @@
       el('h3', {text:'WhatsApp del local'}),
       el('p', {class:'nota',text:'Solo aparece el ícono en el chat público. Abre el WhatsApp de esta sucursal, sin enviar pedidos ni conectar mensajes externos.'}),
       campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
-      editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
-        : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
+      adminNumero ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
+        : el('p',{class:'nota',text:'Solo la administradora de GESTLOK puede cargar o cambiar este número. Pedile la habilitación.'})));
     // Canal de atención opcional por sucursal. Solicitud != conexión.
     const canalId=S.suc.id;
-    const canalVigente=()=>S.suc?.id===canalId&&S.pestana==='ajustes';
+    const canalEstado=el('p',{class:'nota',role:'status','aria-live':'polite',text:'Consultando estado de vinculación…'});
+    const canalPedir=el('button',{type:'button',class:'boton principal ancho',text:'Solicitar vinculación de WhatsApp',disabled:true});
+    const canalCancelar=el('button',{type:'button',class:'boton ancho',text:'Cancelar solicitud',disabled:true,hidden:true});
     const canalWhatsApp=el('section',{class:'bloque'},
-      el('h3',{text:'WhatsApp · seguridad de la prueba'}),
-      el('p',{text:'WhatsApp real: no vinculado. Respuestas automáticas: desactivadas.'}),
-      el('p',{class:'nota',text:'No uses el WhatsApp comercial para experimentar. La prueba de vinculación, respuestas, exclusión de contactos y cupo utiliza solo datos ficticios y no puede enviar mensajes.'}),
-      CFG.entorno==='prueba'&&editable?el('a',{class:'boton principal',href:'/chat/prueba-whatsapp/',text:'Abrir laboratorio seguro de WhatsApp'}):null,
-      CFG.entorno==='prueba'&&editable&&!DEMO?el('a',{class:'boton',href:'/chat/prueba-whatsapp/conector.html',text:'Conector de ensayo en vivo · solo administradora'}):null);
-    // Cupo de servicio: no confundir estimación de prueba con consumo real.
-    const cupoEstado=el('p',{role:'status','aria-live':'polite',class:'nota',text:'Consultando cupo…'});
-    const cupoDetalle=el('p',{class:'nota',text:'El asistente debe detenerse antes de generar cargos. El límite de seguridad del ensayo es de 900 sobre 1.000 mensajes mensuales por número.'});
-    const cupoContinuar=el('button',{type:'button',class:'boton principal',text:'Solicitar continuar',hidden:true});
-    const cupoPausa=el('button',{type:'button',class:'boton',text:'Mantener pausado',hidden:true});
-    let cupoId=null, cupoOcupado=false;
-    const cupoPanel=el('section',{class:'bloque'},el('h3',{text:'Cupo de WhatsApp y autorización'}),
-      cupoEstado,cupoDetalle,el('div',{class:'fila-botones'},cupoContinuar,cupoPausa),
-      el('p',{class:'nota',text:'Solo la dueña o administradora puede decidir. Solicitar continuar no activa envíos ni autoriza gasto; se deberá confirmar el presupuesto máximo antes.'}));
-    function cupoMostrar(r){
+      el('h3',{text:'Canales de atención'}),
+      el('p',{text:'GESTLOK Chat Web · '+(a.activa?'Activo':'Pausado')}),
+      el('h4',{text:'GESTLOK WAI · conexión oficial con WhatsApp Business'}),
+      el('p',{text:a.whatsapp_local?'Número de contacto: +'+a.whatsapp_local:'Guardá primero el número del local.'}),
+      canalEstado,el('p',{class:'nota',text:'Las solicitudes no conectan el número. La persona titular debe autorizar la vinculación oficial de Meta. Hasta verificarla, no se leen ni envían mensajes.'}),
+      el('p',{class:'nota',text:'Respuestas automáticas: desactivadas. Confirmación de pedidos: manual. Sin envíos de pago autorizados.'}),
+      editable&&!DEMO?el('div',{class:'fila-botones'},canalPedir,canalCancelar):el('p',{class:'nota',text:DEMO?'Demostración: no se solicitan conexiones reales.':'Solo el dueño o la administradora gestionan la solicitud.'}));
+    const canalVigente=()=>S.suc?.id===canalId&&S.pestana==='ajustes';
+    const canalMostrar=r=>{
       if(!canalVigente())return;
-      cupoId=r?.consulta_id||null;
-      const estados={sin_datos:'Sin medición verificada. No habilita respuestas.',normal:'Cupo dentro del límite.',
-        cerca_del_limite:'Aviso: te estás acercando al límite gratuito.',
-        consulta:'Respuestas pausadas: ¿querés solicitar continuar o mantener la pausa?',
-        continuacion_solicitada:'Continuación solicitada. Sigue pausado hasta confirmar un presupuesto.',
-        pausa_confirmada:'Pausa confirmada. Seguís atendiendo manualmente desde WhatsApp.'};
-      cupoEstado.textContent=(r?.simulado===true?'Ensayo · ':'')+(estados[r?.estado]||'Sin medición verificada.');
-      if(r?.simulado===true&&Number.isInteger(r.restantes_preventivos))
-        cupoDetalle.textContent='SIMULACIÓN: '+(900-r.restantes_preventivos)+' de 900 unidades preventivas utilizadas. No es el saldo real del proveedor.';
-      cupoContinuar.hidden=!(r?.puede_decidir&&cupoId);
-      cupoPausa.hidden=cupoContinuar.hidden;
-      cupoContinuar.disabled=cupoOcupado||r?.estado==='continuacion_solicitada';
-      cupoPausa.disabled=cupoOcupado||r?.estado==='pausa_confirmada';
-    }
-    async function cupoDecidir(accion){
-      if(!canalVigente()||!cupoId||cupoOcupado||DEMO)return;
-      if(accion==='continuar'&&!confirm('¿Solicitar continuar? Esto NO autoriza gastos ni activa respuestas. Se confirmará un presupuesto máximo por separado.'))return;
-      cupoOcupado=true;cupoContinuar.disabled=true;cupoPausa.disabled=true;
-      try{const r=await rpc('panel_whatsapp_cupo',{p_sucursal:canalId,p_accion:accion,p_consulta:cupoId});cupoOcupado=false;cupoMostrar(r);}
-      catch(e){cupoOcupado=false;if(canalVigente()){cupoEstado.textContent='No se confirmó la decisión. Volvé a abrir Ajustes.';aviso(e.message,true);}}
-    }
-    cupoContinuar.addEventListener('click',()=>cupoDecidir('continuar'));
-    cupoPausa.addEventListener('click',()=>cupoDecidir('mantener_pausa'));
-    if(DEMO)cupoEstado.textContent='Demostración · no se contabilizan mensajes reales.';
-    else if(puede('configurar'))void rpc('panel_whatsapp_cupo',{p_sucursal:canalId}).then(cupoMostrar)
-      .catch(()=>{if(canalVigente())cupoEstado.textContent='Sin datos de consumo verificados. Las respuestas no se habilitan con este panel.';});
+      const pendiente=r?.estado==='pendiente';
+      canalEstado.textContent=pendiente?(r.numero_actual===false?'Número modificado · cancelá la solicitud anterior y creá otra.':'Solicitud registrada · falta autorización de Meta.'):
+        'No vinculado · sin acceso a los mensajes de WhatsApp.';
+      canalPedir.hidden=!r?.puede_solicitar;
+      canalPedir.disabled=!r?.puede_solicitar||!editable||DEMO||pendiente||!a.whatsapp_local;
+      canalCancelar.hidden=!pendiente||!r?.puede_solicitar;canalCancelar.disabled=!r?.puede_solicitar||!editable||DEMO||!pendiente;
+    };
+    const canalAccion=async accion=>{
+      if(!editable||DEMO||!canalVigente())return;
+      canalPedir.disabled=true;canalCancelar.disabled=true;
+      try{const r=await rpc('panel_whatsapp_solicitud',{p_sucursal:canalId,p_accion:accion});canalMostrar(r);}
+      catch(e){if(canalVigente()){canalEstado.textContent='No se confirmó el cambio. Volvé a abrir Ajustes.';aviso(e.message,true);}}
+    };
+    canalPedir.addEventListener('click',()=>canalAccion('solicitar'));
+    canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
+    if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
+    else if(!ADMIN_CONFIG&&!WAI_SLUG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1126,9 +1315,10 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    const suscripcion = editable ? bloqueSuscripcion() : null;
-    const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, editable?cupoPanel:null, pushCampanas].filter(Boolean));
+    const suscripcion = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueSuscripcion() : null;
+    const gerentes = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueGerentes() : null;
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, WAI_SLUG?null:llevar, WAI_SLUG?null:contactoWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:canalWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:pushCampanas].filter(Boolean));
+    if(ADMIN_CONFIG||WAI_SLUG)return;
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
@@ -1145,19 +1335,19 @@
   const numeroInternacional = v => String(v || '').trim().replace(/[\s()-]/g,'');
   const claveExclusion = v => numeroInternacional(v).replace(/^\+54(?:9)?([0-9]{10})$/,'AR:$1');
   async function verExcluidos() {
-    if (!puede('configurar') || SHOWROOM) return;
+    if (!puede('configurar')) return;
     const id = S.suc.id;
-    const numero = el('input',{id:'excluidos-numero',type:'tel',inputmode:'tel',autocomplete:'off',maxlength:40,required:true,placeholder:'+54 9 11 0000 0000'});
+    const numero = el('input',{id:'excluidos-numero',type:'tel',inputmode:'tel',autocomplete:'off',maxlength:40,required:true,placeholder:'+5491100000000'});
     const nombre = el('input',{id:'excluidos-nombre',type:'text',autocomplete:'off',maxlength:60,placeholder:'Dueña, gerente, proveedor…'});
-    const agregar = el('button',{class:'boton principal',type:'submit',text:'Agregar número',disabled:true});
+    const agregar = el('button',{class:'boton principal',type:'submit',text:'Agregar a exclusiones',disabled:true});
     const estado = el('p',{role:'status','aria-live':'polite',class:'nota',text:'Cargando números…'});
     const lista = el('div',{id:'excluidos-lista',class:'excluidos-lista'});
     const form = el('form',{class:'excluidos-form',onsubmit:e=>{
       e.preventDefault();
       const n=numeroInternacional(numero.value);
-      if(!/^\+[1-9]\d{7,14}$/.test(n)){estado.textContent='Ingresá el número completo con código de país (+54 9 para celulares argentinos).';return;}
+      if(!/^\+[1-9]\d{7,14}$/.test(n)||(n.startsWith('+54')&&!/^\+54(9)?\d{10}$/.test(n))){estado.textContent='Ingresá el número internacional completo. Argentina: +549 y 10 dígitos para celulares, o +54 y 10 dígitos para líneas fijas.';return;}
       void trabajar('agregar',n,nombre.value.trim());
-    }},campo('Número de WhatsApp (con código de país)',numero),campo('Referencia (opcional)',nombre),agregar);
+    }},campo('Número de WhatsApp (con código de país)',numero),el('p',{class:'nota',text:'Ejemplo: +5491100000000. No uses 0 ni 15 de la marcación local.'}),campo('Referencia (opcional)',nombre),agregar);
     const caja = el('section',{class:'bloque excluidos-panel'},el('h2',{text:'Números excluidos · '+S.suc.nombre}),
       el('p',{class:'nota',text:'El asistente no procesa ni responde mensajes de estos números por WhatsApp. Podés conversar normalmente desde WhatsApp: no se bloquea el contacto. La lista es privada de esta sucursal y no activa el canal.'}),
       DEMO?el('p',{class:'nota',text:'Demostración: usá números ficticios. Los cambios no se guardan en el servidor.'}):null,
@@ -1557,21 +1747,6 @@
         return {ok:true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
-      case 'panel_whatsapp_excluidos': {
-        const suc=D.suc.find(s=>s.id===a.p_sucursal);
-        if(!suc||suc.nivel!=='configurar'||SHOWROOM)throw Error('No tenés permiso para esta acción.');
-        D.excluidos ||= {};
-        const lista=D.excluidos[a.p_sucursal] ||= [];
-        let cambio=false;
-        if(a.p_accion!=='ver'){
-          const n=numeroInternacional(a.p_numero);
-          if(!/^\+[1-9]\d{7,14}$/.test(n))throw Error('Ingresá un número internacional válido.');
-          const i=lista.findIndex(x=>claveExclusion(x.numero)===claveExclusion(n));
-          if(a.p_accion==='agregar'&&i<0){lista.push({numero:n,nombre:String(a.p_nombre||'').trim().slice(0,60)});cambio=true;}
-          if(a.p_accion==='quitar'&&i>=0){lista.splice(i,1);cambio=true;}
-        }
-        return {cambio,numeros:structuredClone(lista)};
-      }
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_push_promociones': {

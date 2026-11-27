@@ -37,7 +37,7 @@ create or replace function public.gestlok_chat_panel_whatsapp_excluidos(
 declare v_t uuid; k text; n text; etiqueta text; v_id uuid; cambio boolean:=false;
 begin
  if auth.uid() is null then raise exception 'Ingresá a GESTLOK' using errcode='42501'; end if;
- perform gestlok_chat_private.exigir(p_sucursal,'configurar');
+ perform gestlok_chat_private.exigir(p_sucursal,'gestionar');
  if coalesce(public.mi_rol(),'') not in ('gerente','dueno','creadora') then
   raise exception 'No tenés permiso para administrar números excluidos' using errcode='42501';
  end if;
