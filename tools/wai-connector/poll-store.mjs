@@ -29,11 +29,11 @@ export function createPollStore(dir,{now=Date.now}={}){
   await writeFile(path(id),JSON.stringify(record),{flag:'wx',mode:0o600});
   return {poll:{name:spec.pregunta,values:spec.opciones.map(o=>o.label),selectableCount:1,messageSecret:Buffer.from(record.secret,'base64')}};
  }
- async function get(id,grant,route,canonical,currentTime=now()){
+ async function get(id,grant,route,canonical,currentTime=now(),verifiedRoute=false){
   if(!idOk(id)||!grant?.id||phone(canonical)!==phoneKey(grant.tester))return null;
   try{
    const record=JSON.parse(await readFile(path(id),'utf8'));
-   if(record.id!==id||record.pilot!==grant.id||record.expires<=currentTime||Date.parse(grant.vence_at)<=currentTime||phone(record.canonical)!==phone(canonical)||!normalizePoll(record)||!(route===record.route||phone(route)===phone(canonical)||route===canonical)||Buffer.from(record.secret,'base64').length!==32)return null;
+   if(record.id!==id||record.pilot!==grant.id||record.expires<=currentTime||Date.parse(grant.vence_at)<=currentTime||phone(record.canonical)!==phone(canonical)||!normalizePoll(record)||!(route===record.route||phone(route)===phone(canonical)||route===canonical||verifiedRoute&&/^\d{1,20}@lid$/.test(route))||Buffer.from(record.secret,'base64').length!==32)return null;
    return record;
   }catch{return null;}
  }

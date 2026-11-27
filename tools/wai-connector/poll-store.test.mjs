@@ -17,7 +17,7 @@ test('el almacén de opciones conserva solamente encuestas propias y autorizadas
   const fresh=createPollStore(dir,{now:()=>t}),r=await fresh.get('POLL',grant,jid,jid,t);assert.equal(r.opciones.length,2);
   assert.equal(selectionFromVote(r.opciones,{selectedOptions:[digest('Hablar con una persona')]}),'op2');
   assert.equal(selectionFromVote(r.opciones,{selectedOptions:[]}),null);assert.equal(selectionFromVote(r.opciones,{selectedOptions:[digest('No existe')]}),null);
-  assert.equal(await fresh.get('POLL',{...grant,id:'different'},jid,jid,t),null);assert.equal(await fresh.get('POLL',grant,'5491100009999@s.whatsapp.net',jid,t),null);assert.equal(await fresh.get('POLL',grant,jid,jid,t+61000),null);
+  assert.equal(await fresh.get('POLL',{...grant,id:'different'},jid,jid,t),null);assert.equal(await fresh.get('POLL',grant,'5491100009999@s.whatsapp.net',jid,t),null);assert.equal(await fresh.get('POLL',grant,jid,jid,t+61000),null);assert.equal(await fresh.get('POLL',grant,'12345@lid',jid,t),null);assert.ok(await fresh.get('POLL',grant,'12345@lid',jid,t,true));assert.equal(await fresh.get('POLL',grant,'5491100009999@s.whatsapp.net',jid,t,true),null);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 let lib=null;try{lib=await import('@whiskeysockets/baileys');}catch{}
@@ -44,6 +44,6 @@ test('Baileys rc14: selección en encuesta nativa usa el voto cifrado real, incl
   await second.receive(event(jid,'tampered',false,true));
   await second.receive(event(jid,'real'));
   await second.tick('revision');
-  const votes=calls.filter(a=>a.p_accion==='voto');assert.equal(votes.length,1);assert.equal(votes[0].p_evento,'POLL1');assert.equal(votes[0].p_texto,'op2');assert.equal(votes[0].p_jid,jid);
+  const votes=calls.filter(a=>a.p_accion==='voto');assert.equal(votes.length,1);assert.equal(votes[0].p_evento,'POLL1');assert.equal(votes[0].p_texto,'op2');assert.equal(votes[0].p_jid,jid);assert.ok(calls.some(a=>a.p_accion==='alerta'&&a.p_estado==='voto_no_descifrado'));
  }finally{await rm(dir,{recursive:true,force:true});}
 });
