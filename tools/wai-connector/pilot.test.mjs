@@ -59,3 +59,18 @@ test('un LID sin PN solo se acepta si el proveedor confirma el LID del número a
  await engine.receive({type:'notify',messages:[m('333333333333@lid'),m(lid)]});await engine.tick('rev');
  assert.deepEqual(received,[jid]);
 });
+
+test('recibe append reciente solo dentro del consentimiento y compara con la hora del servidor, incluso con reloj local atrasado',async()=>{
+ const t=Date.now(),accepted=[],logs=[];
+ const engine=pilotTransport({now:()=>t-1000000,active:()=>true,logger:m=>logs.push(m),socket:{signalRepository:{lidMapping:{getLIDForPN:async n=>n==='541100000003@s.whatsapp.net'?'123456@lid':null,getPNForLID:async()=>null}}},rpc:async(_name,a)=>{
+   if(a.p_accion==='control')return {id:'p4',tester:'+5491100000003',creado_at:new Date(t-30000).toISOString(),vence_at:new Date(t+900000).toISOString(),hora_servidor:new Date(t).toISOString()};
+   if(a.p_accion==='recibir'){accepted.push(a.p_evento);return {ok:true};}
+   return null;
+ }});
+ const m=(remoteJid,id,stamp,message={conversation:'Hola'})=>({key:{remoteJid,id,fromMe:false},message,messageTimestamp:Math.floor(stamp/1000)});
+ await engine.tick('rev');
+ await engine.receive({type:'append',messages:[m(jid,'history',t-60000),m('123456@lid','queued',t-10000),m(other,'unauthorized',t-10000),m(jid,'ephemeral',t-10000,{ephemeralMessage:{message:{extendedTextMessage:{text:'Hola'}}}})]});
+ await engine.tick('rev');
+ assert.deepEqual(accepted,['queued','ephemeral']);
+ assert.ok(logs.some(x=>x.includes('antigüedad')));
+});

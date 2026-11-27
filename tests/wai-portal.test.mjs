@@ -66,6 +66,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await anon();await signal('wai_senal_v2',H,keyA,rev,'conectado','+5491100000001');
  await role('creadora');assert.equal((await connections(S))[0].estado,'conectado');
  const p2=await authorize(S,H,contact);assert.ok(p2);
+ await db.exec('reset role;'+read('entornos/sql/wai-piloto-entrega-pendiente.sql'));await anon();const grant=await motor();assert.equal(grant.id,p2);assert.ok(Date.parse(grant.creado_at)<Date.parse(grant.vence_at));assert.ok(Date.parse(grant.hora_servidor));
  await role('gerente',T);await assert.rejects(connections(T,'revalidar',H),/Número no habilitado/);
  await role('gerente');assert.equal((await connections(S,'revalidar',H))[0].estado,'reconectando');
  await anon();const cmd=await signal('wai_senal',H,keyA,rev,'conectado','+5491100000001');assert.equal(cmd.orden,'qr_forzado');

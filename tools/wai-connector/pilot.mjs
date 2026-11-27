@@ -2,18 +2,20 @@
 // no history, no bulk messages. A reserved reply is never retried after ambiguity.
 import {phoneKey} from './session.mjs';
 const pnJid=jid=>{
- const m=/^([1-9]\d{7,14})(?::\d+)?@s\.whatsapp\.net$/.exec(jid||'');
+ const m=/^([1-9]\d{7,14})(?::\d+)?@(?:s\.whatsapp\.net|hosted)$/.exec(jid||'');
  return m?m[1]+'@s.whatsapp.net':null;
 };
 const lidJid=jid=>{
- const m=/^(\d{1,20})(?::\d+)?@lid$/.exec(jid||'');
+ const m=/^(\d{1,20})(?::\d+)?@(?:lid|hosted\.lid)$/.exec(jid||'');
  return m?m[1]+'@lid':null;
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
 export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
- let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0;
- function valid(){return !!pilot&&Date.parse(pilot.vence_at)>now();}
+ let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map();
+ const serverNow=()=>now()+serverOffset;
+ function valid(){return !!pilot&&Date.parse(pilot.vence_at)>serverNow();}
+ function note(code,message){const t=now();if(!lastLog.has(code)||t-lastLog.get(code)>=15000){lastLog.set(code,t);logger(message);}}
  function matches(jid){return valid()&&phone(jid)!==null&&phone(jid)===phoneKey(pilot.tester);}
  function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;epoch++;}
  async function expectedLid(tester){
@@ -21,7 +23,8 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
   if(typeof mapping?.getLIDForPN!=='function')return null;
   if(!lookup||now()-lookupAt>=30000){
    // Resolve only the explicitly authorized phone number, never search arbitrary contacts.
-   lookupAt=now();lookup=Promise.resolve().then(()=>mapping.getLIDForPN(tester.slice(1)+'@s.whatsapp.net')).then(lidJid).catch(()=>null);
+   lookupAt=now();const canonical=phoneKey(tester);const variants=[tester,canonical];if(/^\+54\d{10}$/.test(canonical||''))variants.push('+549'+canonical.slice(3));
+   lookup=Promise.all([...new Set(variants)].map(n=>Promise.resolve().then(()=>mapping.getLIDForPN(n.slice(1)+'@s.whatsapp.net')).then(lidJid).catch(()=>null))).then(results=>{const unique=[...new Set(results.filter(Boolean))];return unique.length===1?unique[0]:null;});
   }
   return lookup;
  }
@@ -43,23 +46,30 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
   return null;
  }
  async function receive(event){
-  if(!active()||event?.type!=='notify'||!valid())return;
+  if(!active()||!['notify','append'].includes(event?.type))return;
+  if(!valid()){note('inactive','WhatsApp recibió un evento antes de que el ensayo esté autorizado; reenviá el mensaje cuando indique listo.');return;}
   const mine=epoch,p=pilot;
   for(const m of event.messages||[]){
    if(!active()||mine!==epoch||!valid())return;
    if(m.key?.fromMe||m.broadcast||typeof m.key?.id!=='string'||m.key.id.length<1||m.key.id.length>200)continue;
    const timestamp=Number(m.messageTimestamp)*1000;
-   if(!Number.isFinite(timestamp)||timestamp<now()-60000||timestamp>now()+10000)continue;
+   const startedAt=Date.parse(p.creado_at);
+   // An append can be a genuine offline-delivered new message. Never import
+   // messages sent before consent, and never accept append without a server start.
+   if(!Number.isFinite(timestamp)||timestamp>serverNow()+10000||timestamp<serverNow()-(Number.isFinite(startedAt)?120000:60000)||
+     (Number.isFinite(startedAt)?timestamp<Math.ceil(startedAt/1000)*1000:event.type==='append')){note('time','Evento descartado por antigüedad o fuera del período autorizado.');continue;}
    const sender=await resolveSender(m.key,p.tester).catch(()=>null);
    if(!active()||mine!==epoch||pilot?.id!==p.id||!valid())return;
-   if(!sender||!matches(sender.pn))continue;
-   const text=m.message?.conversation??m.message?.extendedTextMessage?.text;
-   if(typeof text!=='string'||!text.trim()||text.length>1000)continue;
+   if(!sender||!matches(sender.pn)){note('identity','Evento omitido: WhatsApp no confirmó que sea del contacto de ensayo.');continue;}
+   const content=m.message?.ephemeralMessage?.message??m.message;
+   const text=content?.conversation??content?.extendedTextMessage?.text;
+   if(typeof text!=='string'||!text.trim()||text.length>1000){note('text','Evento del contacto autorizado sin texto simple (puede estar pendiente de descifrado).');continue;}
    if(inbox.length<20){
     // The server validates the canonical phone number again. Keep the verified LID
     // only in this transport's RAM to send replies to the same WhatsApp chat.
     inbox.push({p_piloto:p.id,p_jid:sender.pn,p_evento:m.key.id,p_texto:text});
     replyRoute={phone:phone(sender.pn),jid:sender.route};
+    note('queue','Mensaje del contacto autorizado recibido; enviándolo a GESTLOK WAI.');
    }
   }
  }
@@ -70,14 +80,15 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
    const call=(action,args={})=>rpc('gestlok_chat_wai_piloto_motor',{p_revision:revision,p_accion:action,...args});
    const next=await call('control');
    if(!active())return;
-   if(!next||!phoneKey(next.tester)||Date.parse(next.vence_at)<=now()){if(pilot)logger('Ensayo finalizado.');reset();return;}
+   const remoteTime=Date.parse(next?.hora_servidor);if(Number.isFinite(remoteTime))serverOffset=remoteTime-now();
+   if(!next||!phoneKey(next.tester)||Date.parse(next.vence_at)<=serverNow()){if(pilot)logger('Ensayo finalizado.');reset();return;}
    if(pilot?.id!==next.id){reset();logger('Ensayo autorizado. Listo para recibir mensajes del contacto.');}
    pilot=next;
    while(inbox.length&&active()){
     const item=inbox.shift();
     if(item.p_piloto===pilot.id&&matches(item.p_jid)){
      const result=await call('recibir',item);
-     if(result?.ok)logger('Mensaje de ensayo recibido por GESTLOK WAI.');
+     if(result?.ok)logger('Mensaje de ensayo recibido por GESTLOK WAI.');else note('server','El servidor no admitió este mensaje de ensayo.');
     }
    }
    if(!active())return;
@@ -89,7 +100,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
    try{const result=await socket.sendMessage(target,{text:job.texto});if(result?.key?.id)state='aceptado';}catch{/* no retry */}
    await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state});
    logger(state==='aceptado'?'Respuesta entregada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
-  }catch{reset();}finally{working=false;}
+  }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;}
  }
  return {receive,tick,reset};
 }
