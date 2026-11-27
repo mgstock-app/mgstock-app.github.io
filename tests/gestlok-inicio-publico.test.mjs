@@ -45,10 +45,22 @@ test("Emma responde los temas principales y deriva lo demás a Contacto", { skip
   assert.match(responderEmma("¿Y las reseñas?").texto, /Google/);
   assert.match(responderEmma("¿Cómo me registro?").texto, /Registrarme/);
   const precio = responderEmma("CUANTO SALE?");
-  assert.match(precio.texto, /\$ 70\.000 por mes por local, con soporte incluido/);
+  assert.match(precio.texto, /\$ 70\.000 por mes para el primer local, con soporte incluido/);
   assert.match(precio.texto, /15% de descuento: \$ 59\.500/);
   assert.match(precio.texto, /\$ 50\.000, opcional/);
+  assert.match(precio.texto, /Premium cuesta \$ 150\.000 por mes/);
+  assert.match(precio.texto, /Local adicional \(opcional\): \$ 50\.000 por mes por cada local adicional/);
   assert.equal(precio.registrarme, true);
+  const premium = responderEmma("¿Cuánto cuesta Premium?");
+  assert.match(premium.texto, /\$ 150\.000 por mes/);
+  assert.match(premium.texto, /previa habilitación y verificación/);
+  assert.equal(premium.contacto, true);
+  assert.notEqual(premium.registrarme, true);
+  for (const q of ["¿Cuánto cuesta otro local?", "¿Y una sucursal adicional?", "Tengo dos locales, ¿puedo agregar más locales?"]) {
+    const extra = responderEmma(q);
+    assert.match(extra.texto, /\$ 50\.000 por mes por cada local adicional/, q);
+    assert.equal(extra.contacto, true, q);
+  }
   assert.match(responderEmma("¿tienen alguna promo?").texto, /primer mes/);
   assert.match(responderEmma("¿me dan un QR?").texto, /QR/);
   assert.doesNotMatch(responderEmma("¿me dan un QR?").texto, /Estamos preparando/);
@@ -124,3 +136,4 @@ test("el panel de la creadora tiene la bandeja de mensajes de la web", () => {
   assert.match(mod, /mailto:/);
   assert.match(read("components/stock-runtime.tsx"), /gestlok-contacto-web\.js/);
 });
+

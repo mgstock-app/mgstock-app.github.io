@@ -827,7 +827,7 @@
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
       '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
-      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p></div></header>'+crearEmpresaForm()+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p><p><b>Tarifas mensuales (ARS):</b> GESTLOK Chat (web) $ 70.000 · GESTLOK Chat Premium $ 150.000 · Local adicional (opcional) $ 50.000 por local. Importes informativos; no modifican los cobros automáticamente.</p></div></header>'+crearEmpresaForm()+
       (localPlansError?'<p role="alert">'+esc(localPlansError)+' <button type="button" class="btn" data-ch-local-plans-refresh>Reintentar</button></p>':'')+
       (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
         (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
