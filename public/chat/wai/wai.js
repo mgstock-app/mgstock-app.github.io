@@ -126,7 +126,7 @@ function renderList(){
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
  list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)||Number(!!b.atencion_pendiente)-Number(!!a.atencion_pendiente)).map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':c.atencion_pendiente?' needs-human':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):c.atencion_pendiente?node('span',{class:'human-label'},'Solicita atención humana'):null,c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':c.atencion_pendiente?' needs-human':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):c.atencion_pendiente?node('span',{class:'human-label'},'Solicita atención humana'):null,c.cerrado_at?node('span',{class:'history-label'},'Finalizado · historial guardado'):c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
@@ -168,6 +168,7 @@ function messageTime(t){
 }
 function historyLabel(c){
  if(c.archivado)return 'Historial guardado · ensayo finalizado. Autorizá nuevamente el contacto para responder.';
+ if(c.cerrado_at)return 'Conversación finalizada · el próximo mensaje abrirá una atención nueva. Historial conservado.';
  if(c.conexion_activa===false)return 'Historial guardado · WhatsApp sin conexión verificada. Podés leer los mensajes.';
  return '';
 }
@@ -258,7 +259,7 @@ async function showOrderPhoto(c,o){
 async function attentionAction(c,a){
  if(orderBusy||selected!==c.id||!sessionLocal)return;
  const me=generation,chat=c.id;orderBusy=true;orderSignature='';renderOrder(c);
- try{const ok=await rpc('wai_atencion_accion',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:a,p_evento:crypto.randomUUID()});if(ok!==true)throw Error('No se confirmó la solicitud.');if(me===generation){if(selected===chat)orderMessage(a==='enviar'?'Opciones en cola para WhatsApp.':a==='manual'?'Atención manual. Respuestas del menú pausadas.':a==='asistido'?'Atención asistida reactivada.':'Solicitud atendida.');await refresh();}}
+ try{const ok=await rpc('wai_atencion_accion',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:a,p_evento:crypto.randomUUID()});if(ok!==true)throw Error('No se confirmó la solicitud.');if(me===generation){if(selected===chat)orderMessage(a==='finalizar'?'Conversación finalizada. Historial conservado.':a==='enviar'?'Opciones en cola para WhatsApp.':a==='manual'?'Atención manual. Respuestas del menú pausadas.':a==='asistido'?'Atención asistida reactivada.':'Solicitud atendida.');await refresh();}}
  catch(e){if(me===generation&&selected===chat)orderMessage(e.message);}
  finally{if(me===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
 }
@@ -266,22 +267,25 @@ function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
  const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.atencion_manual,c.atencion_pendiente,c.pedidos_habilitados]);
+ const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.atencion_manual,c.atencion_pendiente,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at]);
  if(sig===orderSignature)return;orderSignature=sig;
- const disabled=orderBusy||!ready;
+ const disabled=orderBusy||!ready||!!c.cerrado_at;
  const transfer=button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Envía los datos de Ajustes al contacto':'Cargá los datos en Ajustes del local'});
  const actions=node('div',{class:'order-actions'},transfer);
  const attention=node('div',{class:'order-actions'},
   button('Enviar opciones',()=>void attentionAction(c,'enviar'),'btn order-btn',{disabled:disabled||!c.opciones_activas,title:c.opciones_activas?'Enviar opciones configuradas al chat de WhatsApp':'Actualizá el conector privado para activar las opciones'}),
-  button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>void attentionAction(c,c.atencion_manual?'asistido':'manual'),'btn order-btn',{disabled:orderBusy}),
+  button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>void attentionAction(c,c.atencion_manual?'asistido':'manual'),'btn order-btn',{disabled:orderBusy||!!c.cerrado_at||!c.agente_activo}),
+  button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? El historial se conserva y un mensaje nuevo reabrirá la conversación.'))void attentionAction(c,'finalizar');},'btn order-btn',{disabled:orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||orders.some(o=>o.estado!=='entregado'||o.valoracion==='problema'&&!o.resuelto)}),
   c.atencion_pendiente?button('Marcar atendido',()=>void attentionAction(c,'atendido'),'btn order-btn',{disabled:orderBusy}):null);
- const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Atención'),node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},c.atencion_manual?'Manual':'Asistida')),attention,
+ const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Atención'),node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente desactivado')),attention,
   c.pedidos_habilitados!==false||last?node('div',{class:'order-heading'},node('strong',{},'Pedido del cliente'),last?node('span',{class:'order-state'},orderLabels[last.estado]||last.estado):node('span',{class:'hint'},'Sin pedido registrado')):null,actions);
+ if(c.archivado)panel.append(node('small',{class:'hint'},'Ensayo vencido. En Vincular, autorizá al contacto para probar opciones y respuestas.'));
  if(!c.opciones_activas&&ready)panel.append(node('small',{class:'hint'},'Opciones en WhatsApp: conector actualizado requerido.'));
  if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)){
-  const type=node('select',{'aria-label':'Modalidad de entrega'},node('option',{value:'retiro'},'Retiro en el local'),node('option',{value:'delivery'},'Delivery'));
-  const delay=node('input',{type:'number',min:1,max:20,value:2,'aria-label':'Minutos hasta consulta de satisfacción'});
-  actions.append(node('label',{class:'order-field'},'Modalidad',type),node('label',{class:'order-field delay'},'Consultar en (min)',delay),button('Recibido y en preparación',()=>{const n=Number(delay.value);if(!Number.isInteger(n)||n<1||n>20){orderMessage('Elegí una demora entre 1 y 20 minutos.');return;}void orderAction(c,'aceptar',null,{p_modalidad:type.value,p_demora:n});},'btn primary order-btn',{disabled}));
+  const mode=c.modalidad_detectada==='retiro'?'Retiro en el local':c.modalidad_detectada==='delivery'?'Delivery':null;
+  actions.append(node('span',{class:'order-detected'+(mode?' confirmed':'')},mode?'Modalidad detectada: '+mode:'Esperando que el cliente confirme retiro o delivery'));
+  actions.append(button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn',{disabled:disabled||!mode}));
+  panel.append(node('small',{class:'hint'},'Consulta de satisfacción: '+(c.seguimiento_min||2)+' min · se configura en Ajustes del local.'));
  }else if(last?.estado==='preparacion'){
   actions.append(button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn',{disabled}));
  }else if(['listo','en_camino'].includes(last?.estado)){
@@ -301,16 +305,22 @@ function renderThread(force=false){
  if(!c){cancelMessageAction();if(orderHost)orderHost.hidden=true;if(orderStatus)orderStatus.hidden=true;if(historyNotice)historyNotice.hidden=true;selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
  renderOrder(c);
  const saved=historyLabel(c);if(historyNotice){historyNotice.hidden=!saved;historyNotice.textContent=saved;}
- const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at]);
+ const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at,c.ciclos,c.cerrado_at]);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
    head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+(c.vence_at?' · ensayo hasta '+time(c.vence_at):' · historial'))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
-   thread.replaceChildren(...(c.mensajes?.length?c.mensajes.map(m=>renderMessage(c,m)):[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
+   const elements=[];let cycle=null;
+   for(const m of c.mensajes||[]){
+    if(m.ciclo_id&&m.ciclo_id!==cycle){cycle=m.ciclo_id;const info=(c.ciclos||[]).find(x=>x.id===cycle);elements.push(node('div',{class:'cycle-divider'},'Nueva atención'+(info?' · '+time(info.inicio_at):'')));}
+    elements.push(renderMessage(c,m));
+   }
+   if(c.cerrado_at)elements.push(node('div',{class:'cycle-divider'},'Atención finalizada · '+time(c.cerrado_at)));
+   thread.replaceChildren(...(elements.length?elements:[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
    if(force||nearBottom)thread.scrollTop=thread.scrollHeight;
  }
  compose.hidden=false;updateComposer();
 }
-function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.placeholder=c&&c.archivado?'Historial guardado · autorizá para responder':c&&c.conexion_activa===false?'Historial guardado · esperando conexión':'Escribí un mensaje';textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
+function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.placeholder=c?.cerrado_at?'Conversación finalizada · esperá un nuevo mensaje':c&&c.archivado?'Historial guardado · autorizá para responder':c&&c.conexion_activa===false?'Historial guardado · esperando conexión':'Escribí un mensaje';textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
 async function respond(){
  const id=selected,txt=textarea.value.trim();
  if(claimed||!id||!txt||send.disabled)return;
@@ -359,6 +369,10 @@ async function renderAttentionSettings(host){
   const title=node('input',{type:'text',maxlength:120,value:data.pregunta||'',required:true});
   const auto=node('input',{type:'checkbox',checked:data.bienvenida_auto===true});
   const orders=node('input',{type:'checkbox',checked:data.pedidos!==false});
+  const agent=node('input',{type:'checkbox',checked:data.agente_activo===true});
+  const follow=node('input',{type:'number',min:1,max:20,required:true,value:data.seguimiento_min||2});
+  const closeAuto=node('input',{type:'checkbox',checked:data.cierre_auto===true});
+  const closeMinutes=node('input',{type:'number',min:1,max:1440,required:true,value:data.cierre_min||15});
   const items=node('div',{class:'wai-setting-options'}),fields=[],status=node('p',{class:'hint',role:'status'});
   const add=()=>{
    if(fields.length>=6)return;row({label:'',respuesta:'',humano:true});
@@ -378,10 +392,10 @@ async function renderAttentionSettings(host){
   const form=node('form',{class:'wai-settings',onsubmit:async e=>{
    e.preventDefault();submit.disabled=true;status.textContent='Guardando…';
    try{
-    const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
+    const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
-  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},auto,'Enviar opciones automáticamente al primer mensaje del ensayo'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Opciones de WhatsApp'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('label',{},'Minutos hasta consultar si recibió bien el pedido (1–20 en prueba)',follow),node('h3',{},'Finalización de chats'),node('label',{class:'wai-check'},closeAuto,'Finalizar automáticamente por inactividad'),node('label',{},'Minutos de inactividad',closeMinutes),node('p',{class:'hint'},'Se conserva el historial. Un mensaje nuevo inicia otra atención; no se cierran pedidos, reclamos o solicitudes pendientes.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
   host.replaceChildren(form);
  }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }
