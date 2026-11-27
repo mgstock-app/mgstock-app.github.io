@@ -1,0 +1,17 @@
+{
+  "name": "gestlok-wai-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node connector.mjs",
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "9.14.0"
+  }
+}

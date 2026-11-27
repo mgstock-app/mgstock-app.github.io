@@ -32,8 +32,9 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  // Cinco grupos, con las funciones originales en sus submenús.
-  cy.get('.gl-ch-nav button').should('have.length',5);
+  // Seis grupos, incluida la nueva pestaña WAI, con las funciones originales en sus submenús.
+  cy.get('.gl-ch-nav button').should('have.length',6);
+  cy.get('.gl-ch-nav [data-ch-tab="wai"]').should('be.visible').and('contain.text','WAI');
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
   cy.get('[data-ch-hq-agent]').should('have.length',9);

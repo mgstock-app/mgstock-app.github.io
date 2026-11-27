@@ -1,0 +1,13 @@
+{
+  "url": "https://PROJECT.supabase.co",
+  "anonKey": "PUBLIC_ANON_KEY",
+  "testOnly": true,
+  "enableTestMessages": false,
+  "sessions": [
+    {
+      "id": "UUID_FROM_ADMIN_PANEL",
+      "number": "+15550000001",
+      "key": "PRIVATE_CONNECTOR_KEY"
+    }
+  ]
+}

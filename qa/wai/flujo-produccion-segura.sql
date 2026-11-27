@@ -1,0 +1,56 @@
+-- Production schema verification, with synthetic messages and fake numbers.
+-- Execute only inside BEGIN/ROLLBACK. No real transport or external messages.
+do $qa$
+declare u uuid; a gestlok_chat_private.sucursales; b gestlok_chat_private.sucursales; x uuid; y uuid; k text; ka text; kb text; inst uuid:=gen_random_uuid(); ra uuid; rb uuid; snap jsonb; p uuid; q uuid; ts bigint;
+begin
+ if exists(select 1 from gestlok_chat_private.wai_servidor_central) or exists(select 1 from gestlok_chat_private.wai_recepcion_prueba) then raise exception 'No ejecutar con cuentas comerciales activas';end if;
+ select au.id into u from auth.users au join gestlok_platform.admins ad on ad.user_id=au.id where lower(au.email)='kmu15lopez@gmail.com';
+ if u is null then raise exception 'Administradora ausente';end if;
+ perform set_config('request.jwt.claim.sub',u::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',u,'email',(select email from auth.users where id=u),'role','authenticated')::text,true);
+ select * into a from gestlok_chat_private.sucursales where slug='mi-gusto-munro';
+ select * into b from gestlok_chat_private.sucursales where slug='mi-gusto-torcuato';
+ if a.id is null or b.id is null then raise exception 'Faltan sucursales';end if;
+ if jsonb_array_length(public.gestlok_chat_wai_admin_comercial())<2 then raise exception 'Listado incompleto';end if;
+ if exists(select 1 from gestlok_chat_private.wai_central_lineas()) then raise exception 'Importó números comerciales existentes sin autorizar';end if;
+ perform public.gestlok_chat_wai_admin_comercial('local',a.tenant_id,a.local_id,null,null,true,'gastronomia');
+ perform public.gestlok_chat_wai_admin_comercial('local',b.tenant_id,b.local_id,null,null,true,'gastronomia');
+ perform public.gestlok_chat_wai_admin_comercial('registrar',a.tenant_id,a.local_id,'+5491100000901',null,true,null);
+ perform public.gestlok_chat_wai_admin_comercial('registrar',b.tenant_id,b.local_id,'+5491100000902',null,true,null);
+ select id into x from gestlok_chat_private.whatsapp_premium_habilitaciones where numero='+5491100000901';
+ select id into y from gestlok_chat_private.whatsapp_premium_habilitaciones where numero='+5491100000902';
+ if (select count(*) from gestlok_chat_private.wai_central_lineas())<>2 then raise exception 'Alta WAI cruzada con Premium';end if;
+ if coalesce((select habilitado from gestlok_chat_private.wai_piloto_entorno where id),false) then raise exception 'Activó transporte sin configurar servidor';end if;
+ k=public.gestlok_chat_wai_central_admin('preparar')->>'clave';
+ snap=public.gestlok_chat_wai_central_sync(k,inst,'sincronizar');
+ select v->>'key' into ka from jsonb_array_elements(snap->'sessions') v where v->>'id'=x::text;
+ select v->>'key' into kb from jsonb_array_elements(snap->'sessions') v where v->>'id'=y::text;
+ if ka is null or kb is null or ka=kb then raise exception 'Inventario de líneas inválido';end if;
+ select revision into ra from gestlok_chat_private.wai_sesiones where habilitacion_id=x;
+ select revision into rb from gestlok_chat_private.wai_sesiones where habilitacion_id=y;
+ perform public.gestlok_chat_wai_senal_v2(x,ka,ra,'conectado','+5491100000901',null);
+ perform public.gestlok_chat_wai_senal_v2(y,kb,rb,'conectado','+5491100000902',null);
+ if not (public.gestlok_chat_wai_conexiones(a.id,'listar',null)->0->>'habilitada')::boolean then raise exception 'No muestra local activo';end if;
+ ts=floor(extract(epoch from clock_timestamp()))::bigint;
+ p=(public.gestlok_chat_wai_admitir_entrada(x,ka,ra,'5491100000903@s.whatsapp.net','qa-munro',ts)->>'id')::uuid;
+ q=(public.gestlok_chat_wai_admitir_entrada(y,kb,rb,'5491100000903@s.whatsapp.net','qa-torcuato',ts)->>'id')::uuid;
+ if p is null or q is null or p=q then raise exception 'No habilitó recepción entrante independiente';end if;
+ if public.gestlok_chat_wai_admitir_entrada(x,kb,ra,'5491100000904@s.whatsapp.net','qa-cruce',ts) is not null then raise exception 'Clave cruzada';end if;
+ perform public.gestlok_chat_wai_piloto_motor(x,ka,ra,'control',p,null,null,null,null,'opciones_imagen_v2');
+ perform public.gestlok_chat_wai_piloto_motor(y,kb,rb,'control',q,null,null,null,null,'opciones_imagen_v2');
+ if not coalesce((public.gestlok_chat_wai_piloto_motor(x,ka,ra,'recibir',p,'5491100000903@s.whatsapp.net','qa-munro','Hola, carta')->>'ok')::boolean,false) then raise exception 'Falla mensaje Munro';end if;
+ if not coalesce((public.gestlok_chat_wai_piloto_motor(y,kb,rb,'recibir',q,'5491100000903@s.whatsapp.net','qa-torcuato','Hola, carta')->>'ok')::boolean,false) then raise exception 'Falla mensaje Torcuato';end if;
+ if not exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p and direccion='entrada' and evento='qa-munro') then raise exception 'No guardó historial';end if;
+ perform public.gestlok_chat_panel_whatsapp_excluidos(a.id,'agregar','+5491100000903','QA temporal');
+ if public.gestlok_chat_wai_piloto_motor(x,ka,ra,'recibir',p,'5491100000903@s.whatsapp.net','qa-excluido','Hola') is not null then raise exception 'No respetó exclusiones';end if;
+ if not coalesce((public.gestlok_chat_wai_piloto_motor(y,kb,rb,'recibir',q,'5491100000903@s.whatsapp.net','qa-no-excluido','Hola')->>'ok')::boolean,false) then raise exception 'Exclusión cruzada';end if;
+ perform public.gestlok_chat_wai_admin_comercial('numero',a.tenant_id,a.local_id,null,x,false,null);
+ if not (select habilitada from gestlok_chat_private.whatsapp_premium_habilitaciones where id=x) then raise exception 'Desactivó Premium';end if;
+ if exists(select 1 from gestlok_chat_private.wai_central_lineas() where id=x) or not exists(select 1 from gestlok_chat_private.wai_central_lineas() where id=y) then raise exception 'Pausa incorrecta';end if;
+ perform public.gestlok_chat_wai_admin_comercial('local',b.tenant_id,b.local_id,null,null,false,'gastronomia');
+ if exists(select 1 from gestlok_chat_private.wai_central_lineas()) then raise exception 'Sigue activa después de pausa';end if;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',gen_random_uuid(),'role','authenticated')::text,true);
+ begin perform public.gestlok_chat_wai_admin_comercial();raise exception 'Usuario ajeno ve panel';exception when insufficient_privilege then null;end;
+ if gestlok_chat_private.wai_portal_nivel(a.id) is not null then raise exception 'Acceso indebido';end if;
+end $qa$;

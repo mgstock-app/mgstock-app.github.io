@@ -334,12 +334,13 @@
 #hub .gl-ch-premium .gl-ch-admin-more[open]>summary>span{transform:rotate(180deg)}
 #hub .gl-ch-premium .gl-ch-admin-more>.gl-ch-creator-start{padding:12px}
 @media(max-width:899px){
-  #hub .gl-ch.gl-ch-premium .gl-ch-group-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;overflow:visible}
+  #hub .gl-ch.gl-ch-premium .gl-ch-group-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;overflow:visible}
   #hub .gl-ch.gl-ch-premium .gl-ch-group-nav button{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;gap:4px;width:100%;min-width:0;padding:8px 2px;min-height:62px;font-size:11px;line-height:1.15;white-space:normal;text-align:center}
   #hub .gl-ch.gl-ch-premium .gl-ch-group-nav button>b{position:absolute;right:2px;top:1px}
   #hub .gl-ch.gl-ch-premium.gl-ch-collapsed .gl-ch-group-nav{display:none}
 }
 @media(max-width:620px){
+  #hub .gl-ch.gl-ch-premium .gl-ch-group-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
   #hub .gl-ch-premium .gl-ch-section-tools>button{flex:1 1 auto;padding:8px;font-size:12px}
   #hub .gl-ch-premium .gl-ch-admin-summary{gap:6px}
   #hub .gl-ch-premium .gl-ch-admin-summary>div{padding:12px 8px}

@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261127wai1';
+  const VERSION_CSS = '20261127portal1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -39,6 +39,7 @@
   const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
+  const WAI_SLUG = !DEMO && EMBED && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(op.waiSlug||'') ? op.waiSlug : '';
   const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const GRUPOS_PANEL = [
@@ -53,7 +54,7 @@
         onclick: DEMO ? e => e.preventDefault() : undefined,
         'aria-label': DEMO ? 'Demostración de GESTLOK Chat' : 'Volver a GESTLOK', text: '‹'}),
       el('img', {class: 'tope-marca', src: '/chat/gestlok-monograma.svg', alt: '', width: 29, height: 32, 'aria-hidden': 'true'}),
-      el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
+      el('div', {class: 'tope-texto'}, el('h1', {text: WAI_SLUG ? 'Configuración WAI' : 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('div', {class:'navegacion-panel', id:'navegacion-panel', hidden:true},
       el('nav', {class:'pestanas', id:'pestanas', role:'tablist', 'aria-label':'Secciones principales'},
@@ -184,6 +185,16 @@
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
     }
+    if (WAI_SLUG) {
+      try {
+        const r=await rpc('wai_portal_inicio',{p_slug:WAI_SLUG});
+        const a=(r?.locales||[]).find(s=>s.slug===WAI_SLUG);
+        if(!a||!['gestionar','configurar'].includes(a.nivel))throw Error('Tu cuenta no tiene acceso a este local.');
+        S.suc=a; S.sucursales=[a]; S.pestana='ajustes';
+        $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
+        $('panel').setAttribute('aria-busy','false'); $('navegacion-panel').hidden=false; mostrar();return;
+      }catch(e){return fijo('Sin acceso a la configuración',e.message);}
+    }
     if (ADMIN_CONFIG) {
       try {
         const a=await rpc('panel_config',{p_sucursal:ADMIN_CONFIG});
@@ -223,6 +234,7 @@
     }
   }
   function seccionPermitida(pestana) {
+    if (WAI_SLUG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&(pestana!=='excluidos'||puede('configurar'));
     if (ADMIN_CONFIG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&puede('configurar');
     if (pestana==='excluidos') return puede('configurar')&&!DEMO;
     if (pestana==='whatsapp') return puede('gestionar')&&!DEMO;
@@ -240,7 +252,7 @@
     S.pestana=b.dataset.p;mostrar();
   });
   function mostrar() {
-    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG?'ajustes':'pedidos';
+    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG||WAI_SLUG?'ajustes':'pedidos';
     const grupo=grupoDe(S.pestana);
     for(const b of $('pestanas').querySelectorAll('[data-grupo]')){
       b.hidden=!seccionPermitida(b.dataset.grupo);
@@ -262,15 +274,51 @@
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
+  function waiLocalView(sucursal,active){
+    const box=el('section',{class:'bloque'},el('h2',{text:'Recuperar conexión de WhatsApp'}),el('p',{class:'nota',text:'Solo los números autorizados de esta sucursal. Intentá recuperar la sesión; si WhatsApp pide autorización, escaneá el QR desde el celular del local. No activa envíos.'}));
+    const list=el('div'),status=el('p',{role:'status',class:'nota',text:'Consultando conexión…'}),refresh=el('button',{class:'boton',type:'button',text:'Actualizar señal'});
+    box.append(status,refresh,list);
+    const labels={pausado:'⚪ Pausado',sin_conector:'⚪ Conector pendiente de instalación',sin_senal:'🔴 Sin señal del conector',conectado:'🟢 Sesión conectada',reconectando:'🟡 Recuperando sesión',qr:'🟡 Escanear QR',qr_vencido:'🟡 QR vencido',desconectado:'🔴 Sesión desconectada'};
+    let busy=false;
+    async function load(accion='listar',id=null){
+      if(!active()||busy)return;
+      busy=true;refresh.disabled=true;
+      list.querySelectorAll('button').forEach(b=>b.disabled=true);
+      try{
+        const rows=await rpc('wai_conexiones',{p_sucursal:sucursal,p_accion:accion,p_id:id});
+        if(!active())return;
+        if(!Array.isArray(rows))throw Error();
+        status.textContent='Última consulta: '+new Date().toLocaleTimeString('es-AR')+' · conexión no equivale a IA activa.';
+        poner(list,...(rows.length?rows.map(r=>{
+          const card=el('article',{class:'wa-bandeja-card'},el('h3',{text:r.numero}),el('p',{text:labels[r.estado]||'Sin estado comprobado'}),el('small',{text:'Última señal: '+(r.senal_at?hora(r.senal_at):'Nunca')}));
+          if(r.estado==='qr'&&typeof r.qr==='string'&&r.qr.length<=2048&&Date.parse(r.qr_vence)>Date.now()){
+            try{const q=window.qrcode(0,'M');q.addData(r.qr);q.make();card.append(el('img',{src:q.createDataURL(5,4),alt:'QR privado de vinculación del local',width:'220',style:'max-width:100%;height:auto'}),el('p',{class:'nota',text:'Vence: '+new Date(r.qr_vence).toLocaleTimeString('es-AR')}));}catch{/* No QR ficticio */}
+          }
+          if(r.habilitada&&r.preparada&&['desconectado','qr','qr_vencido'].includes(r.estado)){
+            for(const [a,label] of [['reconectar','Restablecer señal'],['qr','Generar nuevo QR']]){
+              card.append(el('button',{type:'button',class:'boton',text:label,onclick:()=>void load(a,r.id)}));
+            }
+          }
+          if(r.estado==='sin_senal'||r.estado==='sin_conector')card.append(el('p',{class:'nota',text:'Avisale a soporte GESTLOK. El conector necesita estar en línea.'}));
+          return card;
+        }):[el('p',{class:'nota',text:'No hay números WAI registrados en este local.'})]));
+      }catch(e){if(active()){status.textContent=e.message||'No se pudo comprobar la conexión.';poner(list);}}
+      finally{busy=false;if(active())refresh.disabled=false;}
+    }
+    refresh.onclick=()=>void load();
+    // Se comparte el sondeo de la bandeja; no hay un intervalo que quede activo al cambiar de local.
+    return {box,load:()=>{if(!document.hidden)void load();}};
+  }
   async function verWhatsApp(){
     if(DEMO||!puede('gestionar'))return;
     const id=S.suc.id, box=el('section',{class:'bloque wa-bandeja'});
     const status=el('p',{class:'nota',role:'status',text:'Consultando autorización…'});
     const list=el('div',{class:'wa-bandeja-lista'});
     const refresh=el('button',{type:'button',class:'boton',text:'Actualizar'});
-    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
+    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('a',{href:'/chat/wai/?local='+encodeURIComponent(S.suc.slug),class:'boton principal',text:'Abrir espacio WAI del local'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
     contenido.replaceChildren(box);
     const active=()=>marco.isConnected&&box.isConnected&&S.suc?.id===id&&S.pestana==='whatsapp';
+    const support=waiLocalView(id,active);box.prepend(support.box);
     let busy=false, sending=false, lastKey='', ready=false;
     const drafts=new Map(),locked=new Set();
     const labels={procesando:'Envío reservado · no repetir',aceptada:'Aceptado por WhatsApp · entrega aún no confirmada',bloqueada:'Envío bloqueado',error:'Proveedor rechazó el envío',incierta:'Resultado incierto · no repetir'};
@@ -301,7 +349,7 @@
     }
     async function load(){
       if(!active()||busy||sending)return;
-      busy=true;
+      busy=true;support.load();
       try{
         const r=await rpc('panel_whatsapp_bandeja',{p_sucursal:id});
         if(!active())return;
@@ -1234,7 +1282,7 @@
     canalPedir.addEventListener('click',()=>canalAccion('solicitar'));
     canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
     if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
-    else if(!ADMIN_CONFIG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
+    else if(!ADMIN_CONFIG&&!WAI_SLUG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1267,10 +1315,10 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    const suscripcion = editable && !ADMIN_CONFIG ? bloqueSuscripcion() : null;
-    const gerentes = editable && !ADMIN_CONFIG ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, ADMIN_CONFIG?null:canalWhatsApp, ADMIN_CONFIG?null:pushCampanas].filter(Boolean));
-    if(ADMIN_CONFIG)return;
+    const suscripcion = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueSuscripcion() : null;
+    const gerentes = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueGerentes() : null;
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, WAI_SLUG?null:llevar, WAI_SLUG?null:contactoWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:canalWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:pushCampanas].filter(Boolean));
+    if(ADMIN_CONFIG||WAI_SLUG)return;
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
