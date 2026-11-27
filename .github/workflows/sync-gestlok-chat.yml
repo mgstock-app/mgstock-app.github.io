@@ -18,8 +18,14 @@ on:
       - 'tests/chat-sync-entornos.test.mjs'
       - '.github/workflows/sync-gestlok-chat.yml'
   workflow_dispatch:
+    inputs:
+      actualizar_backend:
+        description: 'Aplicar SQL y funciones del Chat clásico a gestlok-pruebas (revisión previa obligatoria)'
+        type: boolean
+        default: false
 
-# El flujo solo escribe código en prueba/testing y servicios de la BASE DE PRUEBAS.
+# La sincronización automática solo escribe código en prueba/testing.
+# El backend se actualiza exclusivamente bajo pedido explícito; nunca se sobrescriben los orígenes ni el acceso de WAI.
 # Nunca mezcla datos reales ni abre una publicación automática hacia main.
 permissions:
   contents: write
@@ -40,7 +46,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - name: Comprobar aislamiento y sincronización antes de cambiar ramas
-        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs tests/chat-sync-entornos.test.mjs tests/vercel-entornos.test.mjs
+        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs tests/chat-sync-entornos.test.mjs tests/vercel-entornos.test.mjs tests/carta-visual-prueba.test.mjs
       - name: Preparar copia de Chat en ambas ramas sin sobreescribir sus configuraciones
         shell: bash
         run: |
@@ -78,7 +84,8 @@ jobs:
               echo "### $branch: código actualizado desde $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
-      - name: Actualizar base y funciones de Chat en los dos entornos aislados
+      - name: Actualizar base y funciones de Chat clásico (solo ejecución manual autorizada)
+        if: github.event_name == 'workflow_dispatch' && inputs.actualizar_backend
         shell: bash
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -90,7 +97,7 @@ jobs:
           fi
           for branch in prueba testing; do
             echo "Actualizando $branch en gestlok-pruebas"
-            (cd "$RUNNER_TEMP/gestlok-chat-$branch" && node entornos/backend.mjs --entorno "$branch" --sql --funciones --ajustes)
+            (cd "$RUNNER_TEMP/gestlok-chat-$branch" && node entornos/backend.mjs --entorno "$branch" --sql --funciones)
           done
       - name: Comprobar que los dos sitios entregan Chat y no la base real
         shell: bash
