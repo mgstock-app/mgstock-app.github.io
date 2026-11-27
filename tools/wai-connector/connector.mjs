@@ -4,7 +4,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
-import {pilotTransport} from './pilot.mjs';
+import {multiPilotTransport} from './multi-pilot.mjs';
 import {createPollStore} from './poll-store.mjs';
 import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
 
@@ -55,14 +55,14 @@ function transportFor(s){
   const privateDir=join(path,sub);
   await protectDirectory(privateDir);
   const {state,saveCreds}=await useMultiFileAuthState(privateDir);
-  const initialGrant=config.enableTestMessages===true&&revision?await rpc(s,'gestlok_chat_wai_ensayo_autorizado',{p_revision:revision}).catch(()=>null):null;
+  const initialGrants=config.enableTestMessages===true&&revision?(await rpc(s,'gestlok_chat_wai_ensayos_autorizados',{p_revision:revision,p_activo:false}).catch(()=>null))?.ensayos||[]:[];
   const sock=makeWASocket({auth:state,logger:pino({level:'silent'}),browser:Browsers.appropriate('Chrome'),
     markOnlineOnConnect:false,syncFullHistory:false,shouldSyncHistoryMessage:()=>false,
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
   const pollStore=createPollStore(privateDir);await pollStore.prune();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pilot=config.enableTestMessages===true?multiPilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrants,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});
@@ -103,3 +103,4 @@ const timer=setInterval(()=>void tick(),5000);
 let stopping=false;
 async function stop(){if(stopping)return;stopping=true;clearInterval(timer);await Promise.allSettled(sessions.map(s=>s.close()));process.exit(0);}
 process.on('SIGINT',()=>void stop());process.on('SIGTERM',()=>void stop());
+

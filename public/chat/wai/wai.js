@@ -575,9 +575,11 @@ function renderConnection(){
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
   if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado'){
-    const active=chats.some(c=>c.linea===r.id&&c.piloto_activo);
-    box.append(active?node('p',{class:'hint'},'Ensayo autorizado. Pedile al contacto que envíe un mensaje desde su WhatsApp.'):button('Autorizar contacto de ensayo',()=>openAuthorization(r.id),'btn primary',{disabled:connectionBusy}));
-    if(active)box.append(button('Cancelar ensayo',()=>void authorize(r.id,true),'btn danger',{disabled:connectionBusy}));
+    const active=Number(r.ensayos_activos??chats.filter(c=>c.linea===r.id&&c.piloto_activo).length);
+    if(active)box.append(node('p',{class:'hint'},active+' contacto(s) de ensayo autorizado(s). Cada conversación y pedido se mantiene separado.'));
+    if(!active||r.multi_ensayos&&active<5)box.append(button(active?'Autorizar otro contacto de ensayo':'Autorizar contacto de ensayo',()=>openAuthorization(r.id),'btn primary',{disabled:connectionBusy}));
+    if(active&&!r.multi_ensayos)box.append(node('p',{class:'hint'},'Actualizá el conector privado para probar varios contactos simultáneos.'));
+    if(active)box.append(button(active>1?'Cancelar todos los ensayos de esta línea':'Cancelar ensayo',()=>{if(active===1||confirm('¿Cancelar los '+active+' ensayos de esta línea? Se conservarán sus historiales.'))void authorize(r.id,true);},'btn danger',{disabled:connectionBusy}));
   }
   return box;
  });
@@ -623,7 +625,7 @@ async function authorize(id,cancel=false,tester=null){
  try{
    await rpc('wai_piloto_autorizar',{p_sucursal:sessionLocal.id,p_id:id,p_tester:tester,p_accion:cancel?'cancelar':'autorizar'});
    if(mine!==generation)return;
-   drawerStatus.textContent=cancel?'Ensayo cancelado.':'Ensayo autorizado. Pedile al contacto que envíe un Hola al WhatsApp vinculado.';
+   drawerStatus.textContent=cancel?'Ensayo cancelado.':'Ensayo autorizado. Esperá unos segundos y pedile al contacto que envíe un Hola al WhatsApp vinculado.';
    authorizationDraft=null;authorizationHost?.replaceChildren();await refresh();
  }catch(e){if(mine===generation){if(authorizationDraft)authorizationDraft.status.textContent=e.message;else drawerStatus.textContent=e.message;}}
  finally{connectionBusy=false;if(mine===generation&&drawerKind==='conexion')renderConnection();}
