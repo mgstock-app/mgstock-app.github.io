@@ -302,17 +302,19 @@
   // Soporte de un conector externo; no depende de la autorización comercial de YCloud.
 
   // Comercial WAI is independent of legacy Premium and laboratory connections.
-  let waiCommercialRows=null,waiCommercialBusy=false,waiCommercialError='',waiCommercialEpoch=0;
-  function waiCommercialReset(){waiCommercialEpoch++;waiCommercialRows=null;waiCommercialBusy=false;waiCommercialError='';}
-  async function waiCommercialRequest(args={p_accion:'listar'}){
+  let waiCommercialRows=null,waiOrgRows=[],waiCommercialBusy=false,waiCommercialError='',waiOrgError='',waiCommercialEpoch=0;
+  function waiCommercialReset(){waiCommercialEpoch++;waiCommercialRows=null;waiOrgRows=[];waiCommercialBusy=false;waiCommercialError='';waiOrgError='';}
+  async function waiCommercialRequest(args={p_accion:'listar'},orgAction=false){
     if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
     const epoch=waiCommercialEpoch;
-    waiCommercialBusy=true;waiCommercialError='';api?.render?.();
+    waiCommercialBusy=true;waiCommercialError='';waiOrgError='';api?.render?.();
     try{
-      const r=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_comercial',args);
+      const r=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_comercial',orgAction?{p_accion:'listar'}:args);
+      const o=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_organizacion',orgAction?args:{p_accion:'listar'});
       if(epoch!==waiCommercialEpoch||!premiumAdmin()||tab!=='wai')return;
       if(r.error||!Array.isArray(r.data))throw Error(r.error?.message||'Respuesta inválida');
       waiCommercialRows=r.data;
+      if(o.error||!Array.isArray(o.data)){waiOrgRows=[];waiOrgError=o.error?.message||'No se pudo consultar la organización.';}else waiOrgRows=o.data;
     }catch(e){if(epoch===waiCommercialEpoch){waiCommercialRows=null;waiCommercialError='No se pudo confirmar el estado comercial de WAI: '+String(e.message||'servicio no disponible');}}
     finally{if(epoch===waiCommercialEpoch){waiCommercialBusy=false;if(premiumAdmin()&&tab==='wai')api?.render?.();}}
   }
@@ -321,26 +323,35 @@
     if(!waiCommercialRows&&!waiCommercialBusy&&!waiCommercialError)queueMicrotask(()=>waiCommercialRequest());
     const rows=waiCommercialRows||[],disable=waiCommercialBusy?' disabled':'';
     const safeSlug=v=>typeof v==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v)&&v.length>=3&&v.length<=60;
+    const orgFor=r=>waiOrgRows.find(o=>o.tenant===r.tenant&&o.local_id===r.local_id)||{};
+    const ownerFor=r=>{const o=orgFor(r),owners=Array.isArray(o.duenos)?o.duenos:[];return o.responsable?{id:o.responsable_id,nombre:o.responsable}:owners.length===1?owners[0]:{id:'',nombre:'Sin responsable asignado'};};
     const cards=rows.map((r,i)=>{
+      const o=orgFor(r),owners=Array.isArray(o.duenos)?o.duenos:[];
+      const ownerOptions=owners.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===o.responsable_id?' selected':'')+'>'+esc(x.nombre)+'</option>').join('');
+      const ownerForm=owners.length?'<form data-wai-owner-form data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><label>Dueño responsable <select name="owner"'+disable+'><option value="">Sin asignar</option>'+ownerOptions+'</select></label><button class="btn" type="submit"'+disable+'>Guardar responsable</button></form>':'';
       const numbers=Array.isArray(r.numeros)?r.numeros:[],enabled=!!r.activo;
       const registered=numbers.filter(n=>n.registrado);
       const numberRows=registered.map((n,j)=>'<div class="gl-ch-chat-row"><div><b>'+esc(n.numero)+'</b><p>'+esc(waiLabels[n.estado]||'Estado no comprobado')+'</p></div><button type="button" class="btn" data-wai-commercial="numero" data-row="'+i+'" data-number="'+j+'"'+(disable||(!enabled&&!n.activo?' disabled':''))+'>'+ (n.activo?'Desactivar número':'Activar número')+'</button></div>').join('');
       const href=safeSlug(r.slug)?'/chat/wai/?local='+encodeURIComponent(r.slug):'';
-      return '<article class="gl-ch-chat-row"><div style="width:100%"><h3>'+esc(r.empresa)+' · '+esc(r.nombre)+'</h3><p><strong>'+ (enabled?'🟢 Activo':'⚪ Inactivo')+'</strong> · '+(enabled?registered.filter(n=>n.activo).length:0)+' número(s) activo(s)</p>'+
-        '<p>Rubro: '+esc(r.rubro==='gastronomia'?'Gastronomía':'Sin asignar')+'</p>'+
+      return '<article class="gl-ch-chat-row"><div style="width:100%"><h4>'+esc(r.nombre)+'</h4><p><strong>'+ (enabled?'🟢 Activo':'⚪ Inactivo')+'</strong> · '+(enabled?registered.filter(n=>n.activo).length:0)+' número(s) activo(s)</p>'+
+        '<p>Rubro: '+esc(r.rubro==='gastronomia'?'Gastronomía':'Sin asignar')+' · '+(o.plantilla?'Configuración base de empresa':'Configuración independiente')+'</p>'+ownerForm+
         (safeSlug(r.slug)?'<p><small>Subdominio previsto: '+'wai-'+esc(r.slug)+'.gestlok.com.ar (pendiente de verificación DNS)</small></p>':'')+
         '<div class="gl-ch-chat-actions"><button type="button" class="btn '+(!enabled?'primary':'')+'" data-wai-commercial="local" data-row="'+i+'"'+disable+'>'+(enabled?'Desactivar local':'Activar gastronomía')+'</button>'+
-        (enabled&&href?'<a class="btn" href="'+esc(href)+'" target="_blank" rel="noopener">Abrir local · ajustes y QR</a>':'')+'</div>'+
+        (enabled&&href?'<a class="btn" href="'+esc(href)+'" target="_blank" rel="noopener">Abrir local · ajustes y QR</a>':'')+(r.id?'<button class="btn" type="button" data-wai-commercial="plantilla" data-row="'+i+'"'+disable+'>Usar carta como base de empresa</button>':'')+'</div>'+
         numberRows+(enabled?'<form data-wai-commercial-register data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><label>Número internacional <input type="tel" name="numero" placeholder="+54911…" required autocomplete="off"'+disable+'></label><button class="btn primary" type="submit"'+disable+'>Agregar número</button></form>':'')+
         '</div></article>';
-    }).join('');
-    return '<section class="gl-admin-card gl-ch-chat-admin" aria-label="Control comercial de GESTLOK WAI"><header><h2>GESTLOK WAI · Locales</h2><button class="btn" type="button" data-wai-commercial="listar"'+disable+'>Actualizar</button></header>'+
+    });
+    const companies=new Map();
+    rows.forEach((r,i)=>{if(!companies.has(r.tenant))companies.set(r.tenant,{nombre:r.empresa,owners:new Map()});const group=companies.get(r.tenant),owner=ownerFor(r);if(!group.owners.has(owner.id))group.owners.set(owner.id,{nombre:owner.nombre,locals:[]});group.owners.get(owner.id).locals.push(cards[i]);});
+    const grouped=Array.from(companies.values()).map(g=>'<section class="gl-admin-card" aria-label="Empresa '+esc(g.nombre)+'"><h3>'+esc(g.nombre)+'</h3>'+Array.from(g.owners.values()).map(({nombre:owner,locals})=>'<section class="gl-ch-chat-list" aria-label="Dueño '+esc(owner)+'"><h4>Dueño: '+esc(owner)+'</h4>'+locals.join('')+'</section>').join('')+'</section>').join('');
+    return '<section class="gl-admin-card" aria-label="Panel de prueba de GESTLOK WAI"><header><h2>GESTLOK WAI · Prueba</h2><a class="btn primary" href="/chat/wai/prueba/">Abrir panel de prueba</a></header><p>Laboratorio privado de gastronomía: Mi Gusto (prueba), carta, números de ensayo, QR, conversaciones y pedidos. Administrá y alterná tus números sin afectar los locales reales.</p><p><small>La sesión de ensayo se valida por separado; permanece en gestlok.com.ar. No se utilizan números comerciales.</small></p><div class="gl-ch-chat-actions"><a class="btn" href="/chat/wai/prueba/?local=mi-gusto-munro">Probar Munro</a><a class="btn" href="/chat/wai/prueba/?local=mi-gusto-torcuato">Probar Don Torcuato</a><a class="btn" href="/wai/" target="_blank" rel="noopener">Ver presentación y demo pública</a></div></section>'+
+      '<section class="gl-admin-card gl-ch-chat-admin" aria-label="Control comercial de GESTLOK WAI"><header><h2>GESTLOK WAI · Locales</h2><button class="btn" type="button" data-wai-commercial="listar"'+disable+'>Actualizar</button></header>'+
       '<p>Administrá cada sucursal y sus números de forma independiente. La habilitación no confirma la conexión de WhatsApp. El local configura su atención y catálogo desde su espacio privado.</p>'+
       (waiCommercialRows?'<p><b>'+rows.filter(r=>r.activo).length+' activos · '+rows.filter(r=>!r.activo).length+' inactivos</b></p>':'')+
-      (waiCommercialError?'<p role="alert" class="gl-wa-error">'+esc(waiCommercialError)+'</p>':'')+
+      (waiCommercialError?'<p role="alert" class="gl-wa-error">'+esc(waiCommercialError)+'</p>':'')+(waiOrgError?'<p role="alert">'+esc(waiOrgError)+'</p>':'')+
       (waiCommercialBusy?'<p role="status">Consultando…</p>':'')+
       '<p><small>Esta primera versión admite gastronomía. No se habilitan automáticamente otros rubros, proveedores pagos ni números del sistema anterior.</small></p>'+
-      '<div class="gl-ch-chat-list">'+(cards||(waiCommercialRows?'<p>Sin locales registrados.</p>':''))+'</div></section>';
+      '<div class="gl-ch-chat-list">'+(grouped||(waiCommercialRows?'<p>Sin locales registrados.</p>':''))+'</div></section>';
   }
   function waiCommercialAct(btn){
     if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
@@ -352,11 +363,20 @@
     if(action==='local'){
       if(!window.confirm(r.activo?'¿Pausar WAI de este local? Se conserva el historial.':'¿Habilitar WAI para este local gastronómico?'))return;
       void waiCommercialRequest({...base,p_activo:!r.activo,p_rubro:'gastronomia'});
+    }else if(action==='plantilla'){
+      if(!window.confirm('¿Usar la carta y ajustes comunes de '+r.nombre+' como base para futuros locales de esta empresa? No cambia los locales existentes.'))return;
+      void waiCommercialRequest(base,true);
     }else if(action==='numero'){
       const n=r.numeros.filter(x=>x.registrado)[Number(btn.dataset.number)];
       if(!n||!window.confirm((n.activo?'¿Pausar ':'¿Habilitar ')+n.numero+' en este local?'))return;
       void waiCommercialRequest({...base,p_id:n.id,p_activo:!n.activo});
     }
+  }
+  function waiOwnerRegister(form){
+    if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
+    const r=waiCommercialRows?.[Number(form.dataset.row)];if(!r)return;
+    const owner=String(form.elements.owner.value||'');
+    void waiCommercialRequest({p_accion:'responsable',p_tenant:r.tenant,p_local:r.local_id,p_owner:owner},true);
   }
   function waiCommercialRegister(form){
     if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
@@ -1745,6 +1765,7 @@
   });
   document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-chat-text')hqChatDrafts[hqChatKey()]=String(ev.target.value||'').slice(0,1200);if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-wai-owner-form]')){ev.preventDefault();waiOwnerRegister(ev.target);return;}
     if(ev.target?.matches?.('[data-wai-commercial-register]')){ev.preventDefault();waiCommercialRegister(ev.target);return;}
     if(ev.target?.matches?.('[data-hq-chat-form]')){ev.preventDefault();void hqChatSend(ev.target.querySelector('textarea')?.value);return;}
     if(ev.target?.matches?.('[data-ch-local-plan]')){ev.preventDefault();void saveLocalChatPlan(ev.target);return;}

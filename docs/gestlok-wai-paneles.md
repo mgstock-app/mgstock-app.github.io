@@ -1,0 +1,6 @@
+# WAI: administración comercial y prueba privada
+- Producción: pestaña WAI, Locales agrupados por empresa y responsable. El responsable es una asignación organizativa; los permisos de dueño respetan las listas explícitas de locales. Los propietarios anteriores sin lista mantienen acceso a toda su empresa.
+- Prueba: /chat/wai/prueba/ usa exclusivamente el proyecto Supabase de Prueba, con sesión propia. Se conserva la carta de Mi Gusto Prueba y el servidor central ya configurado; los botones de alta y pausa usan sus RPC existentes. No se copian números ni mensajes a producción.
+- Empresa: una copia independiente de carta, categorías y ajustes comunes sirve como plantilla para nuevas sucursales. Para Mi Gusto se tomó una fotografía de Munro, sin tocar Munro o Torcuato. El dueño puede modificar sus locales. No copia teléfonos, transferencia, direcciones, reseñas específicas ni conexiones. Otras empresas no heredan Mi Gusto; pueden establecer su propia plantilla explícitamente.
+- /wai/ es una presentación pública y demo de pedido ficticio, no representa una línea comercial en servicio.
+- DNS y HTTPS de subdominios requieren autorización de Cloudflare. El conector comercial permanente y autorizado sigue pendiente; no habilitar Baileys de prueba en producción. No se contrata infraestructura paga.
