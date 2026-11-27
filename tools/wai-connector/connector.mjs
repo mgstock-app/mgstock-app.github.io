@@ -1,10 +1,11 @@
-import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2} from '@whiskeysockets/baileys';
+import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2,decryptPollVote} from '@whiskeysockets/baileys';
 import pino from 'pino';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
 import {pilotTransport} from './pilot.mjs';
+import {createPollStore} from './poll-store.mjs';
 import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
 
 process.umask(0o077);
@@ -38,7 +39,8 @@ function transportFor(s){
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pollStore=createPollStore(privateDir);await pollStore.prune();
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});

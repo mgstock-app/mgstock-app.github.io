@@ -1,6 +1,8 @@
-// Explicit, short test transport: one consenting number, text only, no auto-reply,
-// no history, no bulk messages. A reserved reply is never retried after ambiguity.
+// Explicit, short test transport: one consenting number, text and single-choice polls.
+// Server authorizes scripted replies. No bulk messaging or unrelated history.
+// A reserved reply is never retried after ambiguity.
 import {phoneKey} from './session.mjs';
+import {normalizePoll,selectionFromVote} from './poll-store.mjs';
 const pnJid=jid=>{
  const m=/^([1-9]\d{7,14})(?::\d+)?@(?:s\.whatsapp\.net|hosted)$/.exec(jid||'');
  return m?m[1]+'@s.whatsapp.net':null;
@@ -11,7 +13,7 @@ const lidJid=jid=>{
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
-export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null}){
+export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[]}){
  let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map(),pendingName=null,lastName=null,readyLogged=false,syncRequested=false;
  const known=new Map(),delivered=new Set();
  const keyId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id)?id:null;
@@ -93,6 +95,27 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    if(!active()||mine!==epoch||pilot?.id!==p.id||!valid())return;
    if(!sender||!matches(sender.pn)){note('identity','Evento omitido: WhatsApp no confirmó que sea del contacto de ensayo.');continue;}
    const content=m.message?.ephemeralMessage?.message??m.message;
+   // rc14 exposes the authenticated encrypted poll update through upsert.
+   // Only decrypt our own saved poll, from the same consenting contact.
+   if(content?.pollUpdateMessage){
+    const v=content.pollUpdateMessage,creation=v.pollCreationMessageKey,id=keyId(creation?.id);
+    if(!fromPhone&&pollStore&&decryptVote&&id&&creation.fromMe===true&&inbox.length<20){
+     const r=await pollStore.get(id,p,sender.route,sender.pn,serverNow());
+     if(r&&active()&&mine===epoch&&valid()){
+      const voters=[...new Set([sender.route,sender.pn].filter(Boolean))],creators=[...new Set(ownJids().map(routeOf).filter(Boolean))];
+      let choice=null;
+      for(const pollCreatorJid of creators){for(const voterJid of voters){
+       try{choice=selectionFromVote(r.opciones,decryptVote(v.vote,{pollCreatorJid,pollMsgId:id,pollEncKey:Buffer.from(r.secret,'base64'),voterJid}));}catch{}
+       if(choice)break;
+      }if(choice)break;}
+      if(choice&&active()&&mine===epoch&&valid()){
+       inbox.push({action:'voto',args:{p_piloto:p.id,p_jid:sender.pn,p_evento:id,p_texto:choice}});
+       note('vote','Opción seleccionada en WhatsApp; sincronizando.');
+      }
+     }
+    }
+    continue;
+   }
    const text=content?.conversation??content?.extendedTextMessage?.text;
    if(typeof text!=='string'||!text.trim()||text.length>1000){note('text','Evento del contacto autorizado sin texto simple (puede estar pendiente de descifrado).');continue;}
    if(inbox.length<20){
@@ -125,8 +148,8 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    if(match)delivered.add(id);
   }
  }
- async function transmit(target,content){
-  const proposed=keyId(newMessageId());if(proposed)known.set(proposed,target);
+ async function transmit(target,content,requestedId=null){
+  const proposed=keyId(requestedId||newMessageId());if(proposed)known.set(proposed,target);
   try{
    const result=await socket.sendMessage(target,content,proposed?{messageId:proposed}:{});
    const id=keyId(result?.key?.id);
@@ -141,7 +164,8 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
   working=true;
   try{
    const call=(action,args={})=>rpc('gestlok_chat_wai_piloto_motor',{p_revision:revision,p_accion:action,...args});
-   const next=await call('control');
+   const capabilities=pollStore&&decryptVote?{p_estado:'opciones_v1'}:{};
+   const next=await call('control',capabilities);
    if(!active())return;
    const remoteTime=Date.parse(next?.hora_servidor);if(Number.isFinite(remoteTime))serverOffset=remoteTime-now();
    if(!next||!phoneKey(next.tester)||Date.parse(next.vence_at)<=serverNow()){if(pilot)logger('Ensayo finalizado.');reset();return;}
@@ -166,7 +190,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
     const item=inbox.shift(),args=item.args;
     if(args.p_piloto===pilot.id&&matches(args.p_jid)){
      const result=await call(item.action,args);
-     if(result?.ok)logger(item.action==='recibir_salida'?'Mensaje del teléfono sincronizado.':'Mensaje de ensayo recibido por GESTLOK WAI.');else note('server','El servidor no admitió este mensaje de ensayo.');
+     if(result?.ok)logger(item.action==='voto'?'Selección de WhatsApp registrada.':item.action==='recibir_salida'?'Mensaje del teléfono sincronizado.':'Mensaje de ensayo recibido por GESTLOK WAI.');else note('server','El servidor no admitió este mensaje de ensayo.');
     }
    }
    for(const id of [...delivered]){
@@ -186,11 +210,23 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
     logger(operation?'Corrección de ensayo enviada a WhatsApp.':'Corrección no confirmada. No se reintenta.');
     return;
    }
-   const job=await call('tomar',{p_piloto:pilot.id});
+   const job=await call('tomar',{p_piloto:pilot.id,...capabilities});
    if(!job||!active()||!matches(job.jid)||typeof job.texto!=='string'||job.texto.length>1000)return;
    // Server granted a single atomic claim; no retry even if socket lost after send.
    const target=replyRoute?.phone===phone(job.jid)?replyRoute.jid:job.jid;
-   const id=await transmit(target,{text:job.texto}),state=id?'aceptado':'incierto';
+   let id=null;
+   if(job.interaccion){
+    const spec=normalizePoll(job.interaccion),proposed=keyId(newMessageId());
+    // Never downgrade a queued native selection to an accidental text send.
+    if(spec&&proposed&&pollStore&&decryptVote){
+     try{
+      const content=await pollStore.create(proposed,target,job.jid,pilot,spec);
+      if(active()&&valid())id=await transmit(target,content,proposed);
+      if(id!==proposed)id=null;
+     }catch{}
+    }
+   }else id=await transmit(target,{text:job.texto});
+   const state=id?'aceptado':'incierto';
    await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state,...(id?{p_evento:id,p_jid:target}:{})});
    logger(id?'Respuesta enviada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
   }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;}

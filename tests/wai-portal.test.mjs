@@ -231,6 +231,62 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await role('creadora');await authorize(S,H,null,'cancelar');
  await anon();assert.equal(await feedback(token2),null);assert.equal(await feedback(token),null);
  await role('gerente');assert.equal((await inbox(S)).chats[0].pedidos.length,2);
+
+ // Native selection protocol, reusable menu per local, authorized handoff and
+ // backwards compatibility with the previous text-only connector.
+ await db.exec('reset role;'+read('entornos/sql/wai-interacciones-generales.sql'));
+ const cfg=(local,c=null)=>call('wai_atencion_config',[local,c]);
+ const att=(action,local=S,hilo=p,event=E)=>call('wai_atencion_accion',[local,hilo,action,event]);
+ const settings={pregunta:'¿Qué servicio necesitás?',opciones:[{label:'Consultar disponibilidad',respuesta:'Atendemos con turno previo.',humano:false},{label:'Hablar con una persona',respuesta:'',humano:true}],bienvenida_auto:true,pedidos:false};
+ await role('gerente');assert.equal((await cfg(S)).bienvenida_auto,false);assert.equal((await cfg(S,settings)).pregunta,settings.pregunta);
+ await assert.rejects(cfg(S,{...settings,opciones:[settings.opciones[0],settings.opciones[0]]}),/diferentes/);
+ await role('gerente',T);assert.equal((await cfg(T)).bienvenida_auto,false);await assert.rejects(cfg(S),/Sin permiso/);await assert.rejects(att('manual'),/Sin permiso/);
+ await role('creadora');const p7=await authorize(S,H,contact);
+ const native=(action,pid=p7,j=null,event=null,text=null,msg=null,state='opciones_v1')=>motor(H,keyA,action,pid,j,event,text,msg,state,cmd.revision);
+ await anon();
+ assert.equal((await native('control',null)).id,p7);assert.equal(await native('tomar'),null); // no inbound yet
+ await motor(H,keyA,'recibir',p7,jid,'NEW','Hola',null,null,cmd.revision);
+ await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision);
+ assert.equal(await motor(H,keyA,'tomar',p7,null,null,null,null,null,cmd.revision),null); // legacy connector never auto-sends menu
+ await role('gerente');await assert.rejects(att('enviar'),/Actualizá el conector/);
+ await anon();await native('control',null);await native('control',null);
+ assert.equal(await motor(H,keyA,'tomar',p7,null,null,null,null,null,cmd.revision),null); // legacy does not claim native queue
+ const menu=await native('tomar');assert.equal(menu.interaccion.pregunta,settings.pregunta);assert.equal(menu.interaccion.opciones.length,2);
+ await native('resultado',p7,jid,'WA-MENU',null,menu.id,'aceptado');
+ assert.equal(await native('voto',p7,'5491100009999@s.whatsapp.net','WA-MENU','op1'),null);
+ assert.equal(await native('voto',p7,jid,'WA-MENU','inventada'),null);
+ assert.equal(await native('voto',p7,jid,'UNKNOWN','op1'),null);
+ assert.ok((await native('voto',p7,jid,'WA-MENU','op1')).ok);
+ assert.ok((await native('voto',p7,jid,'WA-MENU','op1')).ok);
+ await native('control',null);await native('control',null);
+ const answer=await native('tomar');assert.equal(answer.texto,'Atendemos con turno previo.');await native('resultado',p7,jid,'WA-ANSWER',null,answer.id,'aceptado');
+ assert.equal(await native('tomar'),null);
+ // Customer changes their vote and requests a person.
+ assert.ok((await native('voto',p7,jid,'WA-MENU','op2')).ok);
+ await native('control',null);assert.equal(await native('tomar'),null);
+ await role('gerente');let c7=(await inbox(S)).chats[0];assert.equal(c7.atencion_manual,true);assert.equal(c7.atencion_pendiente,true);assert.equal(c7.pedidos_habilitados,false);
+ assert.ok(c7.mensajes.some(m=>m.origen==='opcion'&&m.texto.includes('Hablar con una persona')));
+ assert.equal(await att('atendido'),true);assert.equal((await inbox(S)).chats[0].atencion_pendiente,false);
+ assert.equal(await att('asistido'),true);assert.equal((await inbox(S)).chats[0].atencion_manual,false);
+ await assert.rejects(order('aceptar',null,'retiro',2,'10000000-0000-4000-8000-000000000099'),/desactivado/);
+ // Retiring a module does not erase or block completion of prior orders.
+ assert.equal(await order('entregado',o2.id),true);
+ await cfg(S,{...settings,pedidos:true,bienvenida_auto:false});
+ // Use a native survey for the next order; complaint overrides earlier positive choice.
+ const ref='10000000-0000-4000-8000-000000000099';
+ assert.equal(await order('aceptar',null,'retiro',1,ref),true);
+ const o3=(await inbox(S)).chats[0].pedidos[0];assert.equal(await order('listo',o3.id),true);
+ await anon();const sendNative=async id=>{const j=await native('tomar');assert.ok(j);await native('resultado',p7,jid,id,null,j.id,'aceptado');return j;};
+ // Delivery notice, preparation, ready notice are all queued.
+ for(let i=1;i<=3;i++)await sendNative('WA-P'+i);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${o3.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '2 minutes' where piloto_id='${p7}' and estado='aceptado'`);
+ await anon();await native('control',null);const ns=await sendNative('WA-SURVEY');
+ assert.equal(ns.interaccion.opciones[0].id,'bien');assert.equal(ns.interaccion.opciones[1].id,'problema');
+ assert.ok((await native('voto',p7,jid,'WA-SURVEY','bien')).ok);
+ await native('control',null);assert.match((await sendNative('WA-THANK')).texto,/Muchas gracias/);
+ assert.ok((await native('voto',p7,jid,'WA-SURVEY','problema')).ok);
+ await native('control',null);assert.match((await sendNative('WA-SORRY')).texto,/Lamentamos mucho/);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].reclamo_pendiente,true);
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{
