@@ -28,13 +28,13 @@ begin
    r=public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,jid,'qa-menu','Carta');
    if not exists(select 1 from gestlok_chat_private.wai_programaciones where ciclo_id=ci and estado='ofrecido' and wai_programaciones.apertura=flujo.apertura) then raise exception 'No ofreció pedido programado: %',s.slug;end if;
    if exists(select 1 from gestlok_chat_private.wai_menu_accesos where piloto_id=p.id) then raise exception 'Envió menú sin consentimiento';end if;
-   select id into voto_id from gestlok_chat_private.wai_mensajes where piloto_id=p.id and interaccion->'opciones' @> '[{"id":"programar_no"}]';
+   select wm.id into voto_id from gestlok_chat_private.wai_mensajes wm join gestlok_chat_private.wai_programaciones z on z.pregunta_evento=wm.evento where wm.piloto_id=p.id and z.ciclo_id=ci;
    if voto_id is null then raise exception 'Falta pregunta';end if;
    update gestlok_chat_private.wai_mensajes set estado='aceptado',wa_id='qa-programar-no' where id=voto_id;
    perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'voto',p.id,jid,'qa-programar-no','programar_no');
    if not exists(select 1 from gestlok_chat_private.wai_programaciones where ciclo_id=ci and estado='rechazado') then raise exception 'No procesó rechazo';end if;
    perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,jid,'qa-nuevo','Hola');
-   select id into voto_id from gestlok_chat_private.wai_mensajes where piloto_id=p.id and interaccion->'opciones' @> '[{"id":"programar_si"}]' order by creado_at desc limit 1;
+   select wm.id into voto_id from gestlok_chat_private.wai_mensajes wm join gestlok_chat_private.wai_programaciones z on z.pregunta_evento=wm.evento where wm.piloto_id=p.id and z.ciclo_id=ci;
    update gestlok_chat_private.wai_mensajes set estado='aceptado',wa_id='qa-programar-si' where id=voto_id;
    perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'voto',p.id,jid,'qa-programar-si','programar_si');
    if not exists(select 1 from gestlok_chat_private.wai_programaciones where ciclo_id=ci and estado='aceptado') then raise exception 'No procesó aceptación';end if;
