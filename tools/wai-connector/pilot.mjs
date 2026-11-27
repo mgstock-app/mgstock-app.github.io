@@ -11,13 +11,16 @@ const lidJid=jid=>{
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
-export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
+export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null}){
  let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map();
+ const known=new Map(),delivered=new Set();
+ const keyId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id)?id:null;
+ const routeOf=j=>pnJid(j)||lidJid(j);
  const serverNow=()=>now()+serverOffset;
  function valid(){return !!pilot&&Date.parse(pilot.vence_at)>serverNow();}
  function note(code,message){const t=now();if(!lastLog.has(code)||t-lastLog.get(code)>=15000){lastLog.set(code,t);logger(message);}}
  function matches(jid){return valid()&&phone(jid)!==null&&phone(jid)===phoneKey(pilot.tester);}
- function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;epoch++;}
+ function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();epoch++;}
  async function expectedLid(tester){
   const mapping=socket.signalRepository?.lidMapping;
   if(typeof mapping?.getLIDForPN!=='function')return null;
@@ -73,6 +76,31 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
    }
   }
  }
+ // Direct receipts only: no group/status metadata and no identifiers from unrelated messages.
+ async function receipt(updates){
+  if(!active()||!valid()||!Array.isArray(updates))return;
+  const mine=epoch,p=pilot;
+  for(const u of updates){
+   const id=keyId(u?.key?.id),route=routeOf(u?.key?.remoteJid);
+   if(!id||u.key.fromMe!==true||![3,4,5].includes(Number(u.update?.status))||!route||!known.has(id))continue;
+   const expected=known.get(id);
+   let match=route===expected||phone(route)!==null&&phone(route)===phoneKey(p.tester);
+   if(!match){const sender=await resolveSender(u.key,p.tester).catch(()=>null);match=!!sender&&phone(sender.pn)===phoneKey(p.tester);}
+   if(!active()||mine!==epoch||!valid())return;
+   if(match)delivered.add(id);
+  }
+ }
+ async function transmit(target,content){
+  const proposed=keyId(newMessageId());if(proposed)known.set(proposed,target);
+  try{
+   const result=await socket.sendMessage(target,content,proposed?{messageId:proposed}:{});
+   const id=keyId(result?.key?.id);
+   if(proposed&&proposed!==id){known.delete(proposed);delivered.delete(proposed);}
+   if(id){known.set(id,target);return id;}
+  }catch{/* Ambiguous transport result: never retry a message or correction. */}
+  if(proposed){known.delete(proposed);delivered.delete(proposed);}
+  return null;
+ }
  async function tick(revision){
   if(working||!active())return;
   working=true;
@@ -84,6 +112,14 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
    if(!next||!phoneKey(next.tester)||Date.parse(next.vence_at)<=serverNow()){if(pilot)logger('Ensayo finalizado.');reset();return;}
    if(pilot?.id!==next.id){reset();logger('Ensayo autorizado. Listo para recibir mensajes del contacto.');}
    pilot=next;
+   for(const item of Array.isArray(next.salientes)?next.salientes:[]){
+    const route=routeOf(item?.ruta);
+    if(!route)continue;
+    for(const id of [keyId(item.wa_id),keyId(item.accion_id)])if(id)known.set(id,route);
+   }
+   for(const id of [...delivered]){
+    await call('entrega',{p_piloto:pilot.id,p_evento:id});delivered.delete(id);
+   }
    while(inbox.length&&active()){
     const item=inbox.shift();
     if(item.p_piloto===pilot.id&&matches(item.p_jid)){
@@ -92,15 +128,27 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{}}){
     }
    }
    if(!active())return;
+   const action=await call('tomar_accion',{p_piloto:pilot.id});
+   if(action){
+    const id=keyId(action.wa_id),target=routeOf(action.ruta);
+    let operation=null;
+    // Only the durable routing key of a message created by this pilot may be modified.
+    if(active()&&valid()&&id&&target&&known.get(id)===target&&(action.tipo==='eliminar'||action.tipo==='editar'&&typeof action.texto==='string'&&action.texto.trim()&&action.texto.length<=1000)){
+     const key={remoteJid:target,id,fromMe:true};
+     operation=await transmit(target,action.tipo==='editar'?{text:action.texto,edit:key}:{delete:key});
+    }
+    await call('resultado_accion',{p_piloto:pilot.id,p_mensaje:action.id,p_estado:operation?'aceptado':'incierto',p_evento:operation});
+    logger(operation?'Corrección de ensayo enviada a WhatsApp.':'Corrección no confirmada. No se reintenta.');
+    return;
+   }
    const job=await call('tomar',{p_piloto:pilot.id});
    if(!job||!active()||!matches(job.jid)||typeof job.texto!=='string'||job.texto.length>1000)return;
    // Server granted a single atomic claim; no retry even if socket lost after send.
    const target=replyRoute?.phone===phone(job.jid)?replyRoute.jid:job.jid;
-   let state='incierto';
-   try{const result=await socket.sendMessage(target,{text:job.texto});if(result?.key?.id)state='aceptado';}catch{/* no retry */}
-   await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state});
-   logger(state==='aceptado'?'Respuesta entregada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
+   const id=await transmit(target,{text:job.texto}),state=id?'aceptado':'incierto';
+   await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state,...(id?{p_evento:id,p_jid:target}:{})});
+   logger(id?'Respuesta enviada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
   }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;}
  }
- return {receive,tick,reset};
+ return {receive,receipt,tick,reset};
 }

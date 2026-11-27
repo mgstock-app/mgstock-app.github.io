@@ -84,6 +84,28 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await db.exec("reset role;set test.uid=''");
  await role('gerente');assert.equal((await inbox(S)).chats[0].mensajes.filter(m=>!m.leido).length,1);
 
+
+ // Real WhatsApp key, delivery receipt and explicit correction workflow only within this pilot.
+ await db.exec('reset role;'+read('entornos/sql/wai-acciones-y-entrega.sql'));
+ await role('gerente');await inbox(S,'responder',p2,'Texto original',E);
+ await anon();const out=await motor(H,keyA,'tomar',p2);assert.ok(out.id);
+ assert.equal((await motor(H,keyA,'resultado',p2,jid,'WA-ORIGINAL',null,out.id,'aceptado')).ok,true);
+ await role('gerente');let row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.entregado,false);assert.equal(row.puede_editar,true);assert.equal(row.puede_eliminar,true);
+ const action=(s,p,m,a,t=null)=>call('wai_mensaje_accion',[s,p,m,a,t]);
+ await role('gerente',T);await assert.rejects(action(S,p2,out.id,'editar','Robo'),/Sin permiso/);
+ await db.exec(`reset role;set test.uid='${E}'`);await role('gerente');await assert.rejects(action(S,p2,out.id,'eliminar'),/no admite/);
+ await db.exec("reset role;set test.uid=''");await role('gerente');
+ await assert.rejects(action(S,p2,first,'eliminar'),/no admite/);
+ await anon();assert.equal((await motor(H,keyA,'entrega',p2,null,'unknown')).ok,false);assert.equal((await motor(H,keyA,'entrega',p2,null,'WA-ORIGINAL')).ok,true);
+ await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.entregado,true);assert.equal(await action(S,p2,out.id,'editar','Texto corregido'),true);
+ await assert.rejects(action(S,p2,out.id,'eliminar'),/no admite/);
+ await anon();const edit=await motor(H,keyA,'tomar_accion',p2);assert.equal(edit.wa_id,'WA-ORIGINAL');assert.equal(edit.tipo,'editar');assert.equal(edit.ruta,jid);assert.equal(edit.texto,'Texto corregido');assert.equal(await motor(H,keyA,'tomar_accion',p2),null);
+ await motor(H,keyA,'resultado_accion',p2,null,'WA-EDIT',null,out.id,'aceptado');
+ await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.texto,'Texto corregido');assert.equal(row.editado,true);assert.equal(row.accion_entregada,false);
+ await anon();assert.equal((await motor(H,keyA,'entrega',p2,null,'WA-EDIT')).ok,true);
+ await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.accion_entregada,true);await action(S,p2,out.id,'eliminar');
+ await anon();const del=await motor(H,keyA,'tomar_accion',p2);assert.equal(del.tipo,'eliminar');await motor(H,keyA,'resultado_accion',p2,null,'WA-DELETE',null,out.id,'aceptado');
+ await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.eliminado,true);assert.equal(row.texto,'Mensaje eliminado');assert.equal(row.puede_editar,false);assert.equal(row.puede_eliminar,false);
  await role('gerente',T);await assert.rejects(connections(T,'revalidar',H),/Número no habilitado/);
  await role('gerente');assert.equal((await connections(S,'revalidar',H))[0].estado,'reconectando');
  await anon();const cmd=await signal('wai_senal',H,keyA,rev,'conectado','+5491100000001');assert.equal(cmd.orden,'qr_forzado');

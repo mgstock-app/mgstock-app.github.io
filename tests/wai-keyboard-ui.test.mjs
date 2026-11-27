@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const s=readFileSync('public/chat/wai/wai.js','utf8');
+test('Enter envía; Shift+Enter mantiene salto; Esc cierra edición, herramienta y conversación según prioridad; doble tilde solo por entrega',()=>{
+ let sent=0,prevented=0,closed=0;
+ const ctx={send:{disabled:false},respond:()=>sent++,drawerKind:'',actionDraft:null,selected:'chat',selection:id=>{ctx.selected=id},cancelMessageAction:()=>{ctx.actionDraft=null;closed++},closeDrawer:()=>{ctx.drawerKind='';closed++}};
+ vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf('function composerKey'),s.indexOf('function renderMessage')),ctx);
+ const e=(key,extras={})=>({key,preventDefault(){prevented++},...extras});
+ ctx.composerKey(e('Enter'));assert.equal(sent,1);assert.equal(prevented,1);
+ ctx.composerKey(e('Enter',{shiftKey:true}));ctx.composerKey(e('Enter',{isComposing:true}));assert.equal(sent,1);assert.equal(prevented,1);
+ ctx.send.disabled=true;ctx.composerKey(e('Enter'));assert.equal(sent,1);assert.equal(prevented,2);
+ assert.equal(ctx.messageStatus({direccion:'salida',estado:'aceptado',entregado:false}),'✓ Enviado');
+ assert.equal(ctx.messageStatus({direccion:'salida',estado:'aceptado',entregado:true}),'✓✓ Entregado');
+ assert.equal(ctx.actionStatus({accion_tipo:'eliminar',accion_estado:'enviado',accion_entregada:false}),'Eliminación enviada');
+ assert.equal(ctx.actionStatus({accion_tipo:'eliminar',accion_estado:'enviado',accion_entregada:true,eliminado:true}),'Eliminado');
+ ctx.document={addEventListener:(_name,fn)=>ctx.esc=fn};vm.runInContext(s.slice(s.indexOf("document.addEventListener('keydown'"),s.indexOf("document.addEventListener('visibilitychange'")),ctx);
+ ctx.drawerKind='config';ctx.esc(e('Escape'));assert.equal(closed,1);assert.equal(ctx.selected,'chat');
+ ctx.actionDraft={id:'m'};ctx.esc(e('Escape'));assert.equal(closed,2);assert.equal(ctx.selected,'chat');
+ ctx.esc(e('Escape'));assert.equal(ctx.selected,null);
+});

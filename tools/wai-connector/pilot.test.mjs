@@ -74,3 +74,32 @@ test('recibe append reciente solo dentro del consentimiento y compara con la hor
  assert.deepEqual(accepted,['queued','ephemeral']);
  assert.ok(logs.some(x=>x.includes('antigüedad')));
 });
+
+test('envío, recibo de entrega real y edición/eliminación requieren la clave del mensaje propio',async()=>{
+ const t=Date.now(),calls=[],sent=[];
+ let job={id:'s1',jid,texto:'Hola'},action=null,sentKeys=[],counter=0,engine;
+ const socket={sendMessage:async(target,content,options)=>{
+   sent.push([target,content]);const id=options.messageId;
+   // Receipt may arrive BEFORE sendMessage resolves.
+   await engine.receipt([{key:{remoteJid:target,id,fromMe:true},update:{status:3}}]);
+   return {key:{id,remoteJid:target,fromMe:true}};
+ }};
+ engine=pilotTransport({now:()=>t,active:()=>true,newMessageId:()=>('WA'+(++counter)),socket,rpc:async(_name,a)=>{
+  calls.push(a);
+  if(a.p_accion==='control')return {id:'p5',tester:'+5491100000003',vence_at:new Date(t+60000).toISOString(),salientes:sentKeys};
+  if(a.p_accion==='tomar'){const next=job;job=null;return next;}
+  if(a.p_accion==='resultado'){sentKeys=[{wa_id:a.p_evento,ruta:a.p_jid}];return {ok:true};}
+  if(a.p_accion==='tomar_accion'){const next=action;action=null;return next;}
+  if(a.p_accion==='resultado_accion'){sentKeys[0].accion_id=a.p_evento;return {ok:true};}
+  if(a.p_accion==='entrega')return {ok:true};
+ }});
+ await engine.tick('rev');
+ assert.equal(calls.find(a=>a.p_accion==='resultado').p_evento,'WA1');
+ await engine.receipt([{key:{id:'unrelated',remoteJid:jid,fromMe:true},update:{status:3}},{key:{id:'WA1',remoteJid:other,fromMe:true},update:{status:3}},{key:{id:'WA1',remoteJid:jid,fromMe:false},update:{status:3}}]);
+ action={id:'s1',wa_id:'WA1',ruta:jid,tipo:'editar',texto:'Corregido'};await engine.tick('rev');
+ assert.deepEqual(sent[1],[jid,{text:'Corregido',edit:{remoteJid:jid,id:'WA1',fromMe:true}}]);
+ assert.deepEqual(calls.filter(a=>a.p_accion==='entrega').map(a=>a.p_evento),['WA1']);
+ action={id:'s1',wa_id:'WA1',ruta:jid,tipo:'eliminar'};await engine.tick('rev');
+ assert.deepEqual(sent[2],[jid,{delete:{remoteJid:jid,id:'WA1',fromMe:true}}]);
+ action={id:'not-own',wa_id:'BAD',ruta:other,tipo:'eliminar'};await engine.tick('rev');assert.equal(sent.length,3);assert.equal(calls.at(-1).p_estado,'incierto');
+});

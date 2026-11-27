@@ -24,6 +24,7 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 const readBusy=new Set();
+let messageActionHost,actionDraft=null,actionBusy=false;
 let shell,notice,list,search,unreadSummary,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
@@ -85,7 +86,7 @@ async function registerTrial(box){
  }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
 function clearPrivate(){
- generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
+ generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();actionDraft=null;actionBusy=false;lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
@@ -96,8 +97,9 @@ function renderShell(){
  list=node('div',{class:'chat-list','aria-label':'Conversaciones'});
  unreadSummary=node('span',{class:'unread-summary','aria-live':'polite',hidden:true});
  head=node('div',{class:'chat-head'});thread=node('div',{class:'thread',role:'log','aria-label':'Mensajes',onscroll:()=>void markVisibleRead()});
- textarea=node('textarea',{placeholder:'Escribí un mensaje',rows:'1',maxlength:'1000','aria-label':'Escribí un mensaje',oninput:()=>{if(selected)drafts.set(selected,textarea.value);updateComposer();}});
+ textarea=node('textarea',{placeholder:'Escribí un mensaje',rows:'1',maxlength:'1000','aria-label':'Escribí un mensaje',oninput:()=>{if(selected)drafts.set(selected,textarea.value);updateComposer();},onkeydown:composerKey});
  send=node('button',{type:'submit',class:'btn primary',disabled:true},'Enviar');
+ messageActionHost=node('div',{class:'message-action-host'});
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
@@ -106,10 +108,11 @@ function renderShell(){
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
   node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{class:'inbox-title'},'Conversaciones',unreadSummary),search),list),
-   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,thread,compose)),overlay);
+   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,thread,messageActionHost,compose)),overlay);
  root.replaceChildren(shell);renderList();renderThread(true);
 }
 function selection(id){
+ cancelMessageAction();
  if(selected&&textarea)drafts.set(selected,textarea.value);
  selected=id;shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
 }
@@ -141,15 +144,62 @@ async function markVisibleRead(){
  finally{if(mine===generation)readBusy.delete(id);}
 }
 function empty(title,txt){return node('div',{class:'empty'},node('div',{class:'mark','aria-hidden':'true'},'✉'),node('h2',{},title),node('p',{},txt));}
+function composerKey(e){
+ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(!send.disabled)void respond();}
+}
+function messageStatus(m){
+ if(m.direccion==='entrada')return 'Recibido';
+ if(m.estado==='aceptado')return m.entregado?'✓✓ Entregado':'✓ Enviado';
+ return {pendiente:'En cola',reservado:'Enviando',incierto:'Envío incierto · no repetir'}[m.estado]||'Sin confirmar';
+}
+function actionStatus(m){
+ if(m.accion_estado==='pendiente'||m.accion_estado==='reservado')return m.accion_tipo==='editar'?'Editando…':'Eliminando…';
+ if(m.accion_estado==='incierto')return 'Cambio no confirmado · no repetir';
+ if(m.accion_estado==='enviado'&&!m.accion_entregada)return m.accion_tipo==='editar'?'Edición enviada':'Eliminación enviada';
+ if(m.eliminado)return 'Eliminado';
+ if(m.editado)return 'Editado';
+ return '';
+}
+function renderMessage(c,m){
+ const outgoing=m.direccion==='salida',status=messageStatus(m),change=actionStatus(m);
+ const actions=[];
+ if(m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
+ if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
+ return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
+   node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.texto),
+   node('small',{class:'message-meta'},time(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),change?' · '+change:null),
+   actions.length?node('div',{class:'message-actions'},...actions):null);
+}
+function cancelMessageAction(){
+ actionDraft=null;messageActionHost?.replaceChildren();
+}
+function openMessageAction(chat,m,kind){
+ if(actionBusy||selected!==chat||kind==='editar'&&!m.puede_editar||kind==='eliminar'&&!m.puede_eliminar)return;
+ const status=node('p',{class:'hint',role:'status'});
+ const input=kind==='editar'?node('textarea',{rows:2,maxlength:1000,'aria-label':'Mensaje corregido'}):null;
+ if(input)input.value=m.texto;
+ const submit=node('button',{type:'submit',class:'btn '+(kind==='editar'?'primary':'danger')},kind==='editar'?'Guardar edición':'Eliminar para todos');
+ const form=node('form',{class:'message-action-form',onsubmit:async e=>{
+  e.preventDefault();if(actionBusy||actionDraft?.id!==m.id||selected!==chat)return;
+  const text=input?.value.trim()||null;if(kind==='editar'&&(!text||text.length>1000)){status.textContent='Escribí el mensaje corregido.';return;}
+  const mine=generation;actionBusy=true;submit.disabled=true;
+  try{
+   const ok=await rpc('wai_mensaje_accion',{p_sucursal:sessionLocal.id,p_piloto:chat,p_mensaje:m.id,p_accion:kind,p_texto:text});
+   if(ok!==true)throw Error('No se confirmó la solicitud.');
+   if(mine===generation){cancelMessageAction();await refresh();}
+  }catch(e){if(mine===generation&&form.isConnected)status.textContent=e.message;}
+  finally{if(mine===generation){actionBusy=false;submit.disabled=false;}}
+ }},node('strong',{},kind==='editar'?'Editar mensaje':'Eliminar mensaje'),input||node('p',{class:'hint'},'Se solicitará la eliminación para todos en WhatsApp. La otra persona puede haber leído el mensaje.'),status,node('div',{class:'message-action-buttons'},submit,button('Cancelar',()=>cancelMessageAction(),'btn')));
+ actionDraft={id:m.id,chat,kind};messageActionHost.replaceChildren(form);if(input)input.focus();else submit.focus();
+}
 function renderThread(force=false){
  const c=chats.find(x=>x.id===selected);
- if(!c){selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
+ if(!c){cancelMessageAction();selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
  const sig=JSON.stringify(c.mensajes);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
    head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{},node('strong',{},c.cliente),node('small',{},'Contacto de ensayo · vence '+time(c.vence_at))));
-   const states={pendiente:'En cola',reservado:'Procesando',aceptado:'Aceptado por transporte',incierto:'Resultado incierto; no repetir',recibido:'Recibido'};
-   thread.replaceChildren(...(c.mensajes?.length?c.mensajes.map(m=>node('div',{class:'bubble'+(m.direccion==='salida'?' out':'')},m.texto,node('small',{},time(m.fecha)+' · '+(states[m.estado]||'Estado sin verificar')))):[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
+   thread.replaceChildren(...(c.mensajes?.length?c.mensajes.map(m=>renderMessage(c,m)):[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
    if(force||nearBottom)thread.scrollTop=thread.scrollHeight;
  }
  compose.hidden=false;updateComposer();
@@ -286,7 +336,7 @@ async function authorize(id,cancel=false,tester=null){
  }catch(e){if(mine===generation){if(authorizationDraft)authorizationDraft.status.textContent=e.message;else drawerStatus.textContent=e.message;}}
  finally{connectionBusy=false;if(mine===generation&&drawerKind==='conexion')renderConnection();}
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawerKind)closeDrawer();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(drawerKind){e.preventDefault();closeDrawer();}else if(actionDraft){e.preventDefault();cancelMessageAction();}else if(selected){e.preventDefault();selection(null);}}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});
 setInterval(()=>{for(const im of root.querySelectorAll('[data-expira]'))if(Date.parse(im.dataset.expira)<=Date.now())im.remove();},1000);
 sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')setTimeout(()=>{clearPrivate();login();},0);});
