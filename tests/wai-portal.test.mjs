@@ -154,6 +154,25 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  assert.equal(await alias(S,hist.id,'Alias aun sin ensayo'),true);
  const p4=await authorize(S,H,contact);hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.piloto_activo,p4);assert.equal(hist.alias,'Alias aun sin ensayo');assert.equal(hist.puede_responder,true);assert.equal(hist.mensajes.length,6);
 
+
+ // Linked-phone mirror: no send queue, no cross-contact capture, no echo duplicates.
+ await db.exec('reset role;'+read('entornos/sql/wai-sincronizar-telefono.sql'));
+ await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'desconectado',null);
+ const preflight=(h,k,r)=>call('wai_ensayo_autorizado',[h,k,r]);
+ assert.equal(await preflight(H,keyB,cmd.revision),null);assert.equal(await preflight(H,keyA,rev),null);
+ assert.equal((await preflight(H,keyA,cmd.revision)).id,p4);assert.equal(await motor(H,keyA,'control',null,null,null,null,null,null,cmd.revision),null);
+ await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');
+ assert.equal(await motor(H,keyA,'recibir_salida',p4,'5491100009999@s.whatsapp.net','OTHER','No guardar',null,'enviado',cmd.revision),null);
+ assert.ok((await motor(H,keyA,'recibir_salida',p4,jid,'PHONE-ONE','Desde teléfono',null,'enviado',cmd.revision)).ok);
+ assert.ok((await motor(H,keyA,'recibir_salida',p4,jid,'PHONE-ONE','Duplicado',null,'enviado',cmd.revision)).ok);
+ assert.equal(await motor(H,keyA,'tomar',p4,null,null,null,null,null,cmd.revision),null);
+ await role('gerente');hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.mensajes.length,7);
+ const phoneMsg=hist.mensajes.find(m=>m.origen==='telefono');assert.equal(phoneMsg.texto,'Desde teléfono');assert.equal(phoneMsg.direccion,'salida');assert.equal(phoneMsg.entregado,false);assert.notEqual(phoneMsg.puede_editar,true);
+ assert.equal(hist.puede_responder,true);
+ await anon();assert.ok((await motor(H,keyA,'entrega',p4,null,'PHONE-ONE',null,null,null,cmd.revision)).ok);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].mensajes.find(m=>m.origen==='telefono').entregado,true);
+ await role('creadora');await authorize(S,H,null,'cancelar');await anon();assert.equal(await preflight(H,keyA,cmd.revision),null);
+ await role('creadora');hist=(await inbox(S)).chats[0];assert.equal(hist.archivado,true);assert.equal(hist.mensajes.length,7);
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{

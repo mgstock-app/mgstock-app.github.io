@@ -18,7 +18,7 @@ async function rpc(s,name,args){
  return r.json();
 }
 function transportFor(s){
- return async({reset,onEvent})=>{
+ return async({reset,revision,onEvent})=>{
   const path=join(root,s.id);
   await mkdir(path,{recursive:true,mode:0o700});
   const pointer=join(path,'active-directory');
@@ -32,12 +32,13 @@ function transportFor(s){
   const privateDir=join(path,sub);
   await protectDirectory(privateDir);
   const {state,saveCreds}=await useMultiFileAuthState(privateDir);
+  const initialGrant=config.enableTestMessages===true&&revision?await rpc(s,'gestlok_chat_wai_ensayo_autorizado',{p_revision:revision}).catch(()=>null):null;
   const sock=makeWASocket({auth:state,logger:pino({level:'silent'}),browser:Browsers.appropriate('Chrome'),
     markOnlineOnConnect:false,syncFullHistory:false,shouldSyncHistoryMessage:()=>false,
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});

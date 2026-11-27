@@ -177,7 +177,7 @@ function renderMessage(c,m){
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.texto),
-   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),change?' · '+change:null),
+   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
 function cancelMessageAction(){

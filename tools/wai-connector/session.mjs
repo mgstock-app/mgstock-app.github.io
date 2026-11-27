@@ -10,7 +10,7 @@ export function createSession({id,number,exchange,transport,now=Date.now,logger=
     const current=++epoch;
     mark('reconectando');
     try{
-      socket=await transport({reset,onEvent:event=>{
+      socket=await transport({reset,revision,onEvent:event=>{
         if(closed||current!==epoch)return;
         if(event.type==='qr'){
           if(typeof event.qr==='string'&&event.qr.length>=16&&event.qr.length<=2048){mark('qr');qr=event.qr;qrAt=now();}

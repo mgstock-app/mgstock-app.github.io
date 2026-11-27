@@ -117,3 +117,22 @@ test('agenda de WhatsApp solo sincroniza nombre guardado del contacto autorizado
  await engine.contacts([{id:jid,name:'Guardado en agenda'}]);await engine.tick('rev');assert.equal(calls.length,1);
  await engine.contacts([{id:jid,name:'Nuevo nombre'}]);await engine.tick('rev');assert.equal(calls.length,2);assert.equal(calls[1].p_texto,'Nuevo nombre');
 });
+
+test('en reconexión sincroniza envíos del teléfono y pendientes posteriores al consentimiento, no ecos ni contactos ajenos',async()=>{
+ const t=Date.now(),calls=[],grant={id:'p7',tester:'+5491100000003',creado_at:new Date(t-600000).toISOString(),vence_at:new Date(t+600000).toISOString(),hora_servidor:new Date(t).toISOString()};
+ let queued=null,engine;
+ const sock={sendMessage:async(_target,_content,options)=>({key:{id:options.messageId}})};
+ engine=pilotTransport({initialGrant:grant,now:()=>t,active:()=>true,socket:sock,newMessageId:()=> 'WAI-SENT',rpc:async(_name,a)=>{
+  if(a.p_accion==='control')return grant;
+  if(a.p_accion==='tomar'){const j=queued;queued=null;return j;}
+  if(a.p_accion==='recibir'||a.p_accion==='recibir_salida'){calls.push(a);return {ok:true};}
+  return null;
+ }});
+ const msg=(id,to,fromMe,stamp=t)=>({key:{id,remoteJid:to,fromMe},message:{conversation:id},messageTimestamp:Math.floor(stamp/1000)});
+ // Preflight grant permits the active contact's pending events before first control tick.
+ await engine.receive({type:'append',messages:[msg('PHONE-ONE',jid,true,t-300000),msg('IN-PENDING',jid,false,t-300000),msg('PRE-CONSENT',jid,true,t-700000),msg('WRONG',other,true),msg('GROUP','123@g.us',true)]});
+ await engine.tick('rev');assert.deepEqual(calls.map(a=>a.p_evento),['PHONE-ONE','IN-PENDING']);
+ await engine.receive({type:'notify',messages:[msg('PHONE-ONE',jid,true)]});await engine.tick('rev');assert.equal(calls.length,2);
+ queued={id:'pending',jid,texto:'Envío WAI'};await engine.tick('rev');
+ await engine.receive({type:'append',messages:[msg('WAI-SENT',jid,true)]});await engine.tick('rev');assert.equal(calls.length,2);
+});
