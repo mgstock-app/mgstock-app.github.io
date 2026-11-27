@@ -41,3 +41,11 @@ test('HQ: el motor manual y autónomo comparten exactamente la misma base',()=>{
  const worker=readFileSync('supabase/functions/gestlok-hq-worker/index.ts','utf8');
  assert.equal(source.match(/const SHARED_KNOWLEDGE=(.*);/)[1],worker.match(/const SHARED_KNOWLEDGE=(.*);/)[1]);
 });
+
+test('HQ: mensajes de conversación no disparan encargos ni avisos de Dirección',()=>{
+ const sql=readFileSync('supabase/migrations/20261127031700_gestlok_hq_chat_isolation.sql','utf8');
+ assert.match(sql,/registrar_encargo\(\)[\s\S]*left\(t\.instruction,length\(E'HQ_CHAT_V1\\n'\)\)=E'HQ_CHAT_V1\\n'/);
+ assert.match(sql,/enqueue_director_push\(\)[\s\S]*left\(t\.instruction,length\(E'HQ_CHAT_V1\\n'\)\)<>E'HQ_CHAT_V1\\n'/);
+ assert.match(sql,/length\(split_part\(linea,'\|',3\)\) between 15 and 500/);
+ assert.doesNotMatch(sql,/\{15,500\}/);
+});
