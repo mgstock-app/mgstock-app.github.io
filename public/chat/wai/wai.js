@@ -116,15 +116,16 @@ function selection(id){
  if(selected&&textarea)drafts.set(selected,textarea.value);
  selected=id;shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
 }
+function displayName(c){return c?.alias||c?.nombre_agenda||c?.cliente||'';}
 function unreadIds(c){return (c?.mensajes||[]).filter(m=>m.direccion==='entrada'&&m.leido===false).map(m=>m.id);}
 function renderList(){
  if(!list)return;
  const total=chats.reduce((n,c)=>n+unreadIds(c).length,0);
  if(unreadSummary){unreadSummary.hidden=!total;unreadSummary.textContent=total?total+' sin leer':'';}
- const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>String(c.cliente).includes(value)||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
+ const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
  list.replaceChildren(...(matching.length?matching.map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':c.cliente+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},c.cliente),node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba')),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba')),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
@@ -192,13 +193,38 @@ function openMessageAction(chat,m,kind){
  }},node('strong',{},kind==='editar'?'Editar mensaje':'Eliminar mensaje'),input||node('p',{class:'hint'},'Se solicitará la eliminación para todos en WhatsApp. La otra persona puede haber leído el mensaje.'),status,node('div',{class:'message-action-buttons'},submit,button('Cancelar',()=>cancelMessageAction(),'btn')));
  actionDraft={id:m.id,chat,kind};messageActionHost.replaceChildren(form);if(input)input.focus();else submit.focus();
 }
+function openAlias(c){
+ if(actionBusy||selected!==c.id||!messageActionHost)return;
+ const input=node('input',{type:'text',maxlength:100,placeholder:'Ej.: Cliente frecuente','aria-label':'Alias del contacto',autocomplete:'off'});
+ input.value=c.alias||'';
+ const status=node('p',{class:'hint',role:'status'});
+ const submit=node('button',{type:'submit',class:'btn primary'},'Guardar alias');
+ const save=async value=>{
+  if(actionBusy||selected!==c.id||actionDraft?.id!=='alias:'+c.id)return;
+  const mine=generation;actionBusy=true;submit.disabled=true;
+  try{
+   const ok=await rpc('wai_contacto_alias',{p_sucursal:sessionLocal.id,p_piloto:c.id,p_alias:value});
+   if(ok!==true)throw Error('No se confirmó el alias.');
+   if(mine!==generation)return;
+   const current=chats.find(x=>x.id===c.id);if(current)current.alias=value||null;
+   cancelMessageAction();renderList();renderThread(true);await refresh();
+  }catch(e){if(mine===generation&&status.isConnected)status.textContent=e.message;}
+  finally{if(mine===generation){actionBusy=false;submit.disabled=false;}}
+ };
+ const form=node('form',{class:'message-action-form alias-form',onsubmit:e=>{e.preventDefault();void save(input.value.trim()||null);}},
+  node('strong',{},'Alias del contacto'),node('p',{class:'hint'},'Número: '+c.cliente),
+  c.nombre_agenda?node('p',{class:'hint'},'Nombre sincronizado de WhatsApp: '+c.nombre_agenda):node('p',{class:'hint'},'WhatsApp todavía no compartió un nombre agendado.'),
+  node('label',{},'Alias dentro de GESTLOK WAI',input),status,
+  node('div',{class:'message-action-buttons'},submit,c.alias?button('Quitar alias',()=>void save(null),'btn'):null,button('Cancelar',()=>cancelMessageAction(),'btn')));
+ actionDraft={id:'alias:'+c.id,chat:c.id,kind:'alias'};messageActionHost.replaceChildren(form);input.focus();
+}
 function renderThread(force=false){
  const c=chats.find(x=>x.id===selected);
  if(!c){cancelMessageAction();selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
- const sig=JSON.stringify(c.mensajes);
+ const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente]);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
-   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{},node('strong',{},c.cliente),node('small',{},'Contacto de ensayo · vence '+time(c.vence_at))));
+   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+' · vence '+time(c.vence_at))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
    thread.replaceChildren(...(c.mensajes?.length?c.mensajes.map(m=>renderMessage(c,m)):[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
    if(force||nearBottom)thread.scrollTop=thread.scrollHeight;
  }

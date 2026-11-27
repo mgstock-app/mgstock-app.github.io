@@ -100,3 +100,11 @@ a{color:#087a98}
 .message-action-form textarea{width:100%;padding:10px;border:1px solid #cadce5;border-radius:10px;resize:vertical;min-height:52px;font:inherit}
 .message-action-form p{margin:0}
 .message-action-buttons{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+.contact-number{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#60798a;margin-top:2px}
+.contact-heading{flex:1;min-width:0}
+.contact-heading strong,.contact-heading small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.alias-btn{font-size:12px;padding:6px 10px;min-height:34px;flex:none}
+.alias-form label{display:grid;gap:5px;font-size:13px;font-weight:650}
+.alias-form input{width:100%;padding:10px;border:1px solid #cadce5;border-radius:10px;font:inherit}
+@media(max-width:680px){.alias-btn{padding:6px 8px;font-size:11px}}
