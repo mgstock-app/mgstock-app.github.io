@@ -401,6 +401,8 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  // Guided order, current catalog values, captionless flavor photo, exact count,
  // choices scoped to this cycle, and private data available only to its manager.
  await db.exec('reset role;'+read('entornos/sql/wai-pedidos-guiados.sql'));
+ await db.exec(read('entornos/sql/wai-postventa-y-salsas.sql'));
+ await db.exec(`insert into gestlok_chat_private.wai_salsa_adicional values ('${A}',900,'salsas')`);
  const catPromo='20000000-0000-4000-8000-000000000001',catDrink='20000000-0000-4000-8000-000000000002',packId='20000000-0000-4000-8000-000000000003';
  const groups=[{id:'empanadas',nombre:'Empanadas',tipo:'cantidad',total:6,obligatorio:true,valores:[{id:'jamon_y_queso',nombre:'Jamón y Queso',extra:0},{id:'pollo',nombre:'Pollo',extra:0},{id:'carne_suave',nombre:'Carne Suave',extra:0}]},{id:'salsas',nombre:'Salsas',tipo:'cantidad',total:2,obligatorio:true,valores:[{id:'cheddar',nombre:'Cheddar',extra:0},{id:'crema_de_ajo',nombre:'Crema de ajo',extra:0}]}];
  await db.exec(`insert into gestlok_chat_private.categorias(id,nombre) values ('${catPromo}','Promociones de empanadas'),('${catDrink}','Bebidas');
@@ -416,24 +418,40 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await anon();await v11('control',null);await incoming('GUIDED-MENU','Menú');
  await job11('GW-MENU');await vote('GW-MENU','carta_promos');assert.equal((await job11('GW-PHOTO')).texto,'');await job11('GW-FOLLOW');await vote('GW-FOLLOW','pedido');
  const offers=await job11('GW-OFFERS');assert.match(offers.interaccion.pregunta,/imagen/);
- await vote('GW-OFFERS','of_'+packId.replaceAll('-',''));
+ await incoming('GW-PACK-TEXT','Quiero el pack de 6 + 2 salsas');
  assert.equal((await job11('GW-FLAVORS')).imagen_url,photoUrl);assert.match((await job11('GW-FLAVOR-ASK')).texto,/6 de Empanadas/);
  await incoming('GUIDED-WRONG','2 pollo');assert.match((await job11('GW-WRONG')).texto,/exactamente 6/);
  await role('gerente');assert.equal((await inbox(S)).chats[0].pedido_pendiente,false);await assert.rejects(order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000098'),/complete el pedido/);
  await anon();await incoming('GUIDED-FLAVORS','Dos de jamón y queso, 2 pollo y 2 carne suave');assert.match((await job11('GW-SAUCE1')).interaccion.pregunta,/1 de 2/);
  await vote('GW-SAUCE1','g_cheddar');assert.match((await job11('GW-SAUCE2')).interaccion.pregunta,/2 de 2/);
- await vote('GW-SAUCE2','g_crema_de_ajo');assert.match((await job11('GW-EXTRAS')).interaccion.pregunta,/bebida/);
- await vote('GW-EXTRAS','f_bebidas');const drink=await job11('GW-DRINK');assert.match(drink.interaccion.opciones[0].label,/3.890/);await vote('GW-DRINK',drink.interaccion.opciones[0].id);await job11('GW-EXTRAS2');
+ await vote('GW-SAUCE2','g_crema_de_ajo');const ex=await job11('GW-EXTRAS');assert.match(ex.interaccion.opciones.find(o=>o.id==='f_salsa').label,/900/);
+ await vote('GW-EXTRAS','f_salsa');await job11('GW-SALSA-EXTRA');await vote('GW-SALSA-EXTRA','sa_cheddar');await job11('GW-EXTRAS-SALSA');
+ await vote('GW-EXTRAS-SALSA','f_bebidas');const drink=await job11('GW-DRINK');assert.match(drink.interaccion.opciones[0].label,/3.890/);await vote('GW-DRINK',drink.interaccion.opciones[0].id);await job11('GW-EXTRAS2');
  await vote('GW-EXTRAS2','f_sin');assert.match((await job11('GW-NAME')).texto,/nombre/);
  await incoming('GUIDED-NAME','Ana Pérez');await job11('GW-MODE');await vote('GW-MODE','f_delivery');assert.match((await job11('GW-ADDR')).texto,/dirección/);
  await incoming('GUIDED-ADDR','Calle 123, Don Torcuato');await job11('GW-PAY');await vote('GW-PAY','pay_efectivo');
- const quote=await job11('GW-TOTAL');assert.match(quote.texto,/\$39\.390 con envío incluido/);assert.match(quote.texto,/35 minutos/);assert.match(quote.texto,/pendiente de confirmación/);
+ const quote=await job11('GW-TOTAL');assert.match(quote.texto,/\$40\.290 con envío incluido/);assert.match(quote.texto,/35 minutos/);assert.match(quote.texto,/pendiente de confirmación/);
  await role('gerente',T);await assert.rejects(inbox(S),/Sin permiso/);
- await role('gerente');const guided=(await inbox(S)).chats[0];assert.equal(guided.ficha.nombre,'Ana Pérez');assert.equal(guided.ficha.direccion,'Calle 123, Don Torcuato');assert.equal(guided.ficha.total,39390);assert.equal(guided.pedido_pendiente,true);
+ await role('gerente');const guided=(await inbox(S)).chats[0];assert.equal(guided.ficha.nombre,'Ana Pérez');assert.equal(guided.ficha.direccion,'Calle 123, Don Torcuato');assert.equal(guided.ficha.total,40290);assert.equal(guided.pedido_pendiente,true);
  assert.equal(await order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000097'),true);
- await anon();assert.match((await job11('GW-CONFIRMED')).texto,/g.page\/ejemplo\/review/);
- await role('gerente');const saved=(await inbox(S)).chats[0].pedidos[0];assert.equal(saved.ficha.total,39390);assert.equal(saved.estado,'preparacion');assert.equal(await order('listo',saved.id),true);assert.equal(await order('entregado',saved.id),true);
+ await anon();assert.doesNotMatch((await job11('GW-CONFIRMED')).texto,/g.page/);
+ await role('gerente');const saved=(await inbox(S)).chats[0].pedidos[0];assert.equal(saved.ficha.total,40290);assert.equal(saved.estado,'preparacion');assert.equal(await order('listo',saved.id),true);assert.equal(await order('entregado',saved.id),true);
  await anon();await job11('GW-READY');assert.doesNotMatch((await job11('GW-DELIVERED')).texto,/g.page/);
+ const review=await job11('GW-REVIEW');assert.equal(review.interaccion.opciones[0].id,'resena_si');
+ await vote('GW-REVIEW','resena_si');assert.match((await job11('GW-REVIEW-LINK')).texto,/g.page\/ejemplo\/review/);
+ await role('gerente');await assert.rejects(order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000096'),/complete el pedido|No hay un pedido/);
+ assert.equal((await inbox(S)).chats[0].pedido_pendiente,false);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 second' where id='${saved.id}';update gestlok_chat_private.wai_mensajes set reservado_at=now()-interval '4 minutes' where piloto_id='${p11}' and estado='aceptado'`);
+ await anon();await v11('control',null);const guidedSurvey=await job11('GW-SURVEY');assert.match(guidedSurvey.interaccion.pregunta,/escribir tu respuesta/);
+ await v11('alerta',p11,null,null,null,null,'voto_no_descifrado');
+ await role('gerente');assert.equal((await inbox(S)).chats[0].alerta_sync,'voto_no_descifrado');
+ await anon();await incoming('GW-TEXT-PROBLEM','Tuve un problema con mi pedido');assert.match((await job11('GW-PROBLEM-REPLY')).texto,/Lamentamos/);
+ await vote('GW-SURVEY','problema');assert.equal(await v11('tomar'),null);
+ await role('gerente');const complaint=(await inbox(S)).chats[0];assert.equal(complaint.reclamo_pendiente,true);assert.equal(complaint.pedidos[0].valoracion,'problema');assert.equal(await order('resolver',saved.id),true);
+ assert.equal(await att('finalizar'),true);
+ await anon();assert.match((await job11('GW-CLOSE')).texto,/finalizada esta atención/);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].aviso_cierre_estado,'aceptado');
+ 
 
 
  }finally{await db.close();}
