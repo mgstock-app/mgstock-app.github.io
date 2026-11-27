@@ -42,7 +42,7 @@
   const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const GRUPOS_PANEL = [
-    {id:'pedidos', titulo:'Pedidos', items:[['pedidos','Tarjetas de pedidos'],['whatsapp','WhatsApp'],['reporte','Historial diario'],['stock','Stock'],['clientes','Clientes']]},
+    {id:'pedidos', titulo:'Pedidos', items:[['pedidos','Tarjetas de pedidos'],['whatsapp','WAI (WhatsApp)'],['reporte','Historial diario'],['stock','Stock'],['clientes','Clientes']]},
     {id:'ajustes', titulo:'Configuración', items:[['ajustes','Datos del local'],['carta','Carta y precios'],['mensajes','Bot y mensajes'],['excluidos','Números excluidos']]},
     {id:'soporte', titulo:'Reclamos', items:[['soporte','Reclamos']]}
   ];
@@ -267,7 +267,7 @@
     const status=el('p',{class:'nota',role:'status',text:'Consultando autorización…'});
     const list=el('div',{class:'wa-bandeja-lista'});
     const refresh=el('button',{type:'button',class:'boton',text:'Actualizar'});
-    box.append(el('h2',{text:'WhatsApp · Bandeja de atención'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
+    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
     contenido.replaceChildren(box);
     const active=()=>marco.isConnected&&box.isConnected&&S.suc?.id===id&&S.pestana==='whatsapp';
     let busy=false, sending=false, lastKey='', ready=false;
@@ -1209,7 +1209,7 @@
     const canalWhatsApp=el('section',{class:'bloque'},
       el('h3',{text:'Canales de atención'}),
       el('p',{text:'GESTLOK Chat Web · '+(a.activa?'Activo':'Pausado')}),
-      el('h4',{text:'WhatsApp Business · conexión oficial'}),
+      el('h4',{text:'GESTLOK WAI · conexión oficial con WhatsApp Business'}),
       el('p',{text:a.whatsapp_local?'Número de contacto: +'+a.whatsapp_local:'Guardá primero el número del local.'}),
       canalEstado,el('p',{class:'nota',text:'Las solicitudes no conectan el número. La persona titular debe autorizar la vinculación oficial de Meta. Hasta verificarla, no se leen ni envían mensajes.'}),
       el('p',{class:'nota',text:'Respuestas automáticas: desactivadas. Confirmación de pedidos: manual. Sin envíos de pago autorizados.'}),
