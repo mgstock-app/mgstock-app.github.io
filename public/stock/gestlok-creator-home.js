@@ -333,9 +333,9 @@
         (needsVerify?'<button type="button" class="btn" data-ch-wa-pilot="'+esc(n.id)+'"'+(!canUse||!premiumWAManualReady||state!=='numero_verificado'?' disabled':'')+'>Autorizar prueba manual</button><button type="button" class="btn" data-ch-wa-cancel="'+esc(n.id)+'"'+(premiumWABusy?' disabled':'')+'>Cancelar prueba</button>':'')+
         '<button type="button" class="btn" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Pausar':'Reactivar')+'</button></div></article>';
     }).join('');
-    return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK Chat Premium">'+
-      '<header><h2>GESTLOK Chat Premium</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
-      '<p>Autorizá qué comercios y números de WhatsApp pueden usar Chat Premium según su suscripción. Podés habilitar varios números por local. Solo la administradora autoriza números; cada negocio configura sus propios datos.</p>'+
+    return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK WAI">'+
+      '<header><h2>GESTLOK WAI</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
+      '<p>Autorizá qué comercios y números de WhatsApp pueden usar GESTLOK WAI según su suscripción. Podés habilitar varios números por local. Solo la administradora autoriza números; cada negocio configura sus propios datos.</p>'+
       (configLocales?'<h3>Configuración de cada local</h3><ul>'+configLocales+'</ul>':'')+
       '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de vinculación</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
       (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
@@ -402,7 +402,7 @@
     const phones=String(f.elements.numeros.value||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
     premiumWALocal=f.elements.local.value;premiumWADraft=f.elements.numeros.value;
     if(!phones.length){premiumWAError='Ingresá al menos un número.';api?.render?.();return;}
-    if(!window.confirm('¿Habilitar '+phones.length+' número(s) de '+premiumLocal.nombre+' para GESTLOK Chat Premium? No se conectará WhatsApp todavía.'))return;
+    if(!window.confirm('¿Habilitar '+phones.length+' número(s) de '+premiumLocal.nombre+' para GESTLOK WAI? No se conectará WhatsApp todavía.'))return;
     void premiumWARequest({p_accion:'agregar',p_tenant:premiumLocal.tenant_id,p_local:premiumLocal.local_id,p_numeros:phones});
   });
   async function loadMicroapps(force=false){
@@ -714,18 +714,18 @@
     const pending=localPlansBusy||!localPlans||!info.local||localPlanSaving;
     const paused=info.empresa?.habilitada===false;
     const disabled=pending||paused?' disabled':'';
-    const label=info.plan==='premium'?'GESTLOK Chat Premium · '+info.enabled.length+' número(s) habilitado(s) internamente':info.plan==='chat'?'GESTLOK Chat · web':'Sin Chat asignado';
+    const label=info.plan==='premium'?'GESTLOK WAI · '+info.enabled.length+' número(s) habilitado(s) internamente':info.plan==='chat'?'GESTLOK Chat · web':'Sin Chat asignado';
     return '<form class="gl-ch-local-chat-plan" data-ch-local-plan data-tenant="'+esc(tenant)+'" data-local="'+esc(id)+'">'+
       '<label>Plan de '+esc(l.name||id)+'<select name="plan" aria-label="Plan GESTLOK Chat de '+esc(l.name||id)+'"'+disabled+'>'+
       '<option value="" disabled'+(!chosen?' selected':'')+'>Elegir plan</option>'+
       '<option value="chat"'+(chosen==='chat'?' selected':'')+'>GESTLOK Chat</option>'+
-      '<option value="premium"'+(chosen==='premium'?' selected':'')+'>GESTLOK Chat Premium</option></select></label>'+
+      '<option value="premium"'+(chosen==='premium'?' selected':'')+'>GESTLOK WAI</option></select></label>'+
       '<small role="status">'+esc(!localPlans?'Consultando plan…':!info.local?'Local pendiente de registro':paused?'Empresa pausada · gestioná su estado desde Habilitación':label)+'</small>'+
       '<div data-ch-local-premium'+(chosen==='premium'?'':' hidden')+'>'+
       '<label>Número(s) de WhatsApp del comercio<textarea name="numeros" rows="2" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+disabled+'>'+esc(draft?.numbers||'')+'</textarea></label>'+
-      '<small>Premium se habilita al guardar el primer número. No lo vincula ni activa la IA. Los números existentes se conservan.</small></div>'+
+      '<small>GESTLOK WAI se habilita al guardar el primer número. No lo vincula ni activa la IA. Los números existentes se conservan.</small></div>'+
       '<button type="submit" class="btn primary"'+disabled+'>Guardar plan</button>'+
-      (info.numbers.length?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WhatsApp</button>':'')+
+      (info.numbers.length?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WAI (WhatsApp)</button>':'')+
       (info.local?.sucursal_id?'<a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(info.local.sucursal_id)+'" target="_blank" rel="noopener">Configurar Chat</a>':'')+
       '</form>';
   }
@@ -749,7 +749,7 @@
       api?.toast?.('Ingresá hasta 50 números válidos con + y código de país.',true);return;
     }
     if(plan==='premium'&&!info.enabled.length&&!phones.length){
-      api?.toast?.('Ingresá el número de WhatsApp para habilitar Premium.',true);return;
+      api?.toast?.('Ingresá el número de WhatsApp para habilitar GESTLOK WAI.',true);return;
     }
     if(plan==='chat'&&info.enabled.length&&!window.confirm('¿Volver a GESTLOK Chat web y pausar los '+info.enabled.length+' número(s) de WhatsApp de este local? Los números y su información se conservan.'))return;
     if(!info.local.sucursal_id&&!window.confirm('¿Asignar GESTLOK Chat solo a '+info.local.nombre+'? Su chat web queda cerrado hasta que lo configuren.'))return;
@@ -772,8 +772,8 @@
         if(r.error)throw r.error;
       }
       localPlanDraft.delete(key);chatTried=false;premiumWATried=false;microappsLoaded=false;
-      api?.toast?.(plan==='premium'?'Premium habilitado internamente. Vinculá y comprobá el número antes de usar WhatsApp.':'Plan GESTLOK Chat guardado para este local.');
-    }catch(e){api?.toast?.((baseSaved?'Chat web asignado; no se pudo completar Premium. ':'No se pudo completar el cambio de plan. ')+String(e?.message||'Revisá los números y la conexión.'),true);}
+      api?.toast?.(plan==='premium'?'GESTLOK WAI habilitado internamente. Vinculá y comprobá el número antes de usar WhatsApp.':'Plan GESTLOK Chat guardado para este local.');
+    }catch(e){api?.toast?.((baseSaved?'Chat web asignado; no se pudo completar GESTLOK WAI. ':'No se pudo completar el cambio de plan. ')+String(e?.message||'Revisá los números y la conexión.'),true);}
     finally{localPlanSaving=false;await loadLocalPlans();if(premiumAdmin()&&tab==='locales')void loadMicroapps(true);}
   }
   document.addEventListener('toggle',ev=>{
@@ -827,7 +827,7 @@
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
       '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
-      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p><p><b>Tarifas mensuales (ARS):</b> GESTLOK Chat (web) $ 70.000 · GESTLOK Chat Premium $ 150.000 · Local adicional (opcional) $ 50.000 por local. Importes informativos; no modifican los cobros automáticamente.</p></div></header>'+crearEmpresaForm()+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p><p><b>Tarifas mensuales (ARS):</b> GESTLOK Chat (web) $ 70.000 · GESTLOK WAI $ 150.000 · Local adicional (opcional) $ 50.000 por local. Importes informativos; no modifican los cobros automáticamente.</p></div></header>'+crearEmpresaForm()+
       (localPlansError?'<p role="alert">'+esc(localPlansError)+' <button type="button" class="btn" data-ch-local-plans-refresh>Reintentar</button></p>':'')+
       (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
         (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
@@ -1566,7 +1566,7 @@
     const waRefresh=ev.target.closest?.('[data-ch-wa-refresh]');
     if(waRefresh&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWARequest();return;}
     const waState=ev.target.closest?.('[data-ch-wa-state]');
-    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en Premium? WhatsApp seguirá pendiente de vinculación.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
+    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en GESTLOK WAI? WhatsApp seguirá pendiente de vinculación.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
