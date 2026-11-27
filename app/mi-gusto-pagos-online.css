@@ -528,3 +528,11 @@
  .mg-on-recent-app{justify-content:flex-start;align-items:center;gap:6px}
  .mg-on-pya-toggle{min-width:49px;min-height:38px}
 }
+
+/* Corrección del cierre histórico, dentro del reporte del turno. */
+.mg-on-history-edit{display:grid;gap:10px;margin:14px 0;padding:12px;border:1px solid #dce8ef;border-radius:12px;background:#f7fbfd}
+.mg-on-history-edit>button{min-height:44px;justify-self:start}
+.mg-on-history-edit>label{display:grid;gap:6px;font-weight:700}
+.mg-on-history-edit>label select{width:100%;min-height:44px;border:1px solid #bfd5e1;border-radius:10px;padding:9px;color:#173d54;background:white}
+.mg-on-history-edit>p{margin:0;font-size:13px}
+.mg-on-history-edit .mg-on-entry{margin:0}
