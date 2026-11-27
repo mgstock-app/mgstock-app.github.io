@@ -1,0 +1,179 @@
+-- SOLO base de ensayos: señal del conector no equivale a WhatsApp conectado.
+alter table gestlok_chat_private.wai_sesiones add column if not exists wa_verificada_at timestamptz;
+alter table gestlok_chat_private.wai_sesiones drop constraint if exists wai_sesiones_orden_check;
+alter table gestlok_chat_private.wai_sesiones add constraint wai_sesiones_orden_check check(orden in ('reconectar','qr','qr_forzado'));
+create or replace function public.gestlok_chat_wai_conexiones(
+ p_sucursal uuid default null,p_accion text default 'listar',p_id uuid default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare h gestlok_chat_private.whatsapp_premium_habilitaciones%rowtype;
+ a boolean := gestlok_chat_private.es_creadora_chat();
+ clave text; resultado jsonb;
+begin
+ if auth.uid() is null then raise exception 'Sin permiso' using errcode='42501'; end if;
+ if a then perform gestlok_platform.require_admin();
+ elsif p_sucursal is not null then perform gestlok_chat_private.exigir(p_sucursal,'gestionar');
+ else raise exception 'Sin permiso' using errcode='42501'; end if;
+ if p_accion is null or p_accion not in ('listar','preparar','rotar_clave','reconectar','qr','revalidar') then raise exception 'Acción inválida' using errcode='22023'; end if;
+ if p_accion<>'listar' then
+   select x.* into h from gestlok_chat_private.whatsapp_premium_habilitaciones x
+    join gestlok_chat_private.sucursales s on s.tenant_id=x.tenant_id and s.local_id=x.local_id
+    join gestlok_chat_private.empresas e on e.tenant_id=x.tenant_id and e.habilitada
+    join public.docs d on d.tenant_id=x.tenant_id and d.col='locales' and d.id=x.local_id
+    where x.id=p_id and x.habilitada and (p_sucursal is null or s.id=p_sucursal)
+    for update of x;
+   if not found then raise exception 'Número no habilitado en este local' using errcode='42501'; end if;
+   if p_accion in ('preparar','rotar_clave') then
+     if not a then raise exception 'Solo administradora' using errcode='42501'; end if;
+     if p_accion='preparar' and exists(select 1 from gestlok_chat_private.wai_sesiones where habilitacion_id=h.id) then
+       raise exception 'Conector ya preparado; no se reemplaza su clave' using errcode='22023';
+     end if;
+     clave:=encode(extensions.gen_random_bytes(32),'hex');
+     insert into gestlok_chat_private.wai_sesiones(habilitacion_id,clave_hash)
+      values(h.id,encode(sha256(convert_to(clave,'UTF8')),'hex'))
+      on conflict(habilitacion_id) do update set clave_hash=excluded.clave_hash,revision=gen_random_uuid(),orden='reconectar',solicitada_at=now(),senal_at=null,estado='sin_senal',qr=null,qr_vence=null,wa_verificada_at=null;
+     return jsonb_build_object('id',h.id,'clave',clave);
+   elsif p_accion='revalidar' then
+     if p_sucursal is null or gestlok_chat_private.wai_portal_nivel(p_sucursal) is null then raise exception 'Sin permiso' using errcode='42501'; end if;
+     update gestlok_chat_private.wai_sesiones w set revision=gen_random_uuid(),orden='qr_forzado',solicitada_at=now(),estado='reconectando',qr=null,qr_vence=null,wa_verificada_at=null
+      where w.habilitacion_id=h.id and w.senal_at>=h.actualizada_at and w.senal_at>now()-interval '90 seconds' and w.solicitada_at<=now()-interval '10 seconds';
+     if not found then raise exception 'Conector sin señal o solicitud reciente. Actualizá el estado.' using errcode='22023'; end if;
+     update gestlok_chat_private.wai_pilotos set cancelado=true where habilitacion_id=h.id and not cancelado and vence_at>now();
+   else
+     -- No desconectar una sesión sana para regenerar un QR; no duplicar solicitudes.
+     update gestlok_chat_private.wai_sesiones w set revision=gen_random_uuid(),
+      orden=p_accion,solicitada_at=now(),estado='reconectando',qr=null,qr_vence=null,wa_verificada_at=null
+     where w.habilitacion_id=h.id and w.senal_at>=h.actualizada_at and w.senal_at>now()-interval '90 seconds'
+       and (w.estado<>'conectado' or p_accion='reconectar' and w.senal_at<=now()-interval '45 seconds')
+       and w.solicitada_at<=now()-interval '10 seconds';
+     if not found then raise exception 'Conector sin señal, recuperándose o ya conectado. Actualizá el estado.' using errcode='22023'; end if;
+   end if;
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object('id',x.id,'numero',x.numero,'empresa',e.nombre_publico,'local',coalesce(d.data->>'nombre',x.local_id),
+  'habilitada',x.habilitada and coalesce(e.habilitada,false) and s.id is not null and d.id is not null,'preparada',w.habilitacion_id is not null,
+  'senal_at',w.senal_at,'wa_verificada_at',w.wa_verificada_at,'estado',case when not x.habilitada or not coalesce(e.habilitada,false) or s.id is null or d.id is null then 'pausado'
+    when w.habilitacion_id is null then 'sin_conector'
+    when w.senal_at is null or w.senal_at<x.actualizada_at then 'sin_senal'
+    when w.senal_at<=now()-interval '90 seconds' then 'sin_senal'
+    when w.estado='qr' and coalesce(w.qr_vence<=now(),true) then 'qr_vencido'
+    when w.estado='conectado' and (w.wa_verificada_at is null or w.wa_verificada_at<=now()-interval '35 seconds') then 'verificando'
+    else w.estado end,
+  'qr',case when x.habilitada and e.habilitada and s.id is not null and d.id is not null and w.estado='qr' and w.senal_at>=x.actualizada_at and w.senal_at>now()-interval '90 seconds' and w.qr_vence>now() then w.qr end,
+  'qr_vence',case when w.estado='qr' then w.qr_vence end
+ ) order by e.nombre_publico,x.local_id,x.numero),'[]'::jsonb) into resultado
+ from gestlok_chat_private.whatsapp_premium_habilitaciones x
+ left join gestlok_chat_private.empresas e on e.tenant_id=x.tenant_id
+ left join gestlok_chat_private.sucursales s on s.tenant_id=x.tenant_id and s.local_id=x.local_id
+ left join public.docs d on d.tenant_id=x.tenant_id and d.col='locales' and d.id=x.local_id
+ left join gestlok_chat_private.wai_sesiones w on w.habilitacion_id=x.id
+ where (p_sucursal is null and a) or s.id=p_sucursal;
+ return resultado;
+end$$;
+revoke all on function public.gestlok_chat_wai_conexiones(uuid,text,uuid) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_wai_conexiones(uuid,text,uuid) to authenticated;
+
+create or replace function public.gestlok_chat_wai_senal(
+ p_id uuid,p_clave text,p_revision uuid default null,p_estado text default null,
+ p_numero text default null,p_qr text default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare w gestlok_chat_private.wai_sesiones%rowtype;
+ h gestlok_chat_private.whatsapp_premium_habilitaciones%rowtype;
+begin
+ if p_clave is null or p_clave !~ '^[a-f0-9]{64}$' then return null; end if;
+ select * into w from gestlok_chat_private.wai_sesiones where habilitacion_id=p_id
+  and clave_hash=encode(sha256(convert_to(p_clave,'UTF8')),'hex') for update;
+ if not found then return null; end if;
+ select x.* into h from gestlok_chat_private.whatsapp_premium_habilitaciones x
+ join gestlok_chat_private.empresas e on e.tenant_id=x.tenant_id and e.habilitada
+ join gestlok_chat_private.sucursales s on s.tenant_id=x.tenant_id and s.local_id=x.local_id
+ join public.docs d on d.tenant_id=x.tenant_id and d.id=x.local_id and d.col='locales'
+ where x.id=p_id and x.habilitada;
+ if not found then return jsonb_build_object('habilitada',false); end if;
+ if w.orden='qr_forzado' then return jsonb_build_object('habilitada',true,'revision',w.revision,'orden',w.orden,'numero',h.numero); end if;
+ if p_revision=w.revision and p_estado in ('conectado','reconectando','qr','desconectado') then
+   if p_estado='conectado' and (p_numero is null or regexp_replace(p_numero,'^\+549([0-9]{10})$','+54\1')<>h.numero_clave) then
+     p_estado:='desconectado';
+   end if;
+   if p_estado='qr' and (p_qr is null or length(p_qr) not between 16 and 2048) then p_estado:='desconectado'; end if;
+   update gestlok_chat_private.wai_sesiones set estado=p_estado,senal_at=now(),wa_verificada_at=null,
+    orden=case when p_estado='conectado' then 'reconectar' else w.orden end,
+    qr=case when p_estado='qr' then p_qr end,
+    qr_vence=case when p_estado='qr' then case when w.qr=p_qr then w.qr_vence else now()+interval '45 seconds' end end
+   where habilitacion_id=p_id;
+ end if;
+ return jsonb_build_object('habilitada',true,'revision',w.revision,'orden',w.orden,'numero',h.numero);
+end$$;
+revoke all on function public.gestlok_chat_wai_senal(uuid,text,uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_wai_senal(uuid,text,uuid,text,text,text) to anon,authenticated;
+
+create or replace function public.gestlok_chat_wai_senal_v2(
+ p_id uuid,p_clave text,p_revision uuid default null,p_estado text default null,
+ p_numero text default null,p_qr text default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare w gestlok_chat_private.wai_sesiones%rowtype;
+ h gestlok_chat_private.whatsapp_premium_habilitaciones%rowtype;
+begin
+ if p_clave is null or p_clave !~ '^[a-f0-9]{64}$' then return null; end if;
+ select * into w from gestlok_chat_private.wai_sesiones where habilitacion_id=p_id
+  and clave_hash=encode(sha256(convert_to(p_clave,'UTF8')),'hex') for update;
+ if not found then return null; end if;
+ select x.* into h from gestlok_chat_private.whatsapp_premium_habilitaciones x
+ join gestlok_chat_private.empresas e on e.tenant_id=x.tenant_id and e.habilitada
+ join gestlok_chat_private.sucursales s on s.tenant_id=x.tenant_id and s.local_id=x.local_id
+ join public.docs d on d.tenant_id=x.tenant_id and d.id=x.local_id and d.col='locales'
+ where x.id=p_id and x.habilitada;
+ if not found then return jsonb_build_object('habilitada',false); end if;
+ if p_revision=w.revision and p_estado in ('conectado','reconectando','qr','desconectado') then
+   if p_estado='conectado' and (p_numero is null or regexp_replace(p_numero,'^\+549([0-9]{10})$','+54\1')<>h.numero_clave) then
+     p_estado:='desconectado';
+   end if;
+   if p_estado='qr' and (p_qr is null or length(p_qr) not between 16 and 2048) then p_estado:='desconectado'; end if;
+   update gestlok_chat_private.wai_sesiones set estado=p_estado,senal_at=now(),wa_verificada_at=case when p_estado='conectado' then now() end,
+    orden=case when p_estado='conectado' then 'reconectar' else w.orden end,
+    qr=case when p_estado='qr' then p_qr end,
+    qr_vence=case when p_estado='qr' then case when w.qr=p_qr then w.qr_vence else now()+interval '45 seconds' end end
+   where habilitacion_id=p_id;
+ end if;
+ return jsonb_build_object('habilitada',true,'revision',w.revision,'orden',w.orden,'numero',h.numero);
+end$$;
+revoke all on function public.gestlok_chat_wai_senal_v2(uuid,text,uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_wai_senal_v2(uuid,text,uuid,text,text,text) to anon,authenticated;
+
+create or replace function gestlok_chat_private.wai_piloto_vigente(p gestlok_chat_private.wai_pilotos)
+returns boolean language sql stable security definer set search_path='' as $$
+ select (select habilitado from gestlok_chat_private.wai_piloto_entorno where id)
+  and p.vence_at>now() and not p.cancelado
+  and exists(select 1 from gestlok_chat_private.whatsapp_premium_habilitaciones h
+    join gestlok_chat_private.sucursales s on s.tenant_id=h.tenant_id and s.local_id=h.local_id
+    join gestlok_chat_private.empresas e on e.tenant_id=h.tenant_id and e.habilitada
+    join public.docs d on d.tenant_id=h.tenant_id and d.col='locales' and d.id=h.local_id
+    where h.id=p.habilitacion_id and s.id=p.sucursal_id and h.habilitada)
+  and exists(select 1 from gestlok_chat_private.wai_sesiones w where w.habilitacion_id=p.habilitacion_id and w.estado='conectado' and w.wa_verificada_at>now()-interval '35 seconds')
+  and not public.gestlok_chat_srv_whatsapp_excluido(p.sucursal_id,p.tester)
+$$;
+revoke all on function gestlok_chat_private.wai_piloto_vigente(gestlok_chat_private.wai_pilotos) from public,anon,authenticated;
+
+create or replace function public.gestlok_chat_wai_piloto_autorizar(p_sucursal uuid,p_id uuid,p_tester text default null,p_accion text default 'autorizar')
+returns uuid language plpgsql security definer set search_path='' as $$
+declare h gestlok_chat_private.whatsapp_premium_habilitaciones%rowtype; v uuid;
+begin
+ if not gestlok_chat_private.es_creadora_chat() or gestlok_chat_private.wai_portal_nivel(p_sucursal) is null then raise exception 'Solo administradora' using errcode='42501';end if;
+ perform gestlok_platform.require_admin();
+ select x.* into h from gestlok_chat_private.whatsapp_premium_habilitaciones x
+ join gestlok_chat_private.sucursales s on s.tenant_id=x.tenant_id and s.local_id=x.local_id where x.id=p_id and s.id=p_sucursal for update of x;
+ if not found then raise exception 'Número no disponible' using errcode='42501';end if;
+ if p_accion='cancelar' then
+   update gestlok_chat_private.wai_pilotos set cancelado=true where habilitacion_id=h.id and not cancelado and vence_at>now(); return null;
+ end if;
+ if p_accion is distinct from 'autorizar' or not h.habilitada or not coalesce((select habilitado from gestlok_chat_private.wai_piloto_entorno where id),false)
+ or p_tester is null or p_tester !~ '^\+[1-9][0-9]{7,14}$'
+ or gestlok_chat_private.whatsapp_exclusion_key(h.numero)=gestlok_chat_private.whatsapp_exclusion_key(p_tester)
+ or public.gestlok_chat_srv_whatsapp_excluido(p_sucursal,p_tester)
+ or not exists(select 1 from gestlok_chat_private.wai_sesiones w where w.habilitacion_id=h.id and w.estado='conectado' and w.senal_at>=h.actualizada_at and w.senal_at>now()-interval '30 seconds' and w.wa_verificada_at>now()-interval '35 seconds')
+ then raise exception 'Prueba no autorizada o conexión no verificada' using errcode='22023';end if;
+ if exists(select 1 from gestlok_chat_private.wai_pilotos where habilitacion_id=h.id and not cancelado and vence_at>now()) then raise exception 'Ya hay una prueba vigente' using errcode='22023';end if;
+ insert into gestlok_chat_private.wai_pilotos(habilitacion_id,sucursal_id,tester,creado_por) values(h.id,p_sucursal,p_tester,auth.uid()) returning id into v;
+ return v;
+end$$;
+revoke all on function public.gestlok_chat_wai_piloto_autorizar(uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_wai_piloto_autorizar(uuid,uuid,text,text) to authenticated;
+
