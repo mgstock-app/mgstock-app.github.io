@@ -2,7 +2,7 @@ import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMes
 import pino from 'pino';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
 import {pilotTransport} from './pilot.mjs';
 import {createPollStore} from './poll-store.mjs';
@@ -24,12 +24,18 @@ async function receiveAuthorizedImage(message,metadata){
  const mime=metadata?.mimetype;
  const max=2*1024*1024;
  if(!['image/jpeg','image/png','image/webp'].includes(mime)||Number(metadata.fileLength)>max)return null;
- const stream=await downloadMediaMessage(message,'stream',{options:{signal:AbortSignal.timeout(12000)}},undefined);
+ // The proto may carry a URL: allow only WhatsApp's HTTPS media hosts.
+ if(metadata.url){
+  try{const u=new URL(metadata.url);if(u.protocol!=='https:'||u.username||u.password||u.port&&!['443'].includes(u.port)||!u.hostname.endsWith('.whatsapp.net'))return null;}catch{return null;}
+ }
+ if(metadata.directPath&&(!metadata.directPath.startsWith('/')||metadata.directPath.startsWith('//')||/[\\\x00-\x20]/.test(metadata.directPath)))return null;
+ const stream=await downloadMediaMessage(message,'stream',{options:{signal:AbortSignal.timeout(12000),redirect:'error'}},undefined);
  const chunks=[];let size=0;const timer=setTimeout(()=>stream.destroy(Error('Tiempo de descarga vencido')),12000);
  try{
   for await(const chunk of stream){size+=chunk.length;if(size>max){stream.destroy();return null;}chunks.push(Buffer.from(chunk));}
   if(size<12)return null;
   const bytes=Buffer.concat(chunks,size);
+  if(metadata.fileSha256&&!createHash('sha256').update(bytes).digest().equals(Buffer.from(metadata.fileSha256)))return null;
   const actual=bytes.subarray(0,3).equals(Buffer.from('ffd8ff','hex'))?'image/jpeg':bytes.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex'))?'image/png':bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP'?'image/webp':null;
   return actual===mime?{mime,base64:bytes.toString('base64')}:null;
  }finally{clearTimeout(timer);}
