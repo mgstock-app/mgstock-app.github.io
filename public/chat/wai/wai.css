@@ -84,3 +84,19 @@ a{color:#087a98}
 .chat-row.unread{background:#e9f7ef;border-color:#c9e8d4}
 .chat-row.unread .preview small{font-weight:650;color:#1a6346}
 .unread-badge{display:grid;place-items:center;min-width:23px;height:23px;padding:0 6px;border-radius:999px;background:#178349;color:#fff;font-size:12px;font-weight:800;line-height:1}
+
+/* Same GESTLOK Chat wallpaper; no external assets or new branding. */
+.thread{background-color:#eaf0f6;background-image:url('/chat/wallpaper-gestlok.svg?v=20261121contraste1');background-position:center;background-size:cover;background-repeat:no-repeat}
+.bubble .message-text{display:block}
+.bubble.deleted .message-text{font-style:italic;color:#6a7f8f}
+.message-meta{display:flex!important;justify-content:flex-end;flex-wrap:wrap;gap:3px;align-items:center}
+.delivery-confirmed{color:#11768a;font-weight:700}
+.message-actions{display:flex;justify-content:flex-end;gap:6px;margin:6px -3px -3px 0}
+.msg-action{border:0;background:transparent;color:#205d78;font-size:11px;font-weight:650;border-radius:6px;padding:5px 7px}
+.msg-action:hover{background:#fff9}
+.msg-action.danger{color:#9b3d42}
+.message-action-host:empty{display:none}
+.message-action-form{display:grid;gap:8px;background:#fff;border-top:1px solid #dce7ee;padding:14px 20px}
+.message-action-form textarea{width:100%;padding:10px;border:1px solid #cadce5;border-radius:10px;resize:vertical;min-height:52px;font:inherit}
+.message-action-form p{margin:0}
+.message-action-buttons{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
