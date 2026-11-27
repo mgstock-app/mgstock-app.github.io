@@ -5,7 +5,6 @@ const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS
 const normalize = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const sum = obj => Object.values(obj||{}).reduce((a,b)=>a+Number(b),0);
 const totalGroup = g => g.tipo==='cantidad'?Number(g.total):1;
-const paymentName = p => ({debito:'Débito',credito:'Crédito',mercado_pago:'Mercado Pago',transferencia:'Transferencia',efectivo:'Efectivo'}[p]||p.replaceAll('_',' '));
 let menu, lines=[], selected='Todas', query='', prepared=null;
 const node=(tag,attrs={},...children)=>{
  const n=document.createElement(tag);
@@ -42,9 +41,20 @@ function renderList(list){
  for(const category of new Set(found.map(p=>p.categoria))){
   list.append(node('h3',{class:'category',text:category}),node('div',{class:'grid'},...found.filter(p=>p.categoria===category).map(p=>node('article',{class:'card'},
    node('div',{},node('h3',{text:p.nombre}),node('span',{class:'price',text:money(p.precio)}),p.grupos.length?node('small',{text:'Personalizable'}):null),
-   btn('Elegir +',()=>choose(p),'add')))));
+   productStepper(p)))));
  }
  if(!found.length)list.append(node('p',{class:'empty',text:'No encontramos productos en esta búsqueda.'}));
+}
+function refreshCatalog(){
+ const list=$('app').querySelector('#catalog');if(list)renderList(list);updateBar();
+}
+function productStepper(p){
+ const count=lines.filter(l=>l.id===p.id).length;
+ const minus=btn('−',()=>{const i=lines.findLastIndex(l=>l.id===p.id);if(i>=0)lines.splice(i,1);refreshCatalog()},'');
+ const plus=btn('+',()=>{if(lines.length>=5){alert('Podés elegir hasta 5 productos en este ensayo.');return;}if(p.grupos.length){choose(p);return;}lines.push({id:p.id,grupos:{},salsas_extra:{}});refreshCatalog()},'');
+ minus.setAttribute('aria-label','Quitar '+p.nombre);plus.setAttribute('aria-label','Agregar '+p.nombre);
+ minus.disabled=count===0;plus.disabled=!!prepared||lines.length>=5;
+ return node('div',{class:'step product-step'},minus,node('output',{text:count}),plus);
 }
 function choose(p,idx=-1){
  if(prepared)return;
@@ -52,7 +62,7 @@ function choose(p,idx=-1){
  const l=idx>=0?structuredClone(lines[idx]):{id:p.id,grupos:Object.fromEntries(p.grupos.map(g=>[g.id,{}])),salsas_extra:{}};
  const content=node('div',{},node('p',{class:'muted',text:'Precio base: '+money(p.precio)}));
  const controls=[], groupViews=[];
- const action=btn('',()=>{if(!valid())return;if(idx>=0)lines[idx]=l;else lines.push(l);$('modal').close();updateBar()},'primary');
+ const action=btn('',()=>{if(!valid())return;if(idx>=0)lines[idx]=l;else lines.push(l);$('modal').close();refreshCatalog()},'primary');
  const valid=()=>p.grupos.every(g=>sum(l.grupos[g.id])===totalGroup(g));
  function group(title,values,selection,target,extraPrice=null){
   const counter=node('span',{}), box=node('section',{class:'group'},node('div',{class:'group-title'},node('strong',{text:title}),counter));
@@ -77,45 +87,26 @@ function checkout(){
  if(!lines.length){$('modal').close();updateBar();return;}
  const content=node('div'), cartlist=node('section');
  for(const [i,l] of lines.entries()){
-  cartlist.append(node('article',{class:'cartline'},node('div',{class:'row'},node('strong',{text:product(l.id).nombre}),node('strong',{text:money(lineTotal(l))})),node('p',{text:description(l)}),node('div',{class:'row'},btn('Editar',()=>choose(product(l.id),i)),btn('Quitar',()=>{lines.splice(i,1);updateBar();checkout()}))));
+  cartlist.append(node('article',{class:'cartline'},node('div',{class:'row'},node('strong',{text:product(l.id).nombre}),node('strong',{text:money(lineTotal(l))})),node('p',{text:description(l)}),node('div',{class:'row'},btn('Editar',()=>choose(product(l.id),i)),btn('Quitar',()=>{lines.splice(i,1);refreshCatalog();checkout()}))));
  }
  content.append(cartlist,btn('+ Agregar más productos',()=>$('modal').close()));
- const field=(name,input)=>node('label',{},node('span',{text:name}),input);
- const form=node('form',{class:'form'});
- const nombre=node('input',{required:'',maxlength:80,autocomplete:'name',placeholder:'Tu nombre'});
- const modalidad=node('select',{required:''},...(menu.retiro?[node('option',{value:'retiro',text:'Retiro en el local'})]:[]),...(menu.delivery?[node('option',{value:'delivery',text:'Delivery'})]:[]));
- const direccion=node('input',{maxlength:200,autocomplete:'street-address',placeholder:'Calle y altura'}),entre=node('input',{maxlength:120,placeholder:'Entre calles'});
- const dirLabel=field('Dirección',direccion),entreLabel=field('Entre calles',entre),pago=node('select',{required:''});
- const summary=node('div',{class:'summary'}),info=node('p',{class:'notice',text:'El comercio confirmará tu pedido por WhatsApp.'});
- const err=node('p',{class:'error',role:'alert'}),submit=node('button',{type:'submit',class:'primary',text:'Confirmar por WhatsApp'});
- form.append(field('Nombre',nombre),field('¿Cómo lo recibís?',modalidad),dirLabel,entreLabel,field('¿Cómo abonás?',pago),summary,info,err,submit);
- function sync(){
-  const delivery=modalidad.value==='delivery',s=subtotal(),shipping=delivery?Number(menu.envio):0;
-  dirLabel.hidden=entreLabel.hidden=!delivery;direccion.required=entre.required=delivery;
-  const prev=pago.value,methods=delivery?menu.pagos_envio:menu.pagos_retiro;
-  pago.replaceChildren(...(methods||[]).map(m=>node('option',{value:m,text:paymentName(m)})));if((methods||[]).includes(prev))pago.value=prev;
-  const demora=delivery?menu.demora_envio:menu.demora_retiro;
-  summary.replaceChildren(node('div',{},node('span',{text:'Subtotal'}),node('span',{text:money(s)})),node('div',{},node('span',{text:delivery?'Envío':'Retiro'}),node('span',{text:money(shipping)})),node('div',{class:'total'},node('span',{text:'Total'}),node('span',{text:money(s+shipping)})),node('p',{class:'muted',text:'Demora aproximada: '+(demora||'a confirmar')}));
-  if(delivery&&menu.zona)summary.append(node('p',{class:'muted',text:'Zona: '+menu.zona}));
-  err.textContent=delivery&&s<Number(menu.minimo||0)?'Pedido mínimo para delivery: '+money(menu.minimo):'';
-  submit.disabled=!modalidad.value||!pago.value||!demora||!!err.textContent;
- }
- modalidad.onchange=sync;sync();
- form.onsubmit=async ev=>{
-  ev.preventDefault();if(submit.disabled)return;submit.disabled=true;submit.textContent='Preparando…';err.textContent='';
+ const summary=node('div',{class:'summary'},node('div',{class:'total'},node('span',{text:'Subtotal de productos'}),node('span',{text:money(subtotal())})));
+ const err=node('p',{class:'error',role:'alert'});
+ const submit=btn('Enviar selección a WhatsApp',async()=>{
+  if(submit.disabled)return;submit.disabled=true;submit.textContent='Preparando…';err.textContent='';
   try{
-   const r=await rpc('gestlok_chat_wai_menu_preparar',{p_token:token,p_datos:{lineas:lines,nombre:nombre.value.trim(),modalidad:modalidad.value,direccion:direccion.value.trim(),entrecalles:entre.value.trim(),pago:pago.value,total:Number((subtotal()+(modalidad.value==='delivery'?Number(menu.envio):0)).toFixed(2))}});
-   if(!r.ok){err.textContent=r.error;return;}
-   prepared=r;showPrepared();
-  }catch(e){err.textContent=e.message||'No pudimos preparar tu pedido.';}finally{submit.disabled=false;submit.textContent='Confirmar por WhatsApp';}
- };
- content.append(form);open('Tu pedido',content);
+   const r=await rpc('gestlok_chat_wai_menu_preparar',{p_token:token,p_datos:{lineas:lines,total:Number(subtotal().toFixed(2))}});
+   if(!r.ok){err.textContent=r.error;return;}prepared=r;showPrepared();
+  }catch(e){err.textContent=e.message||'No pudimos preparar tu selección.';}finally{submit.disabled=false;submit.textContent='Enviar selección a WhatsApp';}
+ },'primary');
+ content.append(summary,node('p',{class:'notice',text:'Vas a continuar con el asistente en WhatsApp: nombre, entrega, pago y confirmación del pedido.'}),err,node('div',{class:'stickyAction'},submit));
+ open('Tu selección',content);
 }
 function showPrepared(){
- updateBar();const text='Confirmo mi pedido WAI '+prepared.referencia;
+ updateBar();const text='Mi selección WAI '+prepared.referencia;
  const link='https://wa.me/'+menu.whatsapp+'?text='+encodeURIComponent(text);
- const box=node('div',{class:'success'},node('h2',{text:'¡Tu pedido está listo para enviar!'}),node('p',{class:'muted',text:'Total: '+money(prepared.total)+' · Demora: '+prepared.demora}),node('p',{class:'notice',text:'Abrí WhatsApp y tocá Enviar. Hasta entonces el pedido no le llega al comercio.'}),node('a',{class:'primary',href:link,rel:'noreferrer',text:'Abrir WhatsApp y enviar'}),btn('Copiar mensaje',async()=>{try{await navigator.clipboard.writeText(text);alert('Mensaje copiado. Pegalo en el chat del local y envialo.')}catch{alert(text)}}));
- open('Confirmación',box);$('app').replaceChildren(node('div',{class:'empty'},node('h2',{text:'Pedido preparado'}),btn('Volver a WhatsApp',showPrepared,'primary')));
+ const box=node('div',{class:'success'},node('h2',{text:'¡Tu selección está lista!'}),node('p',{class:'muted',text:'Subtotal: '+money(prepared.total)}),node('p',{class:'notice',text:'Abrí WhatsApp y tocá Enviar. El asistente te va a pedir los datos que faltan.'}),node('a',{class:'primary',href:link,rel:'noreferrer',text:'Abrir WhatsApp y enviar'}),btn('Copiar mensaje',async()=>{try{await navigator.clipboard.writeText(text);alert('Mensaje copiado. Pegalo en el chat del local y envialo.')}catch{alert(text)}}));
+ open('Confirmación',box);$('app').replaceChildren(node('div',{class:'empty'},node('h2',{text:'Selección preparada'}),btn('Volver a WhatsApp',showPrepared,'primary')));
 }
 (async()=>{
  if(!cfg||!['prueba','testing'].includes(cfg.entorno)||!/^[-a-f0-9]{36}$/i.test(token)){errorPage('Abrí el acceso que te envió el comercio por WhatsApp.');return;}

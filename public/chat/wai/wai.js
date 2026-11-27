@@ -24,6 +24,7 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 const readBusy=new Set();
+const photoUrls=new Map(),photoRequests=new Map();
 let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,orderBusy=false,orderSignature="",orderMenuOpen=false;
 let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
@@ -86,7 +87,7 @@ async function registerTrial(box){
  }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
 function clearPrivate(){
- generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();actionDraft=null;actionBusy=false;orderBusy=false;orderSignature='';lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
+ generation++;for(const u of photoUrls.values())URL.revokeObjectURL(u);photoUrls.clear();photoRequests.clear();destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();actionDraft=null;actionBusy=false;orderBusy=false;orderSignature='';lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
@@ -188,14 +189,34 @@ function renderVote(m,c){
   node('span',{class:'wai-vote-status'},labels[state],v.multiple&&Number(v.cantidad)>0?' · '+v.cantidad+' en total':''),
   ...options.map(o=>node('span',{class:'wai-option'},'○ '+o.label)));
 }
+function privatePhoto(m){
+ const box=node('div',{class:'wai-private-photo'},node('small',{class:'hint'},'Cargando imagen…'));
+ function display(url){box.replaceChildren(node('a',{href:url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar imagen recibida'},node('img',{class:'wai-menu-photo',src:url,alt:'Imagen recibida por WhatsApp',loading:'lazy'})),node('small',{class:'hint'},'Imagen recibida · verificá el comprobante manualmente'));}
+ function load(){
+  const mine=generation,local=sessionLocal?.id;if(!local)return;
+  if(photoUrls.has(m.id)){display(photoUrls.get(m.id));return;}
+  if(!photoRequests.has(m.id)){
+   const promise=rpc('wai_adjunto_imagen',{p_sucursal:local,p_mensaje:m.id}).then(d=>{
+    if(mine!==generation||sessionLocal?.id!==local)throw Error('Sesión finalizada');
+    if(!d||!['image/jpeg','image/png','image/webp'].includes(d.mime)||typeof d.base64!=='string'||d.base64.length>2796204)throw Error('Imagen no disponible');
+    const raw=atob(d.base64),bytes=Uint8Array.from(raw,ch=>ch.charCodeAt(0)),url=URL.createObjectURL(new Blob([bytes],{type:d.mime}));
+    photoUrls.set(m.id,url);return url;
+   }).finally(()=>{if(mine===generation)photoRequests.delete(m.id);});
+   photoRequests.set(m.id,promise);
+  }
+  photoRequests.get(m.id).then(url=>{if(mine===generation)display(url)}).catch(()=>{if(mine===generation)box.replaceChildren(node('small',{class:'hint'},'No se pudo abrir la imagen.'),button('Reintentar',load,'btn'));});
+ }
+ load();return box;
+}
 function renderMessage(c,m){
  const outgoing=m.direccion==='salida',status=messageStatus(m),change=actionStatus(m);
  const actions=[];
  if(!m.interaccion&&m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
  if(!m.interaccion&&m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
+   !m.eliminado&&m.adjunto_estado==='imagen'?privatePhoto(m):null,
    !m.eliminado&&m.imagen_url?node('a',{href:m.imagen_url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar foto de la carta'},node('img',{class:'wai-menu-photo',src:m.imagen_url,alt:'Foto de la carta',loading:'lazy',referrerpolicy:'no-referrer'})):null,
-   m.imagen_url&&!m.eliminado?null:node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
+   (m.imagen_url||m.adjunto_estado==='imagen'&&m.texto==='Imagen recibida')&&!m.eliminado?null:node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
    !m.eliminado&&m.interaccion?renderVote(m,c):null,
    node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);

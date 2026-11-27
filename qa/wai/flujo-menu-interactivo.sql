@@ -2,7 +2,7 @@
 do $test$
 declare s gestlok_chat_private.sucursales; p gestlok_chat_private.wai_pilotos;
  h uuid; ci uuid; u uuid; llave text:=repeat('a',64); rev uuid; jid text;
- token uuid; ref uuid; catalogo jsonb; pack jsonb; d jsonb; r jsonb; f jsonb; m gestlok_chat_private.wai_mensajes; o gestlok_chat_private.wai_pedidos;
+ token uuid; ref uuid; paso text; n int:=0; foto uuid; otra uuid; catalogo jsonb; pack jsonb; d jsonb; r jsonb; f jsonb; m gestlok_chat_private.wai_mensajes; o gestlok_chat_private.wai_pedidos;
 begin
  if not exists(select 1 from gestlok_chat_private.wai_piloto_entorno where id and habilitado) then raise exception 'Solo entorno de ensayo';end if;
  select a.user_id into u from gestlok_platform.admins a join gestlok_chat_private.whatsapp_premium_habilitaciones h on h.creada_por=a.user_id order by h.creada_at limit 1;
@@ -29,7 +29,7 @@ begin
    select x into pack from jsonb_array_elements(catalogo->'productos') x where x->>'nombre'='Pack 6 empanadas + 2 salsas';
    if pack is null then raise exception 'Falta el pack';end if;
    d=jsonb_build_object('lineas',jsonb_build_array(jsonb_build_object('id',pack->>'id','grupos','{"empanadas":{"big_burger":6},"salsas":{"cheddar":2}}'::jsonb,'salsas_extra','{"crema_de_ajo":1}'::jsonb)),
-      'nombre','Cliente ficticio','direccion','Calle Ejemplo 123','entrecalles','Calle A y Calle B','modalidad','delivery','pago','transferencia','total',(pack->>'precio')::numeric+s.envio_costo+(pack->>'salsa_precio')::numeric);
+      'total',(pack->>'precio')::numeric+(pack->>'salsa_precio')::numeric);
    r=public.gestlok_chat_wai_menu_preparar(token,jsonb_set(d,'{lineas,0,grupos,empanadas,big_burger}','5'));
    if (r->>'ok')::boolean then raise exception 'Aceptó 5 empanadas';end if;
    r=public.gestlok_chat_wai_menu_preparar(token,jsonb_set(d,'{total}','1'));
@@ -39,12 +39,32 @@ begin
    ref=(r->>'referencia')::uuid;
    if (public.gestlok_chat_wai_menu_preparar(token,d)->>'referencia')::uuid is distinct from ref then raise exception 'No es idempotente';end if;
    if exists(select 1 from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id and pendiente) then raise exception 'Confirmó antes de WhatsApp';end if;
-   r=public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,jid,'qa-confirmar','Confirmo mi pedido WAI '||ref);
+   r=public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,jid,'qa-seleccion','Mi selección WAI '||ref);
    select ficha into f from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id;
-   if f->>'estado' is distinct from 'pendiente' or (f->>'total')::numeric is distinct from (d->>'total')::numeric or f->>'demora' is distinct from s.demora_envio then raise exception 'Solicitud incompleta: %',f;end if;
+   if f->>'estado' is distinct from 'nombre' or f?'nombre' or f?'modalidad' or f?'pago' or exists(select 1 from gestlok_chat_private.wai_pedidos where hilo_id=p.id) then raise exception 'El menú no regresó al asistente: %',f;end if;
+   foreach paso in array array['Cliente ficticio','Delivery','Calle Ejemplo 123 entre Calle A y Calle B','transferencia','Confirmar mi pedido'] loop
+    n=n+1;perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,jid,'qa-datos:'||n,paso);
+   end loop;
+   select ficha into f from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id;
+   if f->>'estado' is distinct from 'pendiente' or (f->>'total')::numeric is distinct from (d->>'total')::numeric+s.envio_costo or f->>'demora' is distinct from s.demora_envio then raise exception 'Solicitud incompleta: %',f;end if;
    if f->'carrito'->0->'selecciones'->0->'valores'->0->>'id'<>'big_burger' or f->'carrito'->0->'selecciones'->1->'valores'->0->>'cantidad'<>'2' then raise exception 'Selecciones incorrectas';end if;
    if exists(select 1 from gestlok_chat_private.wai_pedidos where hilo_id=p.id) then raise exception 'Confirmó sin gerente';end if;
    if not public.gestlok_chat_wai_pedido(s.id,p.id,'transferencia',null,null,2,gen_random_uuid()) then raise exception 'Falla transferencia';end if;
+   -- Only a new, authorized ordinary image is stored; a caption cannot
+   -- trigger a payment or confirm the request.
+   if public.gestlok_chat_wai_recibir_imagen(h,llave,rev,p.id,'5491100000000@s.whatsapp.net','qa-photo-unauth',null,'image/png','iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG4YAAAAASUVORK5CYII=') is not null then raise exception 'Aceptó remitente ajeno';end if;
+   r=public.gestlok_chat_wai_recibir_imagen(h,llave,rev,p.id,jid,'qa-photo','Confirmar mi pedido','image/png','iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG4YAAAAASUVORK5CYII=');
+   if r->>'adjunto_estado'<>'imagen' then raise exception 'No guardó foto: %',r;end if;
+   perform public.gestlok_chat_wai_recibir_imagen(h,llave,rev,p.id,jid,'qa-photo',null,null,null);
+   select id into foto from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='qa-photo';
+   if (select count(*) from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='qa-photo')<>1 then raise exception 'Duplicó foto';end if;
+   if public.gestlok_chat_wai_adjunto_imagen(s.id,foto)->>'mime' is distinct from 'image/png' then raise exception 'No se puede ver foto';end if;
+   select id into otra from gestlok_chat_private.sucursales where slug in ('mi-gusto-munro','mi-gusto-torcuato') and id<>s.id limit 1;
+   if public.gestlok_chat_wai_adjunto_imagen(otra,foto) is not null then raise exception 'Foto cruzada entre sucursales';end if;
+   if not exists(select 1 from jsonb_array_elements(public.gestlok_chat_wai_bandeja(s.id)->'chats') x cross join lateral jsonb_array_elements(x->'mensajes') y where y->>'id'=foto::text and y->>'adjunto_estado'='imagen' and not (y?'base64') and y->>'leido'='false') then raise exception 'No aparece imagen no leída en bandeja';end if;
+   r=public.gestlok_chat_wai_recibir_imagen(h,llave,rev,p.id,jid,'qa-photo-invalid',null,'image/png','dGVzdA==');
+   if r->>'adjunto_estado'<>'no_disponible' then raise exception 'Aceptó formato inválido';end if;
+   if exists(select 1 from gestlok_chat_private.wai_pedidos where hilo_id=p.id) or (select ficha->>'estado' from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id)<>'pendiente' then raise exception 'La imagen cambió el pedido';end if;
    if not public.gestlok_chat_wai_pedido(s.id,p.id,'aceptar',null,null,2,gen_random_uuid()) then raise exception 'Falla aceptación humana';end if;
    select * into o from gestlok_chat_private.wai_pedidos where hilo_id=p.id;
    if o.id is null or o.ficha->>'total' is distinct from f->>'total' then raise exception 'Pedido no conservado';end if;

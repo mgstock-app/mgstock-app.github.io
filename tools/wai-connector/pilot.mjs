@@ -14,10 +14,11 @@ const lidJid=jid=>{
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
-export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[],menuImage=loadMenuImage,immediate=false}){
+export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[],menuImage=loadMenuImage,receiveImage=null,immediate=false}){
  let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map(),pendingName=null,lastName=null,readyLogged=false,syncRequested=false;
  const known=new Map(),delivered=new Set(),alerts=new Set();
  let lastRevision=null,rerun=false,scheduled=false;
+ const pendingImages=new Set();
  // Only a received authorized event or a confirmed send wakes this worker.
  // Keep the regular verified heartbeat; never spin or retry an uncertain send.
  function wake(){
@@ -39,7 +40,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
  function note(code,message){const t=now();if(!lastLog.has(code)||t-lastLog.get(code)>=15000){lastLog.set(code,t);logger(message);}}
  function report(code){alerts.add(code);wake();}
  function matches(jid){return valid()&&phone(jid)!==null&&phone(jid)===phoneKey(pilot.tester);}
- function reset(){rerun=false;pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();alerts.clear();pendingName=null;lastName=null;readyLogged=false;syncRequested=false;epoch++;}
+ function reset(){rerun=false;pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();alerts.clear();pendingImages.clear();pendingName=null;lastName=null;readyLogged=false;syncRequested=false;epoch++;}
  async function expectedLid(tester){
   const mapping=socket.signalRepository?.lidMapping;
   if(typeof mapping?.getLIDForPN!=='function')return null;
@@ -129,6 +130,21 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
     }else if(!fromPhone&&inbox.length>=40){report('cola_llena');}
     continue;
    }
+   if(!fromPhone&&content?.imageMessage&&receiveImage){
+    // Do not unwrap view-once content. Only ordinary received images, from
+    // the same authorized contact, are downloaded. Keep the image out of logs.
+    if(inbox.length+pendingImages.size>=40){report('cola_llena');continue;}
+    if(pendingImages.has(m.key.id)||inbox.some(x=>x.action==='imagen'&&x.args.p_evento===m.key.id))continue;
+    pendingImages.add(m.key.id);let img=null;
+    try{img=await receiveImage(m,content.imageMessage);}catch{/* Visible notice below if unavailable. */}
+    finally{pendingImages.delete(m.key.id);}
+    if(!active()||mine!==epoch||pilot?.id!==p.id||!valid())return;
+    const caption=String(content.imageMessage.caption||'').slice(0,500);
+    inbox.push({action:'imagen',args:{p_piloto:p.id,p_jid:sender.pn,p_evento:m.key.id,p_texto:caption,p_mime:img?.mime||null,p_base64:img?.base64||null}});
+    added=true;replyRoute={phone:phone(sender.pn),jid:sender.route};
+    note('image',img?'Imagen del contacto autorizado recibida.':'Imagen no disponible; se mostrará un aviso al gerente.');
+    continue;
+   }
    const text=content?.conversation??content?.extendedTextMessage?.text;
    if(typeof text!=='string'||!text.trim()||text.length>1000){note('text','Evento del contacto autorizado sin texto simple (puede estar pendiente de descifrado).');continue;}
    if(inbox.length<40){
@@ -208,7 +224,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    while(inbox.length&&active()){
     const item=inbox[0],args=item.args;
     if(args.p_piloto===pilot.id&&matches(args.p_jid)){
-     const result=await call(item.action,args);
+     const result=item.action==='imagen'?await rpc('gestlok_chat_wai_recibir_imagen',{p_revision:revision,...args}):await call(item.action,args);
      if(result?.ok)logger(item.action==='voto'?'Selección de WhatsApp registrada.':item.action==='recibir_salida'?'Mensaje del teléfono sincronizado.':'Mensaje de ensayo recibido por GESTLOK WAI.');else {note('server','El servidor no admitió este mensaje de ensayo; se avisará al gerente.');report(item.action==='voto'?'voto_no_registrado':'entrada_no_registrada');}
     }
     inbox.shift();
