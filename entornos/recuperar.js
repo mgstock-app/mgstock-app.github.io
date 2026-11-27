@@ -11,7 +11,12 @@
   }
   let recovery = false, busy = false;
   const params = new URLSearchParams(location.hash.slice(1));
-  if (params.has('error') || params.has('error_code')) status('El enlace no es válido o venció. Solicitá uno nuevo.');
+  const query = new URLSearchParams(location.search);
+  const type = params.get('type');
+  const callbackError = ['error', 'error_code'].some(k => params.has(k) || query.has(k));
+  const confirmationLink = !callbackError && params.has('access_token') &&
+    (type === 'signup' || type === 'email' || (query.get('modo') === 'confirmacion' && type !== 'recovery'));
+  if (callbackError) status('No se pudo validar el enlace. Solicitá uno nuevo desde esta pantalla.');
   const sb = window.supabase.createClient(cfg.url, cfg.key, {
     auth: { persistSession: true, detectSessionInUrl: true, flowType: 'implicit' }
   });
@@ -20,7 +25,26 @@
       recovery = true;
       el('solicitar').hidden = true;
       el('cambiar').hidden = false;
-      status('Elegí una contraseña nueva para tu cuenta de pruebas.');
+      el('titulo').textContent = 'Nueva contraseña';
+      el('intro').textContent = 'Estás cambiando únicamente la contraseña de GESTLOK Prueba.';
+      status(session.user.email_confirmed_at ? 'Email verificado. Elegí tu nueva contraseña.' : 'Elegí una contraseña nueva para tu cuenta de pruebas.');
+    }
+    if (confirmationLink && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !recovery) {
+      // No declarar el email verificado tomando solo parámetros de la URL.
+      // La sesión debe ser validada por Auth; fuera del callback, para no bloquearlo.
+      setTimeout(async () => {
+        try {
+          const { data, error } = await sb.auth.getUser();
+          const user = data?.user;
+          if (!error && user?.id === session.user.id && user.email_confirmed_at && !recovery) {
+            el('titulo').textContent = 'Email verificado';
+            el('intro').textContent = 'Tu correo está confirmado. Ahora podés solicitar el enlace para elegir una contraseña nueva.';
+            el('correo').value = user.email || '';
+            el('confirmar').hidden = true;
+            status('¡Tu correo ya está confirmado!');
+          }
+        } catch { status('No se pudo comprobar el enlace. Solicitá uno nuevo.'); }
+      }, 0);
     }
     if (event === 'SIGNED_OUT') recovery = false;
   });
@@ -31,8 +55,8 @@
     try {
       const email = el('correo').value.trim();
       const r = kind === 'confirmar'
-        ? await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin + '/ingresar/' } })
-        : await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/chat/recuperar/' });
+        ? await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin + '/chat/recuperar/?modo=confirmacion' } })
+        : await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/chat/recuperar/?modo=recuperacion' });
       if (r.error) {
         status(r.error.status === 429 ? 'Esperá unos minutos antes de solicitar otro enlace.' : 'No se pudo solicitar el enlace. Reintentá más tarde.');
       } else {
@@ -69,8 +93,10 @@
       recovery = false;
       el('clave').value = el('repetir').value = '';
       el('cambiar').hidden = true;
-      await sb.auth.signOut({ scope: 'local' });
-      status('¡Contraseña actualizada! Volvé a Ingresar con tu nueva contraseña.');
+      el('titulo').textContent = 'Contraseña actualizada';
+      el('intro').textContent = 'Ya podés ingresar con tu nueva contraseña.';
+      status('¡Contraseña actualizada! Volvé a Ingresar.');
+      try { await sb.auth.signOut({ scope: 'local' }); } catch { /* La contraseña ya se guardó. */ }
     } catch {
       status('No se pudo completar la operación. Reintentá.');
     } finally {
