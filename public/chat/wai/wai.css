@@ -200,3 +200,15 @@ a{color:#087a98}
 .wai-vote-history ul{margin:6px 0 1px;padding-left:17px;color:#5d7484;line-height:1.5;overflow-wrap:anywhere}
 .wai-vote-open .wai-option{cursor:default}
 .wai-private-photo{display:grid;gap:5px;max-width:360px}.wai-private-photo a{display:block}.wai-private-photo img{max-height:410px;object-fit:contain;background:#f2f6f9}.wai-private-photo .hint{font-size:.72rem}
+
+/* Administration-only, glanceable health list. */
+.wai-admin-health{text-align:left;margin:16px 0}
+.wai-admin-health h2{margin:0 0 6px;font-size:18px}
+.wai-health-list{display:grid;gap:8px;margin:12px 0;max-height:460px;overflow:auto}
+.wai-health-row{border:1px solid #d7e4eb;border-radius:12px;padding:12px;display:grid;gap:5px;background:#f6f9fb}
+.wai-health-row.wai-health-alert{border-color:#e8b5ae;background:#fff7f5}
+.wai-health-ok{color:#246849;font-weight:650}
+.wai-health-warn{color:#a13732;font-weight:650}
+.wai-health-row .actions{display:flex;flex-wrap:wrap;gap:6px}
+.wai-health-row small{overflow-wrap:anywhere}
+.top-actions a.toolbar-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
