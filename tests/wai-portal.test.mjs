@@ -57,6 +57,24 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await anon();assert.equal(await motor(),null);await role('gerente');assert.equal((await inbox(S)).chats.length,0);
  await db.exec("reset role;set test.excluded='';update gestlok_chat_private.wai_pilotos set vence_at=now()-interval '1 second',creado_at=now()-interval '2 seconds'");
  await anon();assert.equal(await motor(),null);await role('gerente');assert.equal((await inbox(S)).chats.length,0);
+ // New protocol: a legacy heartbeat never earns a green status; only the verified connector does.
+ await db.exec("reset role;"+read('entornos/sql/wai-verificacion-y-qr.sql')+";update gestlok_chat_private.wai_sesiones set solicitada_at=now()-interval '1 minute',senal_at=now(),estado='conectado'");
+ const connections=(s,action='listar',h=null)=>call('wai_conexiones',[s,action,h]);
+ const signal=(fn,h,k,r,state,n,qr=null)=>call(fn,[h,k,r,state,n,qr]);
+ await role('creadora');assert.equal((await connections(S))[0].estado,'verificando');
+ await assert.rejects(authorize(S,H,contact),/conexión no verificada/);
+ await anon();await signal('wai_senal_v2',H,keyA,rev,'conectado','+5491100000001');
+ await role('creadora');assert.equal((await connections(S))[0].estado,'conectado');
+ const p2=await authorize(S,H,contact);assert.ok(p2);
+ await role('gerente',T);await assert.rejects(connections(T,'revalidar',H),/Número no habilitado/);
+ await role('gerente');assert.equal((await connections(S,'revalidar',H))[0].estado,'reconectando');
+ await anon();const cmd=await signal('wai_senal',H,keyA,rev,'conectado','+5491100000001');assert.equal(cmd.orden,'qr_forzado');
+ await signal('wai_senal',H,keyA,cmd.revision,'conectado','+5491100000001');
+ await role('creadora');assert.equal((await connections(S))[0].estado,'reconectando');assert.equal((await connections(T))[0].estado,'verificando');
+ await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'qr',null,'test-qr-no-real-code');await role('creadora');assert.equal((await connections(S))[0].estado,'qr');
+ await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');await role('creadora');assert.equal((await connections(S))[0].estado,'conectado');
+ assert.equal((await inbox(S)).chats.length,0);
+ await anon();await signal('wai_senal',H,keyA,cmd.revision,'conectado','+5491100000001');await role('creadora');assert.equal((await connections(S))[0].estado,'verificando');
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{

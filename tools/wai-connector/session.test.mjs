@@ -47,3 +47,18 @@ test('deshabilitar, perder control o revocar autenticación no deja sesión acti
 test('reiniciar el proceso no descarta credenciales aunque haya una orden QR anterior',async()=>{
  const a=fixture();a.command('old','qr');await a.s.tick();assert.deepEqual(a.actions,[['start',false]]);
 });
+test('revinculación explícita reemplaza únicamente la sesión solicitada aunque figure conectada',async()=>{
+ const a=fixture(),b=fixture('+5491100000002','b');
+ await a.s.tick();await b.s.tick();a.event({type:'open',number:'+5491100000001'});b.event({type:'open',number:'+5491100000002'});
+ a.command('forced','qr_forzado');await a.s.tick();
+ assert.deepEqual(a.actions,[['start',false],['close'],['start',true]]);
+ assert.equal(b.s.state(),'conectado');
+ const restarted=fixture();restarted.command('forced','qr_forzado');await restarted.s.tick();assert.deepEqual(restarted.actions,[['start',true]]);
+});
+test('una señal local no mantiene el estado conectado si el transporte no responde',async()=>{
+ let handler,healthy=true;
+ const reports=[];
+ const s=createSession({id:'probe',number:'+5491100000001',transport:async({onEvent})=>{handler=onEvent;return {verify:async()=>healthy,close:async()=>{}}},exchange:async r=>{reports.push(r);return {habilitada:true,revision:'r',orden:'reconectar',numero:'+5491100000001'}}});
+ await s.tick();handler({type:'open',number:'+5491100000001'});await s.tick();assert.equal(reports.at(-1).p_estado,'conectado');
+ healthy=false;await s.tick();assert.equal(reports.at(-1).p_estado,'desconectado');assert.equal(s.state(),'desconectado');
+});

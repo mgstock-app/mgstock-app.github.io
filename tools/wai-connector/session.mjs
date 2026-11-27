@@ -33,6 +33,16 @@ export function createSession({id,number,exchange,transport,now=Date.now,logger=
     if(closed||busy)return;
     busy=true;
     try{
+      // A control heartbeat is not proof of a live WhatsApp connection.
+      if(state==='conectado'&&typeof socket?.verify==='function'){
+        const current=epoch;
+        const ok=await socket.verify().catch(()=>false);
+        if(closed)return;
+        if(current===epoch&&state==='conectado'&&!ok){
+          mark('desconectado');retryAt=now()+2000;await end();
+          logger('WhatsApp no confirmó la señal; intentando recuperar la conexión.');
+        }
+      }
       const report={p_id:id,p_revision:revision,p_estado:state==='sin_senal'?null:state,p_numero:actual,p_qr:qr&&now()-qrAt<40000?qr:null};
       if(report.p_estado==='qr'&&!report.p_qr){report.p_estado='desconectado';}
       const result=await exchange(report);
@@ -42,9 +52,10 @@ export function createSession({id,number,exchange,transport,now=Date.now,logger=
       }
       if(typeof result.revision!=='string')throw Error('Respuesta de control inválida');
       if(result.revision!==revision){
-        const reset=result.orden==='qr'&&revision!==null&&state!=='conectado';
+        const forced=result.orden==='qr_forzado';
+        const reset=forced||(result.orden==='qr'&&revision!==null&&state!=='conectado');
         revision=result.revision;
-        if(state!=='conectado'){await end();await connect(reset);}
+        if(forced||state!=='conectado'){await end();await connect(reset);}
       }else if(state==='desconectado'&&now()>=retryAt){
         await end();await connect(false);
       }

@@ -37,7 +37,7 @@ function transportFor(s){
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified}):null;
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot)sock.ev.on('messages.upsert',pilot.receive);
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});
@@ -57,11 +57,19 @@ function transportFor(s){
       onEvent({type:'close',retryable});void close();
     }
   });
-  return {close,pilotTick:revision=>pilot?.tick(revision)};
+  // Test the authenticated WhatsApp Web transport, not only the Node process or a cached open event.
+  const verify=async()=>{
+   if(ended||!verified||!sock.ws.isOpen)return false;
+   try{
+    const r=await sock.query({tag:'iq',attrs:{to:'s.whatsapp.net',type:'get',xmlns:'w:p'},content:[{tag:'ping',attrs:{}}]},4000);
+    return !ended&&verified&&sock.ws.isOpen&&r?.tag==='iq'&&r.attrs?.type==='result';
+   }catch{return false;}
+  };
+  return {close,verify,pilotTick:revision=>pilot?.tick(revision)};
  };
 }
 const sessions=config.sessions.map(s=>createSession({id:s.id,number:s.number,transport:transportFor(s),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m),
- exchange:report=>rpc(s,'gestlok_chat_wai_senal',report)}));
+ exchange:report=>rpc(s,'gestlok_chat_wai_senal_v2',report)}));
 console.log('GESTLOK WAI · ensayo aislado · '+sessions.length+' sesiones. Mensajes de prueba: '+(config.enableTestMessages===true?'permitidos solo por autorización temporal':'desactivados'));
 console.log('La conexión no oficial puede ocasionar restricciones. Usá solo números de ensayo autorizados.');
 const tick=()=>Promise.allSettled(sessions.map(s=>s.tick()));
