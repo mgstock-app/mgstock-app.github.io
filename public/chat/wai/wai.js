@@ -179,7 +179,7 @@ function renderMessage(c,m){
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    !m.eliminado&&m.imagen_url?node('a',{href:m.imagen_url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar foto de la carta'},node('img',{class:'wai-menu-photo',src:m.imagen_url,alt:'Foto de la carta',loading:'lazy',referrerpolicy:'no-referrer'})):null,
-   node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
+   m.imagen_url&&!m.eliminado?null:node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
    !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(m.interaccion.seleccion===o.id?' chosen':'')},(m.interaccion.seleccion===o.id?'✓ ':'○ ')+o.label))):null,
    node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
@@ -288,7 +288,7 @@ function renderOrder(c){
    !c.transferencia_configurada?node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'):null,
    ready&&!c.imagenes_activas?node('small',{class:'hint'},'Fotos de carta: actualizá el conector privado para enviarlas como imagen.'):null,
    c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
-   last?.consulta_at?node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_vencida?'Consulta fuera del ensayo.':last.consulta_encolada?'Consulta registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)):null);
+   last?.consulta_at?node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_cancelada?'Consulta anterior omitida por nueva atención.':last.consulta_vencida?'Consulta fuera del ensayo.':last.consulta_encolada?'Consulta registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)):null);
  menu.append(node('summary',{class:'wai-manage','aria-label':'Más opciones de la conversación',title:'Gestionar conversación'},'⋯'),options);
  const info=node('div',{class:'wai-order-info'},node('strong',{},activeOrder?orderLabels[last.estado]||last.estado:c.pedido_pendiente?'Pedido para confirmar':last?.estado==='entregado'?'Pedido entregado':'Atención al cliente'),
    mode?node('span',{class:'order-detected confirmed'},mode):null,
