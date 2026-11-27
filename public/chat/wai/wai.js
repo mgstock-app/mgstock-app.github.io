@@ -24,7 +24,7 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 const readBusy=new Set();
-let messageActionHost,actionDraft=null,actionBusy=false;
+let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,orderBusy=false,orderSignature="";
 let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
@@ -86,7 +86,7 @@ async function registerTrial(box){
  }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
 function clearPrivate(){
- generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();actionDraft=null;actionBusy=false;lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
+ generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();actionDraft=null;actionBusy=false;orderBusy=false;orderSignature='';lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
@@ -100,6 +100,7 @@ function renderShell(){
  textarea=node('textarea',{placeholder:'Escribí un mensaje',rows:'1',maxlength:'1000','aria-label':'Escribí un mensaje',oninput:()=>{if(selected)drafts.set(selected,textarea.value);updateComposer();},onkeydown:composerKey});
  send=node('button',{type:'submit',class:'btn primary',disabled:true},'Enviar');
  messageActionHost=node('div',{class:'message-action-host'});
+ orderHost=node('div',{class:'order-host',hidden:true});orderStatus=node('p',{class:'hint order-status',role:'status',hidden:true});
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
@@ -108,13 +109,13 @@ function renderShell(){
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
   node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{class:'inbox-title'},'Conversaciones',unreadSummary),search),list),
-   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,historyNotice,thread,messageActionHost,compose)),overlay);
+   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,historyNotice,orderHost,orderStatus,thread,messageActionHost,compose)),overlay);
  root.replaceChildren(shell);renderList();renderThread(true);
 }
 function selection(id){
  cancelMessageAction();
  if(selected&&textarea)drafts.set(selected,textarea.value);
- selected=id;shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
+ selected=id;orderSignature='';if(orderStatus){orderStatus.hidden=true;orderStatus.textContent='';}shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
 }
 function displayName(c){return c?.alias||c?.nombre_agenda||c?.cliente||'';}
 function unreadIds(c){return (c?.mensajes||[]).filter(m=>m.direccion==='entrada'&&m.leido===false).map(m=>m.id);}
@@ -123,9 +124,9 @@ function renderList(){
  const total=chats.reduce((n,c)=>n+unreadIds(c).length,0);
  if(unreadSummary){unreadSummary.hidden=!total;unreadSummary.textContent=total?total+' sin leer':'';}
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
- list.replaceChildren(...(matching.length?matching.map(c=>{
+ list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)).map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):null,c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
@@ -177,7 +178,7 @@ function renderMessage(c,m){
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.texto),
-   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':null,change?' · '+change:null),
+   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
 function cancelMessageAction(){
@@ -227,9 +228,64 @@ function openAlias(c){
   node('div',{class:'message-action-buttons'},submit,c.alias?button('Quitar alias',()=>void save(null),'btn'):null,button('Cancelar',()=>cancelMessageAction(),'btn')));
  actionDraft={id:'alias:'+c.id,chat:c.id,kind:'alias'};messageActionHost.replaceChildren(form);input.focus();
 }
+const orderLabels={preparacion:'Recibido · en preparación',listo:'Listo para retirar',en_camino:'En camino',entregado:'Entregado al cliente'};
+function orderReady(c){return c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();}
+function orderMessage(text){if(orderStatus){orderStatus.hidden=!text;orderStatus.textContent=text;}}
+async function orderAction(c,accion,pedido=null,extra={}){
+ if(orderBusy||selected!==c.id||!sessionLocal)return;
+ if(accion!=='resolver'&&!orderReady(c)){orderMessage('Esperá una conexión activa y un mensaje autorizado.');return;}
+ const mine=generation,chat=c.id;orderBusy=true;orderSignature='';renderOrder(c);orderMessage('Guardando…');
+ try{
+  const ok=await rpc('wai_pedido',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:accion,p_pedido:pedido?.id||null,p_evento:crypto.randomUUID(),...extra});
+  if(ok!==true)throw Error('No se confirmó la solicitud.');
+  if(mine===generation&&selected===chat)orderMessage(accion==='resolver'?'Reclamo resuelto.':'Solicitud registrada. El aviso figurará en el chat.');
+  if(mine===generation)await refresh();
+ }catch(e){if(mine===generation&&selected===chat)orderMessage(e.message||'No se confirmó la solicitud. Actualizá el chat antes de repetir.');}
+ finally{if(mine===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
+}
+async function showOrderPhoto(c,o){
+ if(selected!==c.id||!sessionLocal)return;
+ const mine=generation;
+ try{
+  const photo=await rpc('wai_pedido_foto',{p_sucursal:sessionLocal.id,p_pedido:o.id});
+  if(mine!==generation||selected!==c.id)return;
+  if(typeof photo!=='string'||photo.length>400000||!/^\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(photo))throw Error('Foto no disponible.');
+  cancelMessageAction();
+  messageActionHost.replaceChildren(node('div',{class:'order-photo'},node('strong',{},'Foto enviada por el cliente'),node('img',{alt:'Foto adjunta al reclamo',src:'data:image/jpeg;base64,'+photo}),button('Cerrar foto',cancelMessageAction)));
+ }catch(e){if(mine===generation&&selected===c.id)orderMessage(e.message);}
+}
+function renderOrder(c){
+ if(!orderHost)return;
+ orderHost.hidden=false;
+ const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
+ const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy]);
+ if(sig===orderSignature)return;orderSignature=sig;
+ const disabled=orderBusy||!ready;
+ const transfer=button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Envía los datos de Ajustes al contacto':'Cargá los datos en Ajustes del local'});
+ const actions=node('div',{class:'order-actions'},transfer);
+ const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Pedido del cliente'),last?node('span',{class:'order-state'},orderLabels[last.estado]||last.estado):node('span',{class:'hint'},'Sin pedido registrado')),actions);
+ if(!last||last.estado==='entregado'&&!issues.length){
+  const type=node('select',{'aria-label':'Modalidad de entrega'},node('option',{value:'retiro'},'Retiro en el local'),node('option',{value:'delivery'},'Delivery'));
+  const delay=node('input',{type:'number',min:1,max:20,value:2,'aria-label':'Minutos hasta consulta de satisfacción'});
+  actions.append(node('label',{class:'order-field'},'Modalidad',type),node('label',{class:'order-field delay'},'Consultar en (min)',delay),button('Recibido y en preparación',()=>{const n=Number(delay.value);if(!Number.isInteger(n)||n<1||n>20){orderMessage('Elegí una demora entre 1 y 20 minutos.');return;}void orderAction(c,'aceptar',null,{p_modalidad:type.value,p_demora:n});},'btn primary order-btn',{disabled}));
+ }else if(last.estado==='preparacion'){
+  actions.append(button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn',{disabled}));
+ }else if(['listo','en_camino'].includes(last.estado)){
+  actions.append(button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn',{disabled}));
+ }
+ if(!c.resena_configurada&&last&&last.estado!=='entregado')panel.append(node('small',{class:'hint'},'Reseñas: configurá el enlace en Ajustes.'));
+ if(!c.transferencia_configurada)panel.append(node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'));
+ if(last?.consulta_at)panel.append(node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_vencida?'Consulta fuera del ensayo autorizado.':last.consulta_encolada?'Consulta de satisfacción registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)+' · se envía con WhatsApp conectado.'));
+ for(const issue of issues){
+  const box=node('div',{class:'order-complaint'},node('strong',{},'⚠ Tuvo un problema con su pedido'),issue.detalle?node('p',{},issue.detalle):node('small',{},'Esperando los detalles del cliente.'),node('div',{class:'order-actions'},issue.tiene_foto?button('Ver foto del reclamo',()=>void showOrderPhoto(c,issue),'btn order-btn'):null,button('Marcar reclamo resuelto',()=>{if(confirm('¿El reclamo ya fue atendido?'))void orderAction(c,'resolver',issue);},'btn order-btn',{disabled:orderBusy})));
+  panel.append(box);
+ }
+ orderHost.replaceChildren(panel);
+}
 function renderThread(force=false){
  const c=chats.find(x=>x.id===selected);
- if(!c){cancelMessageAction();if(historyNotice)historyNotice.hidden=true;selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
+ if(!c){cancelMessageAction();if(orderHost)orderHost.hidden=true;if(orderStatus)orderStatus.hidden=true;if(historyNotice)historyNotice.hidden=true;selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
+ renderOrder(c);
  const saved=historyLabel(c);if(historyNotice){historyNotice.hidden=!saved;historyNotice.textContent=saved;}
  const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at]);
  if(force||sig!==lastThreadSignature){
@@ -254,7 +310,7 @@ function showNotice(error){
  if(selected&&pendingUnknown.has(selected)){notice.className='notice bad';notice.textContent='Verificando una respuesta incierta. No la repitas hasta comprobar el estado.';return;}
  const live=rows.filter(r=>r.estado==='conectado').length;
  notice.className='notice'+(live?' good':'');
- notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) con señal de WhatsApp comprobada':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba, sin IA automática':'Mensajería comercial todavía no habilitada')));
+ notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) con señal de WhatsApp comprobada':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba · seguimiento de pedidos; sin IA automática':'Mensajería comercial todavía no habilitada')));
 }
 async function refresh(){
  if(running||destroyed||!sessionLocal)return;running=true;const mine=generation,id=sessionLocal.id;
@@ -284,7 +340,7 @@ async function connectionAction(action,id){
 }
 async function prepareTrial(row,rotate=false){
  if(!trialEnvironment()||!portal?.administradora||connectionBusy||!row.habilitada)return;
- if(!confirm(rotate?'¿Rotar la clave? El dispositivo anterior dejará de funcionar y deberás importar la nueva configuración.':'¿Preparar esta línea de ensayo? El archivo privado se descarga una sola vez. No se envían mensajes automáticos.'))return;
+ if(!confirm(rotate?'¿Rotar la clave? El dispositivo anterior dejará de funcionar y deberás importar la nueva configuración.':'¿Preparar esta línea de ensayo? El archivo privado se descarga una sola vez. Solo el contacto que autorices podrá recibir avisos de ensayo.'))return;
  connectionBusy=true;const current=generation;
  try{
   const r=await rpc('wai_conexiones',{p_sucursal:sessionLocal.id,p_accion:rotate?'rotar_clave':'preparar',p_id:row.id});
@@ -353,7 +409,7 @@ function openAuthorization(id){
    if(!/^\+[1-9]\d{7,14}$/.test(tester)){formStatus.textContent='Ingresá un número en formato internacional, incluyendo + y código de país.';return;}
    if(!consent.checked){formStatus.textContent='Confirmá que el contacto aceptó participar.';return;}
    await authorize(id,false,tester);
- }},node('h3',{},'Autorizar contacto de ensayo'),node('p',{class:'hint'},'Ingresá el número de OTRO teléfono autorizado. La prueba dura 25 minutos; solo se permiten mensajes manuales.'),node('label',{},'Número del contacto',input),node('label',{class:'consent-line'},consent,node('span',{},'Este contacto aceptó participar en la prueba.')),signal,formStatus,node('div',{class:'actions'},submit,button('Volver',()=>{if(!connectionBusy){authorizationDraft=null;authorizationHost.replaceChildren();}},'btn')));
+ }},node('h3',{},'Autorizar contacto de ensayo'),node('p',{class:'hint'},'Ingresá el número de OTRO teléfono autorizado. La prueba dura 25 minutos; solo al contacto que aceptó participar. Los estados del pedido y la encuesta pueden enviar avisos automáticos.'),node('label',{},'Número del contacto',input),node('label',{class:'consent-line'},consent,node('span',{},'Este contacto aceptó participar en la prueba.')),signal,formStatus,node('div',{class:'actions'},submit,button('Volver',()=>{if(!connectionBusy){authorizationDraft=null;authorizationHost.replaceChildren();}},'btn')));
  authorizationDraft={id,input,submit,signal,status:formStatus};
  authorizationHost.replaceChildren(form);
  input.focus();
