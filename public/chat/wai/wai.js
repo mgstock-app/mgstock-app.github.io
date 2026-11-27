@@ -267,14 +267,16 @@ async function attentionAction(c,a){
 const orderMoney=n=>n==null?'—':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2,minimumFractionDigits:0}).format(n);
 function privateOrderSheet(c,f){
  const row=(label,value)=>node('div',{class:'wai-sheet-row'},node('span',{},label),node('strong',{},value||'Pendiente'));
- const choiceLines=(f.selecciones||[]).map(g=>node('div',{class:'wai-sheet-group'},node('strong',{},g.grupo),...g.valores.map(v=>node('small',{},v.cantidad+' × '+v.nombre))));
- const extras=(f.extras||[]).map(v=>v.nombre+' · '+orderMoney(v.precio));
+ const items=[...(f.carrito||[]),...(f.producto_id||(!f.carrito&&f.producto)?[f]:[])];
+ const itemLines=items.map((item,i)=>node('div',{class:'wai-sheet-item'},node('strong',{},(i+1)+'. '+item.producto+' · '+orderMoney(item.precio)),
+  ...(item.selecciones||[]).map(g=>node('div',{class:'wai-sheet-group'},node('strong',{},g.grupo),...(g.valores||[]).map(v=>node('small',{},v.cantidad+' × '+v.nombre)))),
+  ...(item.extras||[]).map(v=>node('small',{class:'wai-sheet-extra'},v.nombre+' · '+orderMoney(v.precio)))));
+
  const detail=node('details',{class:'wai-order-menu wai-sheet-menu'});
  detail.append(node('summary',{class:'btn order-btn wai-sheet-summary','aria-label':'Ver ficha privada del pedido'},'Ver pedido'),node('div',{class:'wai-order-popover wai-sheet'},
   node('strong',{class:'wai-sheet-title'},'Ficha privada del pedido'),
   node('small',{class:'hint'},'Solo el equipo autorizado del local puede verla.'),
-  row('Cliente',f.nombre),row('WhatsApp',c.cliente),row('Pedido',f.producto),...choiceLines,
-  row('Adicionales (bebidas, postres, salsas)',extras.length?extras.join(' · '):'Sin adicionales'),
+  row('Cliente',f.nombre),row('WhatsApp',c.cliente),row('Pedido',items.length?items.length+' producto(s)':'Pendiente'),...itemLines,
   row('Modalidad',f.modalidad==='delivery'?'Delivery':f.modalidad==='retiro'?'Retiro en el local':'Pendiente'),
   f.modalidad==='delivery'?row('Dirección',f.direccion):null,row('Forma de pago',f.pago?.replaceAll('_',' ')),
   row('Subtotal',orderMoney(f.subtotal)),row('Envío',orderMoney(f.envio)),row('Demora',f.demora),
