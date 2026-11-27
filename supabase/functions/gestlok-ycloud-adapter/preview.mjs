@@ -4,6 +4,18 @@ import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,v
 import {responderIA} from '../gestlok-chat/ia.js';
 const text=v=>String(v??'').trim();
 const available=p=>p?.activo!==false&&p?.disponible!==false;
+// The web assistant already requests 1–3 sentences. WAI additionally rejects
+// oversized/noisy AI prose instead of cutting an answer or keeping its state.
+// Guided replies (cart, prices, hours, etc.) retain the original web text.
+export function waiAIResponseOK(turn){
+ const messages=turn?.mensajes;
+ if(!Array.isArray(messages)||messages.length!==1)return false;
+ const value=text(messages[0]?.texto);
+ if(!value||value.length>360||value.split(/\s+/u).length>60||value.split(/\n/).length>3)return false;
+ if(/\p{Extended_Pictographic}|(?:^|\n)\s*[-•#]\s|https?:\/\//u.test(value))return false;
+ const sentences=value.match(/[.!?]+(?=\s|$)/g)||[];
+ return sentences.length<=3;
+}
 export function projectWhatsApp(turn,catalogo){
  const messages=[];const pending=new Set();const options=[];const selectors=[];
  const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id))return;options.push({id,label:text(label).slice(0,80)});};
@@ -41,7 +53,12 @@ export async function previewWhatsApp({sucursal,catalogo,privado={},estado,histo
  const unknown=t=>t.mensajes?.length===1&&!t.accion&&/^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(text(t.mensajes[0].texto));
  // Only an explicitly injected fake provider is allowed in the preview.
  if(raw&&unknown(turn)&&privado.ia_activa!==false&&config.clave&&typeof fetchImpl==='function'){
-  try{turn=await responderIA({...x,privado,historial,texto:raw,config,fetchImpl});motor='ia';}catch{/* same guided fallback */}
+  try{
+   // State is isolated: if the response fails the style check, discard any
+   // tool mutations as well as the prose; use the original guided response.
+   const candidate=await responderIA({...x,estado:structuredClone(x.estado),privado,historial,texto:raw,config,fetchImpl});
+   if(waiAIResponseOK(candidate)){turn=candidate;motor='ia';}
+  }catch{/* same guided fallback */}
  }
  const projection=projectWhatsApp(turn,active.catalogo);
  if(raw&&unknown(turn))projection.pending.push('derivacion_humana');

@@ -44,8 +44,8 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   const lines=options.map(o=>o.number+'. '+o.label);
   const firstProduct=options.find(o=>st.stage==='menu'&&o.id.startsWith('elegir:')||st.stage==='select_product');
   const hint=st.stage==='flavor'&&options.length
-   ? ['Puede indicar varias cantidades juntas con el número (ej.: 1x2'+(options.length>1?', 2x1':'')+') o con el nombre exacto de la variedad.']
-   : firstProduct?['Para elegir producto y cantidad en un paso, escriba '+firstProduct.number+'x2 (2 unidades).']:[];
+   ? ['Ej.: 1x2'+(options.length>1?', 2x1':'')+' (opción x cantidad).']
+   : firstProduct?['Ej.: '+firstProduct.number+'x2 (2 unidades).']:[];
   return result([...st.prompt,...(lines.length?[lines.join('\n')]:[]),...(nav.length?['Pág. '+(st.page+1)+'/'+Math.ceil(st.menu.length/PAGE)+'. Escriba '+nav.join(' o ')+'.']:[]),...hint],options);
  }
  const pageOptions=()=>st.menu.slice(st.page*PAGE,(st.page+1)*PAGE);
@@ -61,7 +61,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   if(p.pending.includes('derivacion_humana')||p.pending.some(x=>x==='accion_cancelar'||x==='accion_estado'||x==='accion_derivar')){
    st.stage='handoff';
    const detail=entrada.boton?(st.menu.find(o=>o.id===entrada.boton)?.label||entrada.boton):input;
-   const response=show(['Consulta para atención del gerente. En esta simulación no se ha enviado al local. Escriba MENU para volver a la carta.'],[]);
+   const response=show(['Un integrante del local revisará su consulta.\nSimulación: no se envió al local. Escriba MENU para volver.'],[]);
    return {...response,action:{type:'simulated_handoff',idempotencyKey:event.id,detail,reason:clasificarSoporte(entrada)||'consulta'}};
   }
   if(p.pending.includes('formulario_datos')){st.stage='checkout';st.data={telefono:identity.phone};return checkout();}
@@ -83,7 +83,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   // Explicit quantities are still reviewed, with the same required option and
   // stock/price validation as a product chosen in individual steps.
   if(Number.isInteger(explicitQuantity)&&explicitQuantity>=1&&explicitQuantity<=50){st.product.qty=explicitQuantity;return productStep();}
-  st.stage='quantity';return show([p.label+'. ¿Cuántas unidades quiere? Escriba una cantidad de 1 a 50. Sugerida: '+p.quantity+'.']);
+  st.stage='quantity';return show([p.label+'\n¿Cuántas unidades desea? (1 a 50)'+(p.quantity>1?' Sugerida: '+p.quantity+'.':'')]);
  }
  function productStep(){
   const p=st.product,g=p.offered.groups[p.group];
@@ -117,7 +117,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   if(r.stage==='review'){st.stage='menu';delete st.data;delete st.review;return show([r.message],[choice('carrito','Ver mi pedido'),choice('carta','Agregar más'),choice('finalizar','Volver a finalizar')]);}
   if(r.stage==='collect'){
    st.stage='checkout';st.field=r.field;delete st.review;
-   const hint=r.field==='entrega'?[['También puede completar varios datos juntos (separe los campos con punto y coma):','datos: entrega=retiro; nombre=su nombre; pago=medio de pago','Para delivery use entrega=delivery, incluya dirección=calle y número; si paga en efectivo, abono=importe.'].join('\n')]:[];
+   const hint=r.field==='entrega'?['Opcional: datos: entrega=retiro; nombre=su nombre; pago=medio de pago. Para delivery incluya dirección y, si abona en efectivo, el importe.']:[];
    return show([r.message,...hint],r.options.map(o=>typeof o==='string'?choice(o,o==='envio'?'Delivery':'Retiro en el local'):choice(o.id,o.label)));
   }
   st.stage='confirm';st.review=snapshot(catalogo,sucursal,ahora,st.engine,st.data);
@@ -141,7 +141,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   if(isCourtesy(input))return result();
   return show(['La solicitud de prueba ya fue registrada. No se creó un pedido real. Para empezar otro, escriba NUEVO PEDIDO.'],[]);
  }
- if(st.stage==='handoff'&&word!=='menu'&&word!=='volver al menu')return isCourtesy(input)?result():show(['La consulta requiere atención del gerente. No se ha enviado al local en esta simulación. Escriba MENU para volver a la carta.'],[]);
+ if(st.stage==='handoff'&&word!=='menu'&&word!=='volver al menu')return isCourtesy(input)?result():show(['Su consulta requiere atención del gerente.\nSimulación: no se envió al local. Escriba MENU para volver.'],[]);
  if(word==='hablar con el gerente'||word==='ayuda con mi pedido'||clasificarSoporte({texto:input})&&st.stage==='menu')return run({texto:input});
  if(word==='menu'||word==='volver al menu'){
   delete st.product;delete st.data;delete st.review;delete st.engine.promo_reemplazo;return run({boton:'carta'});

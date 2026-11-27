@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {previewWhatsApp,projectWhatsApp,selectPreviewOption,completePreviewProduct,checkoutPreview} from '../supabase/functions/gestlok-ycloud-adapter/preview.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {previewWhatsApp,projectWhatsApp,selectPreviewOption,completePreviewProduct,checkoutPreview,waiAIResponseOK} from '../supabase/functions/gestlok-ycloud-adapter/preview.mjs';
 const sucursal={nombre:'Local ficticio',empresa:'Empresa ficticia',slug:'prueba',acepta_retiro:true,acepta_envio:false,medios_pago:['efectivo']};
 const catalogo={categorias:[{id:'c1',nombre:'Empanadas'}],productos:[{id:'p1',categoria_id:'c1',nombre:'Empanada ficticia',precio:1000,activo:true,disponible:true,opciones:[]},{id:'p2',categoria_id:'c1',nombre:'Agotado ficticio',precio:2000,activo:true,disponible:false,opciones:[]}]};
 test('reutiliza motor real para bienvenida y carta sin enviar mensajes',async()=>{const r=await previewWhatsApp({sucursal,catalogo,entrada:{inicio:true}});assert.ok(r.projection.messages.length);assert.equal(r.projection.sendAllowed,false);const p=projectWhatsApp({mensajes:[{tipo:'carta',categoria:'c1'}]},catalogo);assert.equal(p.options.length,1);assert.match(p.options[0].label,/Empanada ficticia/);assert.deepEqual(selectPreviewOption(p,'1'),{boton:'elegir:p1:1'});assert.equal(selectPreviewOption(p,'99'),null);});
@@ -422,3 +422,50 @@ test('exclusión conserva el aislamiento por local en el ensayo y no crea sesion
  const other=await say(b,'Me cobraron mal');assert.equal(other.accepted,true);assert.equal(pilot.listHandoffs(b).length,1);
 });
 
+
+import {responder,carteleraDelDia} from '../supabase/functions/gestlok-chat/motor.js';
+test('WAI conserva literalmente las respuestas guiadas del mismo motor web por local',async()=>{
+ const ahora=new Date('2026-11-26T18:00:00Z');
+ for(const s of [
+   {...s2,nombre:'Munro ficticio',horario:'10 a 23',envio_costo:500,menu_interactivo:true},
+   {...s2,nombre:'Torcuato ficticio',horario:'11 a 22',envio_costo:700,menu_interactivo:true}
+ ]){
+  const active=carteleraDelDia(s,catalogo,ahora);
+  for(const entrada of [{inicio:true},{texto:'¿Cuál es el horario?'},{texto:'formas de pago'},{texto:'¿Hacen delivery?'},{boton:'carta'}]){
+   const web=responder({sucursal:active.sucursal,catalogo:active.catalogo,entrada,ahora});
+   const wai=await previewWhatsApp({sucursal:s,catalogo,entrada,ahora});
+   const original=web.mensajes.map(m=>String(m.texto||'').trim()).filter(Boolean);
+   assert.ok(original.length);
+   assert.deepEqual(wai.projection.messages.slice(0,original.length),original);
+   for(const b of web.mensajes.flatMap(m=>m.botones||[]))assert.ok(wai.projection.options.some(o=>o.id===b.id&&o.label===b.texto));
+   assert.equal(wai.projection.sendAllowed,false);
+  }
+ }
+});
+test('WAI rechaza prosa extensa o desprolija; conserva respuesta web y no aplica acciones de IA descartada',async()=>{
+ const long='Le damos la bienvenida. '.repeat(60);
+ for(const bad of [long,'Uno. Dos. Tres. Cuatro.','Hola 😊','- Uno\n- Dos','Consulte https://example.invalid']){
+  assert.equal(waiAIResponseOK({mensajes:[{texto:bad}]}),false);
+ }
+ assert.equal(waiAIResponseOK({mensajes:[{texto:'Puede consultar la carta. Con gusto le ayudamos.'}]}),true);
+ const args={sucursal:s2,catalogo:cat2,privado:{ia_activa:true},entrada:{texto:'zzz qqq xxx'},config:{proveedor:'openai',clave:'ficticia',url:'https://mock.invalid'}};
+ const base=await previewWhatsApp(args);
+ for(const bad of [long,'Uno. Dos. Tres. Cuatro.','Hola 😊']){
+  const out=await previewWhatsApp({...args,fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:{content:bad}}]})})});
+  assert.equal(out.motor,'guiado');assert.deepEqual(out.estado,base.estado);
+  assert.deepEqual(out.projection,base.projection);
+  assert.equal(out.projection.sendAllowed,false);
+ }
+ const good=await previewWhatsApp({...args,fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:{content:'Puede consultar la carta. Con gusto le ayudamos.'}}]})})});
+ assert.equal(good.motor,'ia');assert.equal(good.projection.messages[0],'Puede consultar la carta. Con gusto le ayudamos.');
+});
+
+test('una respuesta de IA descartada no vacía un carrito existente ni deja herramientas aplicadas',async()=>{
+ const estado={carrito:[{producto_id:'p1',cantidad:2,opciones:{},nota:''}]};
+ const args={sucursal:s2,catalogo:cat2,estado,privado:{ia_activa:true},entrada:{texto:'zzz qqq xxx'},config:{proveedor:'openai',clave:'ficticia',url:'https://mock.invalid'}};
+ const expected=await previewWhatsApp(args);
+ let calls=0;
+ const r=await previewWhatsApp({...args,fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:++calls===1?{tool_calls:[{id:'tool-1',type:'function',function:{name:'vaciar_pedido',arguments:'{}'}}]}:{content:'Una respuesta demasiado extensa. '.repeat(40)}}]})})});
+ assert.equal(calls,2);assert.equal(r.motor,'guiado');assert.deepEqual(r.estado,expected.estado);assert.equal(estado.carrito[0].cantidad,2);
+ assert.deepEqual(r.projection,expected.projection);
+});
