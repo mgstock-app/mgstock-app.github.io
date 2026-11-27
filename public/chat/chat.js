@@ -2,8 +2,10 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261124carta1';
+import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261126comercial1';
 
+import {cartaVisualHabilitada, productosVisuales, pasoVisual, cartaMiGustoHabilitada} from './carta-visual.mjs?v=20261127prueba1';
+import {cartaMarcaHabilitada, consultaCartaMarca, hojasCartaMarca} from './carta-marca.mjs?v=20261125mgprod1';
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...hijos) => {
@@ -271,12 +273,20 @@ function chips(botones) {
   bajar();
 }
 function accion(texto, fn) { lista.append(el('button', {type: 'button', class: 'accion', text: texto, onclick: fn})); bajar(); }
-function mensajeAsistente(m, {abrir = true} = {}) {
+function mensajeAsistente(m, {abrir = true, mostrarFoto = false} = {}) {
   burbuja('asistente', m.texto);
   if (m.tipo === 'carta') {
     // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
     if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
-    accion('Ver la carta', abrirCarta); if (abrir) abrirCarta();
+    const ver = () => {
+      if(cartaMarcaActiva() && !m.categoria && !S.pedido)return mostrarCategoriasMarca();
+      return m.categoria || !pilotoCartaVisual() ? abrirCarta() : abrirOpcionesCarta();
+    };
+    if(tieneCartaConfigurada()&&!m.categoria){
+      if(mostrarFoto){mostrarCartaConfigurada();accion('Hacer un pedido',()=>abrirCarta());chips(m.botones);return;}
+      accion('Ver carta del local',mostrarCartaConfigurada);
+    }
+    accion('Ver la carta', ver); if (abrir && !(cartaMarcaActiva() && !m.categoria && !S.pedido)) ver();
   }
   else if (m.tipo === 'producto') {
     const p = producto(m.productos?.[0]);
@@ -340,7 +350,10 @@ async function enviar(entrada, textoVisible, {cancelacionConfirmada = false} = {
       if (S.pedido && !S.cerrada) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(S.pedido.estado) && !S.soportePendiente;
       programarSondeo();
     }
-    for (const m of r.mensajes || []) mensajeAsistente(m);
+    const consultaVisual = cartaMarcaActiva() && !S.pedido && !r.pedido && !entrada.agregar_varios &&
+      (entrada.boton==='promociones'?'promos':!entrada.boton?consultaCartaMarca(entrada.texto):null);
+    for (const m of r.mensajes || []) mensajeAsistente(m,{abrir:!consultaVisual,mostrarFoto:!entrada.boton&&!S.pedido&&/\b(carta|menu|menú|precios?)\b/i.test(entrada.texto||'')});
+    if(consultaVisual) mostrarCategoriasMarca(consultaVisual);
     if (r.pedido) {
       if (entrada.datos && r.pedido.estado === 'pendiente') guardarUltimoPedido(carritoAntes);
       mostrarPedido(r.pedido);
@@ -365,7 +378,8 @@ function tocarBoton(b) {
   if (b.id === 'repetir') return repetirUltimoPedido();
   if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
-  if (b.id === '__ver_menu') return abrirCarta({soloVer: true});
+  if (b.id === '__ver_menu') return tieneCartaConfigurada() ? mostrarCartaConfigurada() : pilotoCartaVisual() ? abrirOpcionesCarta() : cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta({soloVer: true});
+  if (b.id === 'promociones' && cartaMarcaActiva() && !S.pedido) return mostrarCategoriasMarca('promos');
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
 }
@@ -562,6 +576,117 @@ function precioEfectivo(p) {
   const promo = (p?.opciones || []).some(esCantidad);
   if (!promo || pct <= 0 || !entregaDescuento() || p?.reglas?.sin_descuento === true) return null;
   return Math.round(Number(p.precio) * (100 - pct) / 100);
+}
+const pilotoCartaVisual = () => cartaVisualHabilitada(CFG.entorno, DEMO, SLUG);
+const cartaMiGustoActiva = () => cartaMiGustoHabilitada(CFG.entorno, DEMO && SHOWROOM ? (params.get('s')||'') : SLUG);
+const cartaMarcaActiva = () => cartaMiGustoActiva() || cartaMarcaHabilitada(CFG.entorno || 'produccion', S.sucursal, SLUG, DEMO);
+function mostrarCategoriasMarca(tipo='todo') {
+ if(!cartaMarcaActiva() || S.cerrada || !S.sucursal || S.pedido)return;
+ const hojas=hojasCartaMarca(tipo);
+ if(hojas.length===1 && tipo!=='todo')return mostrarImagenMarca(hojas[0]);
+ const n=el('div',{class:'burbuja asistente mg-carta-visual'});
+ n.append(el('p',{text:'Elegí qué parte de la carta querés consultar.'}),
+ ...hojas.map(c=>el('button',{type:'button',class:'boton ancho',text:c.titulo,onclick:()=>mostrarImagenMarca(c)})),
+ el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}));
+ lista.append(n);bajar();
+}
+function mostrarImagenMarca(c) {
+ if(!cartaMarcaActiva() || S.cerrada || !S.sucursal || S.pedido)return;
+ const imagen=el('img',{src:c.url,alt:c.titulo,loading:'lazy',decoding:'async'});
+ const enlace=el('a',{href:c.url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar '+c.titulo},imagen);
+ imagen.addEventListener('error',()=>{enlace.replaceChildren(el('span',{text:'No se pudo cargar la imagen. Podés consultar el menú interactivo.'}));enlace.removeAttribute('href');});
+ lista.append(el('div',{class:'burbuja asistente mg-carta-visual'},
+ el('strong',{text:c.titulo}),enlace,
+ el('p',{class:'mg-carta-nota',text:'Tocá la imagen para ampliarla. Carta de referencia'+(CFG.entorno==='prueba'?' en Prueba':'')+'; el precio final se confirma en el menú interactivo.'}),
+ el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}),
+ el('button',{type:'button',class:'boton ancho',text:'Ver otra categoría',onclick:()=>mostrarCategoriasMarca()}),
+ el('button',{type:'button',class:'boton ancho',text:'Volver al menú principal',onclick:()=>chips(BOTONES_BASE())})));
+ bajar();
+}
+
+function mostrarCartaConfigurada() {
+  const s=S.sucursal||{};
+  const cuerpo=el('div',{class:'menu-interactivo'});
+  if(s.carta_texto)cuerpo.append(el('p',{text:s.carta_texto,style:'white-space:pre-wrap'}));
+  if(/^https:\/\//i.test(s.carta_imagen_url||'')){
+    const imagen=el('img',{src:s.carta_imagen_url,alt:'Carta del local',style:'width:100%;height:auto;border-radius:12px',loading:'lazy',referrerpolicy:'no-referrer'});
+    cuerpo.append(imagen);
+  }
+  cuerpo.append(el('p',{class:'mg-carta-nota',text:'Carta de referencia. Los precios del pedido se validan en el menú interactivo.'}),
+    el('button',{type:'button',class:'boton principal ancho',text:'Ver productos y precios',onclick:()=>abrirCarta({soloVer:true})}));
+  lista.append(cuerpo); bajar();
+}
+const tieneCartaConfigurada=()=>!!(S.sucursal?.carta_texto||S.sucursal?.carta_imagen_url);
+function abrirOpcionesCarta() {
+  if(cartaMiGustoActiva() && !S.pedido)return mostrarCategoriasMarca();
+  if (!pilotoCartaVisual()) return abrirCarta({soloVer:true});
+  if (S.cerrada || !S.sucursal) return;
+  abrirHoja('Nuestra carta',el('div',{class:'cv-eleccion'},
+    el('p',{text:'Elegí cómo querés explorar el menú.'}),
+    el('button',{type:'button',class:'boton principal ancho',text:'Explorar carta visual',onclick:()=>abrirCartaVisual()}),
+    el('button',{type:'button',class:'boton ancho',text:'Hacer un pedido rápido',onclick:()=>abrirCarta()})));
+}
+function abrirCartaVisual() {
+  if(!pilotoCartaVisual() || S.cerrada || !S.sucursal)return;
+  let categoria = S.categoria || '', filtro = '', indice = 0;
+  const raiz = el('div',{class:'carta-visual'});
+  const nombre = el('div',{class:'cv-marca',text:S.sucursal.empresa || S.sucursal.nombre || 'Nuestra carta'});
+  const categorias = el('div',{class:'categorias cv-categorias',role:'toolbar','aria-label':'Categorías de carta visual'});
+  const buscar = el('input',{type:'search',class:'cv-buscar','aria-label':'Buscar en carta visual',placeholder:'Buscar productos…'});
+  const escenario = el('div',{class:'cv-escenario',role:'region','aria-label':'Producto de la carta',tabindex:'0'});
+  const pie = el('div',{class:'cv-pie'});
+  const detalle = el('div',{class:'cv-detalle',hidden:true});
+  const cats = categoriasMenu();
+  const listaVisual = () => productosVisuales(S.catalogo,categoria,filtro);
+  const cerrarDetalle = () => {detalle.hidden=true;detalle.replaceChildren();escenario.hidden=false;categorias.hidden=false;buscar.hidden=false;pie.hidden=false;pintar();};
+  function seleccionar(p){
+    if(S.cerrada || p.disponible===false)return;
+    escenario.hidden=true;categorias.hidden=true;buscar.hidden=true;pie.hidden=true;
+    abrirProducto(p,{}, {slot:detalle,onAdd:cerrarDetalle,onCancel:cerrarDetalle});
+  }
+  function mover(delta){
+    const n=listaVisual().length;if(n<2)return;
+    indice=pasoVisual(indice,delta,n);pintar();
+    escenario.classList.remove('cv-giro');
+    void escenario.offsetWidth;escenario.classList.add('cv-giro');
+  }
+  function pintar(){
+    const prods=listaVisual();indice=Math.min(indice,Math.max(0,prods.length-1));
+    const p=prods[indice], elegido=p && [...S.carrito,...S.borrador].filter(l=>l.producto_id===p.id).reduce((n,l)=>n+l.cantidad,0);
+    const categoriaNombre=cats.find(c=>c.id===p?.categoria_id)?.nombre||'Carta';
+    categorias.replaceChildren(...[{id:'',nombre:'Todo'},...cats].map(c=>el('button',{type:'button',class:'chip','aria-pressed':String(categoria===c.id),text:c.nombre,onclick:()=>{categoria=c.id;S.categoria=c.id;indice=0;pintar();}})));
+    if(p){
+      const previo=prods[pasoVisual(indice,-1,prods.length)], siguiente=prods[pasoVisual(indice,1,prods.length)];
+      escenario.replaceChildren(
+        el('div',{class:'cv-categoria',text:categoriaNombre}),
+        el('div',{class:'cv-rueda'},
+          el('button',{type:'button',class:'cv-flecha','aria-label':'Producto anterior',text:'‹',disabled:prods.length<2,onclick:()=>mover(-1)}),
+          el('div',{class:'cv-platos'},
+            prods.length>1?el('div',{class:'cv-plato-lateral','aria-hidden':'true',text:previo.nombre}):null,
+            el('div',{class:'cv-plato'},el('span',{class:'cv-sin-foto',text:'Sin foto'})),
+            prods.length>1?el('div',{class:'cv-plato-lateral','aria-hidden':'true',text:siguiente.nombre}):null),
+          el('button',{type:'button',class:'cv-flecha','aria-label':'Producto siguiente',text:'›',disabled:prods.length<2,onclick:()=>mover(1)})),
+        el('div',{class:'cv-posicion','aria-live':'polite',text:(indice+1)+' / '+prods.length}),
+        el('h3',{class:'cv-nombre',text:p.nombre}),
+        p.descripcion?el('p',{class:'cv-descripcion',text:p.descripcion}):null,
+        el('div',{class:'cv-precio',text:p.disponible===false?'Agotado':pesos(p.precio)}),
+        p.disponible!==false&&precioEfectivo(p)!==null?el('p',{class:'cv-efectivo',text:pesos(precioEfectivo(p))+' en efectivo · '+(S.sucursal?.descuento_efectivo_entrega==='retiro'?'retiro':S.sucursal?.descuento_efectivo_entrega==='ambas'?'envío o retiro':'envío')}):null,
+        elegido?el('p',{class:'cv-elegido',text:elegido+' en tu pedido'}):null,
+        el('button',{type:'button',class:'boton principal ancho cv-agregar',disabled:p.disponible===false||S.cerrada,text:p.disponible===false?'No disponible':(p.opciones||[]).length?'Elegir opciones':'Agregar al pedido',onclick:()=>seleccionar(p)}));
+    }else escenario.replaceChildren(el('p',{class:'cv-vacio',text:'No encontramos productos.'}));
+    const cantidad=[...S.carrito,...S.borrador].reduce((n,l)=>n+l.cantidad,0);
+    pie.replaceChildren(el('div',{class:'cv-total',text:cantidad?cantidad+' productos · '+pesos(totalCarrito(S.catalogo,[...S.carrito,...S.borrador])):'Tu pedido está vacío'}),
+      cantidad?el('button',{type:'button',class:'boton principal ancho',text:'Ver mi pedido',onclick:()=>S.borrador.length?abrirSeleccion():abrirCarrito()}):null,
+      el('button',{type:'button',class:'boton ancho',text:'Cambiar a pedido rápido',onclick:()=>{S.categoria=categoria;abrirCarta();}}));
+  }
+  buscar.addEventListener('input',()=>{filtro=buscar.value;indice=0;pintar();});
+  escenario.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();mover(e.key==='ArrowLeft'?-1:1);}});
+  let inicio=null;
+  escenario.addEventListener('touchstart',e=>{if(e.touches.length===1)inicio={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+  escenario.addEventListener('touchcancel',()=>{inicio=null;},{passive:true});
+  escenario.addEventListener('touchend',e=>{if(!inicio)return;const t=e.changedTouches[0];const dx=t.clientX-inicio.x,dy=t.clientY-inicio.y;inicio=null;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.4)mover(dx<0?1:-1);},{passive:true});
+  raiz.append(nombre,buscar,categorias,escenario,detalle,pie);
+  pintar();abrirHoja('Carta visual',raiz);
 }
 function abrirCarta({soloVer = false} = {}) {
   let mirando = soloVer;
@@ -1213,7 +1338,7 @@ $('redactar').addEventListener('submit', e => {
     }
   });
 });
-$('btn-carta').onclick = abrirCarta;
+$('btn-carta').onclick = () => pilotoCartaVisual() ? abrirOpcionesCarta() : cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta();
 $('btn-notificaciones').onclick=()=>window.GestLokChatPush?.open();
 $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Enviar pedido');
