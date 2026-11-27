@@ -303,14 +303,19 @@
 
   // Comercial WAI is independent of legacy Premium and laboratory connections.
   let waiCommercialRows=null,waiOrgRows=[],waiCommercialBusy=false,waiCommercialError='',waiOrgError='',waiCommercialEpoch=0;
+  const waiRubros=Object.freeze({gastronomia:'Gastronomía',cafeteria:'Cafetería o panadería',almacen:'Almacén o kiosco',perfumeria:'Perfumería o cosmética',ferreteria:'Ferretería',mascotas:'Pet shop',servicios:'Servicios',otro:'Otro rubro'});
   function waiCommercialReset(){waiCommercialEpoch++;waiCommercialRows=null;waiOrgRows=[];waiCommercialBusy=false;waiCommercialError='';waiOrgError='';}
   async function waiCommercialRequest(args={p_accion:'listar'},orgAction=false){
     if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
     const epoch=waiCommercialEpoch;
     waiCommercialBusy=true;waiCommercialError='';waiOrgError='';api?.render?.();
     try{
+      if(orgAction==='rubro'){
+        const saved=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_rubro',args);
+        if(saved.error)throw Error(saved.error.message||'No se pudo guardar el rubro');
+      }
       const r=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_comercial',orgAction?{p_accion:'listar'}:args);
-      const o=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_organizacion',orgAction?args:{p_accion:'listar'});
+      const o=await window.GestLokSupabase.rpc('gestlok_chat_wai_admin_organizacion',orgAction===true?args:{p_accion:'listar'});
       if(epoch!==waiCommercialEpoch||!premiumAdmin()||tab!=='wai')return;
       if(r.error||!Array.isArray(r.data))throw Error(r.error?.message||'Respuesta inválida');
       waiCommercialRows=r.data;
@@ -330,14 +335,18 @@
       const ownerOptions=owners.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===o.responsable_id?' selected':'')+'>'+esc(x.nombre)+'</option>').join('');
       const ownerForm=owners.length?'<form data-wai-owner-form data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><label>Dueño responsable <select name="owner"'+disable+'><option value="">Sin asignar</option>'+ownerOptions+'</select></label><button class="btn" type="submit"'+disable+'>Guardar responsable</button></form>':'';
       const numbers=Array.isArray(r.numeros)?r.numeros:[],enabled=!!r.activo;
+      const rubro=o.rubro||r.rubro||'',motorDisponible=rubro==='gastronomia';
+      const rubroOptions=Object.entries(waiRubros).map(([k,t])=>'<option value="'+esc(k)+'"'+(k===rubro?' selected':'')+'>'+esc(t)+'</option>').join('');
+      const rubroForm='<form data-wai-rubro-form data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><label>Rubro <select name="rubro" required'+(disable||(enabled?' disabled':''))+'><option value="">Elegir rubro</option>'+rubroOptions+'</select></label><button class="btn" type="submit"'+(disable||(enabled?' disabled':''))+'>Guardar rubro</button></form>';
+      const rubroNote=rubro&&!motorDisponible?'<p><small>Rubro registrado · motor específico en preparación. No se conectará WhatsApp ni se utilizará la carta gastronómica.</small></p>':'';
       const registered=numbers.filter(n=>n.registrado);
       const numberRows=registered.map((n,j)=>'<div class="gl-ch-chat-row"><div><b>'+esc(n.numero)+'</b><p>'+esc(waiLabels[n.estado]||'Estado no comprobado')+'</p></div><button type="button" class="btn" data-wai-commercial="numero" data-row="'+i+'" data-number="'+j+'"'+(disable||(!enabled&&!n.activo?' disabled':''))+'>'+ (n.activo?'Desactivar número':'Activar número')+'</button></div>').join('');
       const href=safeSlug(r.slug)?'/chat/wai/?local='+encodeURIComponent(r.slug):'';
       return '<article class="gl-ch-chat-row"><div style="width:100%"><h4>'+esc(r.nombre)+'</h4><p><strong>'+ (enabled?'🟢 Activo':'⚪ Inactivo')+'</strong> · '+(enabled?registered.filter(n=>n.activo).length:0)+' número(s) activo(s)</p>'+
-        '<p>Rubro: '+esc(r.rubro==='gastronomia'?'Gastronomía':'Sin asignar')+' · '+(o.plantilla?'Configuración base de empresa':'Configuración independiente')+'</p>'+ownerForm+
+        '<p>Rubro: '+esc(waiRubros[rubro]||'Sin asignar')+' · '+(o.plantilla?'Configuración base de empresa':'Configuración independiente')+'</p>'+rubroForm+rubroNote+ownerForm+
         (safeSlug(r.slug)?'<p><small>Subdominio previsto: '+'wai-'+esc(r.slug)+'.gestlok.com.ar (pendiente de verificación DNS)</small></p>':'')+
-        '<div class="gl-ch-chat-actions"><button type="button" class="btn '+(!enabled?'primary':'')+'" data-wai-commercial="local" data-row="'+i+'"'+disable+'>'+(enabled?'Desactivar local':'Activar gastronomía')+'</button>'+
-        (enabled&&href?'<a class="btn" href="'+esc(href)+'" target="_blank" rel="noopener">Abrir local · ajustes y QR</a>':'')+(r.id?'<button class="btn" type="button" data-wai-commercial="plantilla" data-row="'+i+'"'+disable+'>Usar carta como base de empresa</button>':'')+'</div>'+
+        '<div class="gl-ch-chat-actions"><button type="button" class="btn '+(!enabled?'primary':'')+'" data-wai-commercial="local" data-row="'+i+'"'+(disable||(!enabled&&!motorDisponible?' disabled':''))+'>'+(enabled?'Desactivar local':motorDisponible?'Activar gastronomía':'Activación no disponible')+'</button>'+
+        (enabled&&href?'<a class="btn" href="'+esc(href)+'" target="_blank" rel="noopener">Abrir local · ajustes y QR</a>':'')+(r.id&&motorDisponible?'<button class="btn" type="button" data-wai-commercial="plantilla" data-row="'+i+'"'+disable+'>Usar carta como base de empresa</button>':'')+'</div>'+
         numberRows+(enabled?'<form data-wai-commercial-register data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><label>Número internacional <input type="tel" name="numero" placeholder="+54911…" required autocomplete="off"'+disable+'></label><button class="btn primary" type="submit"'+disable+'>Agregar número</button></form>':'')+
         '</div></article>';
     });
@@ -350,7 +359,7 @@
       (waiCommercialRows?'<p><b>'+rows.filter(r=>r.activo).length+' activos · '+rows.filter(r=>!r.activo).length+' inactivos</b></p>':'')+
       (waiCommercialError?'<p role="alert" class="gl-wa-error">'+esc(waiCommercialError)+'</p>':'')+(waiOrgError?'<p role="alert">'+esc(waiOrgError)+'</p>':'')+
       (waiCommercialBusy?'<p role="status">Consultando…</p>':'')+
-      '<p><small>Esta primera versión admite gastronomía. No se habilitan automáticamente otros rubros, proveedores pagos ni números del sistema anterior.</small></p>'+
+      '<p><small>Podés registrar todos los rubros. Solo Gastronomía dispone hoy de motor WAI; los demás quedan en preparación, sin números activos ni cobros.</small></p>'+
       '<div class="gl-ch-chat-list">'+(grouped||(waiCommercialRows?'<p>Sin locales registrados.</p>':''))+'</div></section>';
   }
   function waiCommercialAct(btn){
@@ -361,6 +370,8 @@
     if(!r)return;
     const base={p_accion:action,p_tenant:r.tenant,p_local:r.local_id};
     if(action==='local'){
+      const rubro=waiOrgRows.find(o=>o.tenant===r.tenant&&o.local_id===r.local_id)?.rubro||r.rubro;
+      if(!r.activo&&rubro!=='gastronomia')return;
       if(!window.confirm(r.activo?'¿Pausar WAI de este local? Se conserva el historial.':'¿Habilitar WAI para este local gastronómico?'))return;
       void waiCommercialRequest({...base,p_activo:!r.activo,p_rubro:'gastronomia'});
     }else if(action==='plantilla'){
@@ -371,6 +382,12 @@
       if(!n||!window.confirm((n.activo?'¿Pausar ':'¿Habilitar ')+n.numero+' en este local?'))return;
       void waiCommercialRequest({...base,p_id:n.id,p_activo:!n.activo});
     }
+  }
+  function waiRubroRegister(form){
+    if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
+    const r=waiCommercialRows?.[Number(form.dataset.row)],rubro=String(form.elements.rubro.value||'');
+    if(!r||r.activo||!Object.hasOwn(waiRubros,rubro))return;
+    void waiCommercialRequest({p_tenant:r.tenant,p_local:r.local_id,p_rubro:rubro},'rubro');
   }
   function waiOwnerRegister(form){
     if(!premiumAdmin()||tab!=='wai'||waiCommercialBusy)return;
@@ -1765,6 +1782,7 @@
   });
   document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-chat-text')hqChatDrafts[hqChatKey()]=String(ev.target.value||'').slice(0,1200);if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-wai-rubro-form]')){ev.preventDefault();waiRubroRegister(ev.target);return;}
     if(ev.target?.matches?.('[data-wai-owner-form]')){ev.preventDefault();waiOwnerRegister(ev.target);return;}
     if(ev.target?.matches?.('[data-wai-commercial-register]')){ev.preventDefault();waiCommercialRegister(ev.target);return;}
     if(ev.target?.matches?.('[data-hq-chat-form]')){ev.preventDefault();void hqChatSend(ev.target.querySelector('textarea')?.value);return;}

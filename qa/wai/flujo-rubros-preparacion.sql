@@ -1,0 +1,21 @@
+do $qa$ declare s gestlok_chat_private.sucursales; x uuid; u uuid; begin
+ select * into s from gestlok_chat_private.sucursales where slug='mi-gusto-munro';
+ if gestlok_chat_private.wai_rubro_declarado(s.tenant_id,s.local_id)<>'gastronomia' then raise exception 'Mi Gusto sin rubro';end if;
+ insert into public.docs(tenant_id,col,id,data) values(s.tenant_id,'locales','wai-qa-rubro','{"nombre":"QA Rubro"}');
+ insert into gestlok_chat_private.sucursales(tenant_id,local_id,slug,nombre,prefijo) values(s.tenant_id,'wai-qa-rubro','wai-qa-rubro','QA Rubro','QA') returning id into x;
+ if gestlok_chat_private.wai_rubro_declarado(s.tenant_id,'wai-qa-rubro')<>'gastronomia' then raise exception 'Rubro de plantilla no heredado';end if;
+ select au.id into u from auth.users au join gestlok_platform.admins ad on ad.user_id=au.id order by au.id limit 1;
+ perform set_config('request.jwt.claim.sub',u::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',u,'email',(select email from auth.users where id=u),'role','authenticated')::text,true);
+ perform public.gestlok_chat_wai_admin_rubro(s.tenant_id,'wai-qa-rubro','perfumeria');
+ if gestlok_chat_private.wai_rubro_declarado(s.tenant_id,'wai-qa-rubro')<>'perfumeria' then raise exception 'Clasificación no persistió';end if;
+ if not exists(select 1 from jsonb_array_elements(public.gestlok_chat_wai_admin_organizacion()) a where a->>'local_id'='wai-qa-rubro' and a->>'rubro'='perfumeria') then raise exception 'Clasificación ausente del panel';end if;
+ begin insert into gestlok_chat_private.wai_comercios(sucursal_id,rubro,activo) values(x,'gastronomia',true);raise exception 'Motor gastronómico habilitado para rubro incorrecto';exception when invalid_parameter_value then null;end;
+ if gestlok_chat_private.wai_rubro_declarado(s.tenant_id,s.local_id)<>'gastronomia' then raise exception 'Se alteró Munro';end if;
+ perform public.gestlok_chat_wai_admin_rubro(s.tenant_id,'wai-qa-rubro','gastronomia');
+ insert into gestlok_chat_private.wai_comercios(sucursal_id,rubro,activo) values(x,'gastronomia',true);
+ begin perform public.gestlok_chat_wai_admin_rubro(s.tenant_id,'wai-qa-rubro','servicios');raise exception 'Dejó cambiar un local activo';exception when invalid_parameter_value then null;end;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',gen_random_uuid(),'role','authenticated')::text,true);
+ begin perform public.gestlok_chat_wai_admin_rubro(s.tenant_id,'wai-qa-rubro','ferreteria');raise exception 'Mutación no autorizada';exception when insufficient_privilege then null;end;
+end $qa$;
