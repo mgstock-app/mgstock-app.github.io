@@ -71,3 +71,11 @@ a{color:#087a98}
 
 body:has(#gestlok-entorno) .shell{padding-top:36px}
 body:has(#gestlok-entorno) .drawer{padding-top:36px}
+
+.connection-cards{display:grid;gap:12px}
+.authorization-host:empty{display:none}
+.authorization-form{border-color:#9ec8d6;background:#fff}
+.authorization-form label{display:grid;gap:6px;margin:12px 0;font-weight:650}
+.authorization-form input[type=tel]{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bfd1dc;border-radius:11px;font:inherit;color:#17334c}
+.authorization-form .consent-line{display:flex;align-items:flex-start;gap:9px;font-size:14px;font-weight:500}
+.authorization-form .consent-line input{width:18px;height:18px;flex:none;margin:2px 0 0;accent-color:#107990}
