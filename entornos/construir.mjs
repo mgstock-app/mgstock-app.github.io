@@ -22,7 +22,7 @@ const MICROAPPS = [{
   enlaces: [['Chat de clientes · Munro', '/chat/?s=mi-gusto-munro'], ['Chat de clientes · Torcuato', '/chat/?s=mi-gusto-torcuato'],
     ['Panel del local (gerente y dueño)', '/chat/panel/']],
 }];
-if (nombre === 'prueba') MICROAPPS[0].enlaces.push(['Laboratorio seguro de WhatsApp · sin conexión real','/chat/prueba-whatsapp/'], ['Conector WhatsApp · ensayo privado en vivo (administradora)','/chat/prueba-whatsapp/conector.html']);
+if (nombre === 'prueba') MICROAPPS[0].enlaces.push(['Laboratorio seguro GESTLOK WAI (WhatsApp) · sin conexión real','/chat/prueba-whatsapp/'], ['Conector GESTLOK WAI · ensayo privado en vivo (administradora)','/chat/prueba-whatsapp/conector.html']);
 const COMPARTIDAS = ['vendor', 'icons', 'img'];
 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -109,7 +109,7 @@ writeFileSync(join(salida, 'entorno.js'), `(function(){
 
 const lista = MICROAPPS.map(m => '<h2>' + esc(m.nombre) + '</h2>' + m.enlaces.map(([n, h]) => '<a class="b" href="' + esc(h) + '">' + esc(n) + '</a>').join('')).join('');
 writeFileSync(join(salida, 'index.html'), pagina(ent.nombre, '<h1>' + esc(ent.nombre) + '</h1>' +
-  '<p class="nota">Entorno aislado de GESTLOK Chat con base de pruebas. Los demás módulos de GESTLOK aún no se publican aquí. Nada de lo que hagas acá llega a dueños, gerentes ni clientes reales.</p>' +
+  '<p class="nota">Entorno aislado de GESTLOK Chat (web) con base de pruebas. GESTLOK WAI es la versión con WhatsApp, sujeta a habilitación y verificación. Los demás módulos de GESTLOK aún no se publican aquí. Nada de lo que hagas acá llega a dueños, gerentes ni clientes reales.</p>' +
   '<a class="b" href="/dividida/"><strong>Pantalla dividida: cliente y gerente</strong></a>' +
   '<a class="b" href="/ingresar/">Ingresar (cuenta de prueba)</a>' + lista +
   '<h2>Etapas</h2><p class="nota">Prueba → Testing → gestlok.com.ar. Con el botón «' + esc(ent.boton) + '» se abre la acción en GitHub: tocá «Run workflow» y elegí la acción.</p>'));
