@@ -25,7 +25,7 @@ async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args)
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 const readBusy=new Set();
 let messageActionHost,actionDraft=null,actionBusy=false;
-let shell,notice,list,search,unreadSummary,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
+let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
 const portalHref=s=>location.hostname.endsWith('.vercel.app')?'/chat/wai/?local='+encodeURIComponent(s):'/gestlok-wai-'+encodeURIComponent(s)+'/';
@@ -96,7 +96,7 @@ function renderShell(){
  search=node('input',{class:'search',type:'search',placeholder:'Buscar conversación', 'aria-label':'Buscar conversación',oninput:()=>renderList()});
  list=node('div',{class:'chat-list','aria-label':'Conversaciones'});
  unreadSummary=node('span',{class:'unread-summary','aria-live':'polite',hidden:true});
- head=node('div',{class:'chat-head'});thread=node('div',{class:'thread',role:'log','aria-label':'Mensajes',onscroll:()=>void markVisibleRead()});
+ head=node('div',{class:'chat-head'});historyNotice=node('div',{class:'history-notice',role:'status',hidden:true});thread=node('div',{class:'thread',role:'log','aria-label':'Mensajes',onscroll:()=>void markVisibleRead()});
  textarea=node('textarea',{placeholder:'Escribí un mensaje',rows:'1',maxlength:'1000','aria-label':'Escribí un mensaje',oninput:()=>{if(selected)drafts.set(selected,textarea.value);updateComposer();},onkeydown:composerKey});
  send=node('button',{type:'submit',class:'btn primary',disabled:true},'Enviar');
  messageActionHost=node('div',{class:'message-action-host'});
@@ -108,7 +108,7 @@ function renderShell(){
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
   node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{class:'inbox-title'},'Conversaciones',unreadSummary),search),list),
-   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,thread,messageActionHost,compose)),overlay);
+   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,historyNotice,thread,messageActionHost,compose)),overlay);
  root.replaceChildren(shell);renderList();renderThread(true);
 }
 function selection(id){
@@ -125,13 +125,13 @@ function renderList(){
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
  list.replaceChildren(...(matching.length?matching.map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba')),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
  // Merely polling or opening the connection/configuration drawer is not reading.
  if(!selected||document.hidden||drawerKind||!sessionLocal||destroyed||!thread||!thread.isConnected||thread.scrollHeight-thread.scrollTop-thread.clientHeight>100||readBusy.has(selected))return;
- const c=chats.find(x=>x.id===selected),ids=unreadIds(c);
+ const c=chats.find(x=>x.id===selected),ids=unreadIds(c).slice(0,100);
  if(!ids.length)return;
  const id=c.id,mine=generation,local=sessionLocal.id;
  readBusy.add(id);
@@ -161,6 +161,15 @@ function actionStatus(m){
  if(m.editado)return 'Editado';
  return '';
 }
+function messageTime(t){
+ const d=new Date(t),now=new Date();
+ return d.toLocaleDateString('es-AR')===now.toLocaleDateString('es-AR')?time(t):d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' · '+time(t);
+}
+function historyLabel(c){
+ if(c.archivado)return 'Historial guardado · ensayo finalizado. Autorizá nuevamente el contacto para responder.';
+ if(c.conexion_activa===false)return 'Historial guardado · WhatsApp sin conexión verificada. Podés leer los mensajes.';
+ return '';
+}
 function renderMessage(c,m){
  const outgoing=m.direccion==='salida',status=messageStatus(m),change=actionStatus(m);
  const actions=[];
@@ -168,7 +177,7 @@ function renderMessage(c,m){
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.texto),
-   node('small',{class:'message-meta'},time(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),change?' · '+change:null),
+   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
 function cancelMessageAction(){
@@ -185,7 +194,7 @@ function openMessageAction(chat,m,kind){
   const text=input?.value.trim()||null;if(kind==='editar'&&(!text||text.length>1000)){status.textContent='Escribí el mensaje corregido.';return;}
   const mine=generation;actionBusy=true;submit.disabled=true;
   try{
-   const ok=await rpc('wai_mensaje_accion',{p_sucursal:sessionLocal.id,p_piloto:chat,p_mensaje:m.id,p_accion:kind,p_texto:text});
+   const ok=await rpc('wai_mensaje_accion',{p_sucursal:sessionLocal.id,p_piloto:m.piloto||chat,p_mensaje:m.id,p_accion:kind,p_texto:text});
    if(ok!==true)throw Error('No se confirmó la solicitud.');
    if(mine===generation){cancelMessageAction();await refresh();}
   }catch(e){if(mine===generation&&form.isConnected)status.textContent=e.message;}
@@ -220,17 +229,18 @@ function openAlias(c){
 }
 function renderThread(force=false){
  const c=chats.find(x=>x.id===selected);
- if(!c){cancelMessageAction();selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
- const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente]);
+ if(!c){cancelMessageAction();if(historyNotice)historyNotice.hidden=true;selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
+ const saved=historyLabel(c);if(historyNotice){historyNotice.hidden=!saved;historyNotice.textContent=saved;}
+ const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at]);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
-   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+' · vence '+time(c.vence_at))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
+   head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+(c.vence_at?' · ensayo hasta '+time(c.vence_at):' · historial'))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
    thread.replaceChildren(...(c.mensajes?.length?c.mensajes.map(m=>renderMessage(c,m)):[empty('Esperando mensaje','El contacto de prueba debe escribir primero desde WhatsApp.')]));
    if(force||nearBottom)thread.scrollTop=thread.scrollHeight;
  }
  compose.hidden=false;updateComposer();
 }
-function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
+function updateComposer(){const c=chats.find(x=>x.id===selected);const ready=c?.puede_responder===true&&rows.some(r=>r.id===c.linea&&r.estado==='conectado')&&Date.parse(c.vence_at)>Date.now();const unknown=pendingUnknown.get(selected);textarea.placeholder=c&&c.archivado?'Historial guardado · autorizá para responder':c&&c.conexion_activa===false?'Historial guardado · esperando conexión':'Escribí un mensaje';textarea.disabled=!ready||claimed||!!unknown;send.disabled=!ready||claimed||!!unknown||!textarea.value.trim();}
 async function respond(){
  const id=selected,txt=textarea.value.trim();
  if(claimed||!id||!txt||send.disabled)return;
@@ -309,7 +319,7 @@ function renderConnection(){
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
   if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado'){
-    const active=chats.some(c=>c.linea===r.id);
+    const active=chats.some(c=>c.linea===r.id&&c.piloto_activo);
     box.append(active?node('p',{class:'hint'},'Ensayo autorizado. Pedile al contacto que envíe un mensaje desde su WhatsApp.'):button('Autorizar contacto de ensayo',()=>openAuthorization(r.id),'btn primary',{disabled:connectionBusy}));
     if(active)box.append(button('Cancelar ensayo',()=>void authorize(r.id,true),'btn danger',{disabled:connectionBusy}));
   }
