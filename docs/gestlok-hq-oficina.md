@@ -1,4 +1,4 @@
-# GESTLOK HQ · La Oficina (versión 3)
+# GESTLOK HQ · La Oficina (versión 4)
 
 Oficina pixel art animada para el panel de la creadora (pestaña **GESTLOK HQ**), inspirada en el formato de
 Pixel Agents, OpenClawfice y Pixel Office: un plano visto desde arriba con salas, escritorios, sala de reuniones,
@@ -22,14 +22,14 @@ tarea» precarga el formulario y la creadora decide si la guarda.
 
 | id | Nombre | Avatar | Puesto |
 | --- | --- | --- | --- |
-| lider | Alex | Búho | Directora de la oficina |
-| atencion | Renata | Gata con auriculares | Mesa de pedidos · GESTLOK Chat |
-| marketing | Martina | Zorra | Promos y ventas |
-| calidad | Camila | Coneja | Calidad de la carta |
-| datos | Santiago | Pulpo | Métricas de los locales |
-| soporte | Facundo | Robot | Guardia técnica de los locales |
-| desarrollo | Nicolás | Castor | Producto GESTLOK Chat |
-| testing | Tomás | Rana | Pruebas del chat |
+| lider | Alex | Humano | Directora de la oficina |
+| atencion | Renata | Humano | Mesa de pedidos · GESTLOK Chat |
+| marketing | Martina | Humano | Promos y ventas |
+| calidad | Camila | Humano | Calidad de la carta |
+| datos | Santiago | Humano | Métricas de los locales |
+| soporte | Facundo | Humano | Guardia técnica de los locales |
+| desarrollo | Nicolás | Humano | Producto GESTLOK Chat |
+| testing | Tomás | Humano | Pruebas del chat |
 
 ## Secciones
 
@@ -74,7 +74,16 @@ Migraciones `gestlok_hq_pulso`, `gestlok_hq_trabajo_diario` y `gestlok_hq_limite
 
 ## Marketing de GESTLOK Chat y Soporte general (25/11/2026)
 
-- **Valentina · Lora · Marketing de GESTLOK Chat** (`difusion`): investiga cómo publicitar la micro app y dónde publicarla. Trabaja con el **mapa de difusión** (`gestlok_hq_private.difusion_canales`): sitios verificados el 25/11, todos gratuitos (Search Console, Instagram, Facebook, TikTok, YouTube, LinkedIn, Capterra, G2, AlternativeTo, iProUP, SaaSHub, SaaSworthy, Product Hunt, BetaList y el Perfil de Empresa de Google, este último solo si hay atención presencial). Deja el texto listo; publicar lo hace la administradora y lo marca en Reportes → «Difusión de GESTLOK Chat» (`gestlok_hq_difusion_estado`). Nunca compra publicidad ni usa la marca de un cliente sin permiso.
-- **Lucas · Perro · Soporte general** (`soporte_general`): altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones en mora y locales sin carta. Lee solo cantidades (`pulso_plataforma`), sin datos personales; redacta respuestas, no las envía.
+- **Valentina · Humano · Marketing de GESTLOK Chat** (`difusion`): investiga cómo publicitar la micro app y dónde publicarla. Trabaja con el **mapa de difusión** (`gestlok_hq_private.difusion_canales`): sitios verificados el 25/11, todos gratuitos (Search Console, Instagram, Facebook, TikTok, YouTube, LinkedIn, Capterra, G2, AlternativeTo, iProUP, SaaSHub, SaaSworthy, Product Hunt, BetaList y el Perfil de Empresa de Google, este último solo si hay atención presencial). Deja el texto listo; publicar lo hace la administradora y lo marca en Reportes → «Difusión de GESTLOK Chat» (`gestlok_hq_difusion_estado`). Nunca compra publicidad ni usa la marca de un cliente sin permiso.
+- **Lucas · Humano · Soporte general** (`soporte_general`): altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones en mora y locales sin carta. Lee solo cantidades (`pulso_plataforma`), sin datos personales; redacta respuestas, no las envía.
 - Las misiones y la jornada diaria pasan a nueve sectores (las de siete siguen siendo válidas). Cada uno respeta el límite de 4 consultas diarias del plan gratuito.
 - Migración: `20261125190000_gestlok_hq_marketing_soporte_general.sql`.
+
+
+## Conversaciones de HQ (27/11/2026)
+
+- Avatares humanos diferenciados, oficina a ancho completo, desplazamiento lateral en celular y ampliación.
+- Abrir **Hablar en privado** desde una persona, o **Llamar a reunión** y elegir quién toma la palabra. Un turno usa una consulta de IA (también Alex); no se confunde con las misiones de equipo ni con la animación.
+- Las consultas y sus respuestas se guardan en el registro privado de tareas/ejecuciones. Si no hay disponibilidad se guarda la pregunta, sin simular respuesta. El contexto de una conversación no se comparte con otras salas. Se muestran los últimos 40 turnos dentro del registro de 200 tareas.
+- Todos reciben una base común de GESTLOK, sus módulos y roles, Chat/WAI, las decisiones comerciales acordadas, las reglas de Prueba/Testing y seguridad. Las conversaciones reciben además el pulso disponible, informes operativos cerrados y hasta cuatro turnos de esa sala. No se importan conversaciones de ChatGPT ni se comparten secretos.
+- La reserva de cupo es exclusiva del servidor y usa los límites gratuitos existentes. En un ambiente sin las migraciones de límites, no ejecuta consultas. Se mantiene toda autorización de administración y toda lectura agregada; no se habilitan acciones de escritura.

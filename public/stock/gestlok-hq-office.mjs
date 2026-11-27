@@ -1,4 +1,4 @@
-// GESTLOK HQ · La Oficina (pixel art en Canvas 2D, sin dependencias).
+// GESTLOK HQ · La Oficina (personas pixel art en Canvas 2D, sin dependencias).
 // Las caminatas, descansos, cafés, charlas y reuniones son animación. Lo que dicen los empleados sale de
 // datos reales (pulso de GESTLOK Chat y del Conteo, controles de Facundo, tareas e informes de HQ) o de
 // informes de IA ya registrados. Este módulo no llama a la IA, no escribe en la base y no modifica nada:
@@ -10,16 +10,16 @@ const IDEAS_KEY = 'gestlok:hq-office-ideas:v1';
 
 // ---------- Equipo: mismos identificadores que la base, nuevos puestos y avatares ----------
 export const TEAM = Object.freeze([
-  {id: 'lider', name: 'Alex', animal: 'Búho', kind: 'owl', puesto: 'Directora de la oficina', foco: 'Coordina al equipo, junta las ideas y prioriza lo importante.', seat: [24, 12], body: '#7b5ea7', belly: '#d9c6f0', accent: '#f2b134', extra: '#45325f'},
-  {id: 'atencion', name: 'Renata', animal: 'Gata', kind: 'cat', puesto: 'Mesa de pedidos · GESTLOK Chat', foco: 'Pedidos sin abrir, reclamos y conversaciones de cada local.', seat: [3, 3], body: '#f0a04b', belly: '#fde2bf', accent: '#2f3b52', extra: '#e46a6a'},
-  {id: 'marketing', name: 'Martina', animal: 'Zorra', kind: 'fox', puesto: 'Promos y ventas', foco: 'Promos del día, venta sugerida, reseñas y difusión del QR.', seat: [3, 6], body: '#e8692c', belly: '#fff4e6', accent: '#3b2418', extra: '#ffffff'},
-  {id: 'calidad', name: 'Camila', animal: 'Coneja', kind: 'bunny', puesto: 'Calidad de la carta', foco: 'Productos agotados, precios y descripciones claras.', seat: [7, 3], body: '#f4f1ee', belly: '#ffd6e0', accent: '#e889a6', extra: '#b9b2ab'},
-  {id: 'datos', name: 'Santiago', animal: 'Pulpo', kind: 'octo', puesto: 'Métricas de los locales', foco: 'Conversión, ticket promedio y tiempos de cada local.', seat: [22, 3], body: '#3fb7b0', belly: '#9fe3dc', accent: '#1d4f63', extra: '#2a8f89'},
-  {id: 'soporte', name: 'Facundo', animal: 'Robot', kind: 'robot', puesto: 'Guardia técnica de los locales', foco: 'Sitio, pruebas, Conteo y cierres automáticos. Solo lectura.', seat: [27, 3], body: '#a3b1bf', belly: '#64748a', accent: '#38e0ff', extra: '#5c6b7a'},
-  {id: 'desarrollo', name: 'Nicolás', animal: 'Castor', kind: 'beaver', puesto: 'Producto GESTLOK Chat', foco: 'Mejoras y nuevas funciones del chat.', seat: [3, 12], body: '#9a6a43', belly: '#dcb58e', accent: '#f6c232', extra: '#5e3d22'},
-  {id: 'testing', name: 'Tomás', animal: 'Rana', kind: 'frog', puesto: 'Pruebas del chat', foco: 'Recorridos de prueba y CI en verde antes de publicar.', seat: [7, 12], body: '#58b368', belly: '#c9eebd', accent: '#ffffff', extra: '#2f6b3a'},
-  {id: 'difusion', name: 'Valentina', animal: 'Lora', kind: 'parrot', puesto: 'Marketing de GESTLOK Chat', foco: 'Dónde publicitar la micro app gratis y con qué texto.', seat: [7, 6], body: '#2fb24c', belly: '#ffd23f', accent: '#e5484d', extra: '#2766c9'},
-  {id: 'soporte_general', name: 'Lucas', animal: 'Perro', kind: 'dog', puesto: 'Soporte general', foco: 'Altas de comercios, gerentes, mensajes de la web y suscripciones.', seat: [26, 6], body: '#c98b4f', belly: '#f3dcc0', accent: '#2766c9', extra: '#7a4b26'}
+  {id: 'lider', name: 'Alex', avatar: 'Humano', skin: '#c99b79', hair: '#362a29', shirt: '#76579c', hairStyle: 'long', glasses: true, puesto: 'Directora de la oficina', foco: 'Coordina al equipo, junta las ideas y prioriza lo importante.', seat: [24, 12], body: '#7b5ea7', belly: '#d9c6f0', accent: '#f2b134', extra: '#45325f'},
+  {id: 'atencion', name: 'Renata', avatar: 'Humano', skin: '#e8b88c', hair: '#47332e', shirt: '#286c99', hairStyle: 'long', glasses: false, puesto: 'Mesa de pedidos · GESTLOK Chat', foco: 'Pedidos sin abrir, reclamos y conversaciones de cada local.', seat: [3, 3], body: '#f0a04b', belly: '#fde2bf', accent: '#2f3b52', extra: '#e46a6a'},
+  {id: 'marketing', name: 'Martina', avatar: 'Humano', skin: '#d69b6e', hair: '#a65632', shirt: '#ba6344', hairStyle: 'bob', glasses: false, puesto: 'Promos y ventas', foco: 'Promos del día, venta sugerida, reseñas y difusión del QR.', seat: [3, 6], body: '#e8692c', belly: '#fff4e6', accent: '#3b2418', extra: '#ffffff'},
+  {id: 'calidad', name: 'Camila', avatar: 'Humano', skin: '#f1c5ab', hair: '#675046', shirt: '#b4788c', hairStyle: 'long', glasses: true, puesto: 'Calidad de la carta', foco: 'Productos agotados, precios y descripciones claras.', seat: [7, 3], body: '#f4f1ee', belly: '#ffd6e0', accent: '#e889a6', extra: '#b9b2ab'},
+  {id: 'datos', name: 'Santiago', avatar: 'Humano', skin: '#9f6548', hair: '#242c31', shirt: '#2d837f', hairStyle: 'short', glasses: true, puesto: 'Métricas de los locales', foco: 'Conversión, ticket promedio y tiempos de cada local.', seat: [22, 3], body: '#3fb7b0', belly: '#9fe3dc', accent: '#1d4f63', extra: '#2a8f89'},
+  {id: 'soporte', name: 'Facundo', avatar: 'Humano', skin: '#d6a17c', hair: '#343136', shirt: '#45576d', hairStyle: 'short', glasses: false, puesto: 'Guardia técnica de los locales', foco: 'Sitio, pruebas, Conteo y cierres automáticos. Solo lectura.', seat: [27, 3], body: '#a3b1bf', belly: '#64748a', accent: '#38e0ff', extra: '#5c6b7a'},
+  {id: 'desarrollo', name: 'Nicolás', avatar: 'Humano', skin: '#b88159', hair: '#49352a', shirt: '#a77c39', hairStyle: 'short', glasses: false, puesto: 'Producto GESTLOK Chat', foco: 'Mejoras y nuevas funciones del chat.', seat: [3, 12], body: '#9a6a43', belly: '#dcb58e', accent: '#f6c232', extra: '#5e3d22'},
+  {id: 'testing', name: 'Tomás', avatar: 'Humano', skin: '#edbd91', hair: '#75472e', shirt: '#467c51', hairStyle: 'short', glasses: true, puesto: 'Pruebas del chat', foco: 'Recorridos de prueba y CI en verde antes de publicar.', seat: [7, 12], body: '#58b368', belly: '#c9eebd', accent: '#ffffff', extra: '#2f6b3a'},
+  {id: 'difusion', name: 'Valentina', avatar: 'Humano', skin: '#ad715a', hair: '#28232d', shirt: '#6275b3', hairStyle: 'long', glasses: false, puesto: 'Marketing de GESTLOK Chat', foco: 'Dónde publicitar la micro app gratis y con qué texto.', seat: [7, 6], body: '#2fb24c', belly: '#ffd23f', accent: '#e5484d', extra: '#2766c9'},
+  {id: 'soporte_general', name: 'Lucas', avatar: 'Humano', skin: '#e4b994', hair: '#393231', shirt: '#356c8d', hairStyle: 'short', glasses: false, puesto: 'Soporte general', foco: 'Altas de comercios, gerentes, mensajes de la web y suscripciones.', seat: [26, 6], body: '#c98b4f', belly: '#f3dcc0', accent: '#2766c9', extra: '#7a4b26'}
 ]);
 const BY_ID = Object.fromEntries(TEAM.map(p => [p.id, p]));
 
@@ -324,106 +324,32 @@ function makePainter(c) {
   return r;
 }
 
-function drawCreature(c, p, o) {
-  const r = makePainter(c);
-  const bob = o.walking ? (o.frame % 2) : (o.sit ? 0 : (Math.floor(o.t * 1.6 + o.seed) % 2 === 0 ? 0 : 1) * 0);
-  const X = Math.round(o.x) - 8, Y = Math.round(o.y) - 16 - (o.walking && o.frame % 2 ? 1 : 0) + (o.sit ? 2 : 0) + (o.jump ? -Math.round(Math.abs(Math.sin(o.t * 9)) * 3) : 0);
-  const R = (x, y, w, h, col) => r(X + x, Y + y, w, h, col);
-  const dark = '#1b1b2a', back = o.dir === 'up', side = o.dir === 'left' ? -1 : o.dir === 'right' ? 1 : 0;
-  const blink = !o.sleep && (Math.floor(o.t * 10 + o.seed * 7) % 37 === 0);
-  // sombra
-  c.fillStyle = 'rgba(20,24,40,.22)'; c.fillRect(X + 3, Y + 15 - (o.sit ? 2 : 0) + (o.jump ? 0 : 0), 10, 2);
-  const step = o.walking ? (o.frame % 2) : 0;
-  const eyes = (lx, rx, y, col = dark) => {
-    if (back) return;
-    if (o.sleep || blink) { R(lx + side, y + 1, 2, 1, col); R(rx + side, y + 1, 2, 1, col); return; }
-    R(lx + side, y, 2, 2, col); R(rx + side, y, 2, 2, col); R(lx + side, y, 1, 1, '#ffffff'); R(rx + side, y, 1, 1, '#ffffff');
-  };
-  const arms = (col) => {
-    const ty = o.typing ? (Math.floor(o.t * 8) % 2) : 0;
-    R(3, 10 - ty, 1, 3, col); R(12, 10 - (o.typing ? 1 - ty : 0), 1, 3, col);
-  };
-  const feet = (col) => { if (o.sit) return; R(5, 14 - step, 2, 2, col); R(9, 13 + step, 2, 2, col); };
-  switch (p.kind) {
-    case 'owl': {
-      R(3, 2, 10, 12, p.body); R(4, 1, 8, 1, p.body); R(2, 8, 1, 4, p.extra); R(13, 8, 1, 4, p.extra);
-      R(3, 0, 2, 2, p.extra); R(11, 0, 2, 2, p.extra);
-      if (!back) { R(5, 8, 6, 5, p.belly); R(6, 9, 1, 1, p.body); R(9, 10, 1, 1, p.body); R(7, 11, 1, 1, p.body);
-        R(4, 3, 3, 3, '#ffffff'); R(9, 3, 3, 3, '#ffffff');
-        if (o.sleep || blink) { R(4, 4, 3, 1, dark); R(9, 4, 3, 1, dark); } else { R(5 + side, 4, 1, 1, dark); R(10 + side, 4, 1, 1, dark); }
-        R(3, 3, 4, 1, p.accent); R(9, 3, 4, 1, p.accent); R(7, 4, 2, 1, p.accent);
-        R(7, 6, 2, 2, '#f08a24'); R(4, 7, 8, 1, '#e24b5b'); }
-      else { R(5, 5, 6, 6, p.extra); }
-      feet('#f08a24'); break;
-    }
-    case 'octo': {
-      R(3, 1, 10, 8, p.body); R(4, 0, 8, 1, p.body); R(2, 3, 1, 4, p.body); R(13, 3, 1, 4, p.body);
-      if (!back) { eyes(5, 9, 4); R(4, 3, 4, 1, p.accent); R(8, 3, 4, 1, p.accent); R(7, 7, 2, 1, p.accent); R(4, 1, 1, 1, p.belly); R(11, 2, 1, 1, p.belly); }
-      for (let i = 0; i < 4; i++) { const wig = o.sit ? 0 : Math.round(Math.sin(o.t * 6 + i * 1.7)); R(3 + i * 3, 9, 2, 4 + (i % 2), p.body); R(3 + i * 3 + wig, 13 + (i % 2), 2, 1, p.extra); }
-      if (o.typing) { const ty = Math.floor(o.t * 8) % 2; R(1, 9 - ty, 2, 1, p.body); R(13, 8 + ty, 2, 1, p.body); }
-      break;
-    }
-    case 'robot': {
-      R(7, -1, 2, 1, Math.floor(o.t * 2) % 2 ? '#ff5d5d' : '#7dff8a'); R(7, 0, 2, 2, p.extra);
-      R(3, 2, 10, 7, p.body); R(3, 8, 10, 1, p.extra); R(2, 4, 1, 3, p.extra); R(13, 4, 1, 3, p.extra);
-      if (!back) { R(4, 4, 8, 3, '#1c2b3a'); const on = o.sleep ? '#2b4a5a' : p.accent; R(5 + side, 5, 2, 1, on); R(9 + side, 5, 2, 1, on); }
-      R(4, 9, 8, 5, p.belly); R(6, 10, 4, 2, Math.floor(o.t * 3) % 2 ? p.accent : '#1f8fb0'); arms(p.extra);
-      if (!o.sit) { R(4, 14, 3, 2, '#2c3846'); R(9, 14, 3, 2, '#2c3846'); R(5 + step, 15, 1, 1, '#7d8c9b'); }
-      break;
-    }
-    case 'frog': {
-      R(4, 9, 8, 5, p.body); if (!back) R(6, 10, 4, 4, p.belly); arms(p.body);
-      R(2, 3, 12, 6, p.body); R(3, 0, 4, 4, p.body); R(9, 0, 4, 4, p.body);
-      if (!back) { R(4, 1, 2, 2, '#ffffff'); R(10, 1, 2, 2, '#ffffff');
-        if (o.sleep || blink) { R(4, 2, 2, 1, dark); R(10, 2, 2, 1, dark); } else { R(5 + Math.max(0, side), 1, 1, 2, dark); R(10 + Math.max(0, side), 1, 1, 2, dark); }
-        R(5, 7, 6, 1, p.extra); R(3, 6, 1, 1, '#f7a1a1'); R(12, 6, 1, 1, '#f7a1a1'); }
-      feet(p.extra); break;
-    }
-    case 'parrot': {
-      R(5, 9, 6, 5, p.body); if (!back) R(6, 10, 4, 3, p.belly);
-      const flap = o.walking || o.typing ? (Math.floor(o.t * 8) % 2) : 0;
-      R(3, 8 - flap, 2, 5, p.extra); R(11, 8 - flap, 2, 5, p.extra); R(3, 12 - flap, 2, 1, p.accent); R(11, 12 - flap, 2, 1, p.accent);
-      R(4, 2, 8, 7, p.body); R(5, 1, 6, 1, p.body); R(6, -1, 2, 2, p.accent); R(8, 0, 2, 1, p.accent);
-      if (!back) { R(5, 4, 2, 2, '#ffffff'); R(9, 4, 2, 2, '#ffffff'); eyes(5, 9, 4); R(7, 6, 2, 2, '#f2b134'); R(7, 8, 2, 1, '#c98a1d'); }
-      else R(6, 9, 4, 4, p.extra);
-      R(7, 14, 2, 2, p.extra); R(5, 14 - step, 1, 2, '#f2b134'); R(10, 14 + step, 1, 2, '#f2b134');
-      break;
-    }
-    case 'dog': {
-      R(12, 9, 2, 2, p.body); R(14, 8 - (Math.floor(o.t * 6) % 2), 1, 2, p.body);
-      R(4, 9, 8, 5, p.body); if (!back) R(6, 10, 4, 4, p.belly); arms(p.body);
-      R(3, 2, 10, 7, p.body); R(4, 1, 8, 1, p.body);
-      R(1, 2, 3, 6, p.extra); R(12, 2, 3, 6, p.extra);
-      if (!back) { eyes(5, 9, 4); R(6, 6, 4, 2, p.belly); R(7, 6, 2, 1, dark); R(7, 8, 2, 1, '#e46a6a'); R(4, 9, 8, 1, p.accent); R(7, 10, 2, 1, '#ffd23f'); }
-      feet(p.extra); break;
-    }
-    default: {
-      // gata, zorra, coneja y castor comparten cuerpo
-      if (p.kind === 'fox') { R(12, 10, 3, 3, p.body); R(14, 9, 2, 2, '#ffffff'); }
-      if (p.kind === 'cat') { R(13, 8, 1, 4, p.body); R(12, 11, 1, 1, p.body); }
-      if (p.kind === 'beaver') { R(11, 12, 4, 2, p.extra); }
-      R(4, 9, 8, 5, p.body); if (!back) R(6, 10, 4, 4, p.belly); arms(p.body);
-      R(3, 2, 10, 7, p.body); R(4, 1, 8, 1, p.body);
-      if (p.kind === 'cat') { R(3, 0, 2, 2, p.body); R(11, 0, 2, 2, p.body); R(4, 1, 1, 1, '#f7b5b5'); R(11, 1, 1, 1, '#f7b5b5'); }
-      if (p.kind === 'fox') { R(3, 0, 2, 2, p.body); R(11, 0, 2, 2, p.body); R(3, 0, 1, 1, p.accent); R(12, 0, 1, 1, p.accent); }
-      if (p.kind === 'bunny') { R(4, -4, 2, 6, p.body); R(10, -4, 2, 6, p.body); R(5, -3, 1, 4, p.accent); R(10, -3, 1, 4, p.accent); }
-      if (!back) {
-        if (p.kind === 'fox') R(5, 6, 6, 3, p.belly);
-        eyes(5, 9, 4);
-        R(4, 6, 1, 1, '#f7a1a1'); R(11, 6, 1, 1, '#f7a1a1');
-        if (p.kind === 'cat') { R(7, 6, 2, 1, p.extra); R(1, 6, 2, 1, '#e9d6c0'); R(13, 6, 2, 1, '#e9d6c0'); }
-        if (p.kind === 'fox') R(7, 6, 2, 1, p.accent);
-        if (p.kind === 'bunny') { R(7, 6, 2, 1, p.accent); R(4, 3, 3, 1, '#7c8597'); R(9, 3, 3, 1, '#7c8597'); R(7, 3, 2, 1, '#7c8597'); }
-        if (p.kind === 'beaver') { R(7, 6, 2, 1, p.extra); R(7, 7, 2, 2, '#ffffff'); }
-      }
-      if (p.kind === 'cat') { R(2, 1, 12, 1, p.accent); R(2, 2, 1, 4, p.accent); R(13, 2, 1, 4, p.accent); if (!back) R(3, 7, 3, 1, p.accent); }
-      if (p.kind === 'beaver') { R(3, 0, 10, 3, p.accent); R(2, 2, 12, 1, '#d9a400'); R(7, 0, 2, 1, '#fff2a8'); }
-      feet(p.kind === 'bunny' ? '#d8d2cc' : p.kind === 'beaver' ? p.extra : '#3a2a22');
-    }
-  }
-  if (o.hold === 'mug') { R(13, 9, 3, 3, '#ffffff'); R(16, 10, 1, 1, '#ffffff'); if (Math.floor(o.t * 3) % 2) R(14, 7, 1, 1, '#d7dbe3'); else R(15, 6, 1, 1, '#d7dbe3'); }
-  if (o.hold === 'paddle') { R(13, 8, 3, 3, '#d33b3b'); R(14, 11, 1, 2, '#7a4a2a'); }
-  if (o.hold === 'marker') { R(13, 7, 1, 3, '#2766c9'); }
+// Human pixel-art actors. Each identity has a different complexion, hair, clothing and accessories.
+function drawPerson(c, p, o) {
+  const r = makePainter(c), step = o.walking ? o.frame % 2 : 0;
+  const X = Math.round(o.x) - 9, Y = Math.round(o.y) - 21 - step + (o.sit ? 3 : 0);
+  const R = (x,y,w,h,col) => r(X+x,Y+y,w,h,col);
+  const skin=p.skin, hair=p.hair, shirt=p.shirt, back=o.dir==='up', side=o.dir==='left'?-1:o.dir==='right'?1:0;
+  const dark='#27313d', eye='#39302e', blink=o.sleep||Math.floor((o.t||0)*10+(o.seed||0)*9)%43===42;
+  c.fillStyle='rgba(20,24,40,.24)';c.fillRect(X+2,Y+20,14,2);
+  if(p.hairStyle==='long') {R(3,3,12,10,hair);R(2,7,3,7,hair);R(13,7,3,7,hair);}
+  else if(p.hairStyle==='bob') R(3,2,12,10,hair);
+  R(5,1,8,1,hair);R(3,2,12,8,hair);
+  if(!back){
+    R(5,4,8,6,skin);R(4,6,1,2,skin);R(13,6,1,2,skin);R(6,10,6,1,skin);
+    R(4,3,7,2,hair);R(4,5,1,3,hair);R(13,4,1,2,hair);
+    if(!blink){R(6+side,6,1,1,eye);R(10+side,6,1,1,eye);}else{R(6,7,2,1,eye);R(10,7,2,1,eye);}
+    R(8+side,7,1,1,'#ac715a');R(8,9,2,1,'#99594e');
+    if(p.glasses){R(5,5,3,1,dark);R(10,5,3,1,dark);R(8,6,2,1,dark);R(5,6,1,2,dark);R(12,6,1,2,dark);}
+  } else {R(5,4,8,6,hair);R(6,10,6,1,skin);}
+  R(4,12,10,6,shirt);R(5,11,8,1,shirt);R(7,11,4,1,skin);
+  if(!back){R(8,12,2,3,'#f7f5ef');R(5,13,1,4,'rgba(255,255,255,.25)');}
+  const ty=o.typing?Math.floor((o.t||0)*8)%2:step;
+  R(2,12,2,4,shirt);R(14,12,2,4,shirt);R(2,16-ty,2,2,skin);R(14,15+ty,2,2,skin);
+  if(!o.sit){R(5,18-step,3,3,dark);R(10,17+step,3,4,dark);R(4,21-step,4,1,'#202935');R(10,21+step,4,1,'#202935');}
+  if(o.hold==='mug'){R(15,13,3,4,'#fff');R(18,14,1,2,'#fff');}
+  if(o.hold==='paddle'){R(15,11,3,3,'#b84e43');R(16,14,1,3,'#7a4a2a');}
+  if(o.hold==='marker')R(15,12,1,4,'#2766c9');
 }
 
 function drawIcon(c, kind, x, y, t) {
@@ -461,7 +387,7 @@ function drawFloor(c, night) {
   }
   // Logo en el pasillo
   r(14 * T + 2, 9 * T + 4, 2 * T - 4, 8, '#1a5b83'); r(14 * T + 5, 9 * T + 6, 2 * T - 10, 4, '#d6ecfa');
-  if (night) { c.fillStyle = 'rgba(10,18,40,.18)'; c.fillRect(0, 0, W, H); }
+  if (night) { c.fillStyle = 'rgba(10,18,40,.06)'; c.fillRect(0, 0, W, H); }
 }
 
 function drawFurniture(c, scene, t) {
@@ -572,13 +498,13 @@ const CSS = `
 .hqo-tabs b[hidden]{display:none}
 .hqo-tabs b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:#5fd0ff;color:#0f2236;font-size:11px}
 .hqo-panel{padding:12px}
-.hqo-office{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px}
+.hqo-office{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 @media (max-width:900px){.hqo-office{grid-template-columns:1fr}}
 .hqo-stagewrap{min-width:0}
-.hqo-scroll{overflow:hidden;border-radius:12px;background:#2b3445}
+.hqo-scroll{overflow:auto;border-radius:12px;background:#2b3445;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
 .hqo.zoom .hqo-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
-.hqo-stage{position:relative;width:100%;aspect-ratio:${W}/${H};touch-action:manipulation}
-.hqo.zoom .hqo-stage{width:max(100%,960px)}
+.hqo-stage{position:relative;width:max(100%,720px);aspect-ratio:${W}/${H};touch-action:pan-x pan-y}
+.hqo.zoom .hqo-stage{width:max(100%,1180px)}
 .hqo-stage canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer}
 .hqo-ov{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .hqo-room{position:absolute;font-size:clamp(7px,1.05vw,11px);font-weight:800;color:rgba(255,255,255,.92);background:rgba(15,34,54,.55);padding:1px 6px;border-radius:5px;letter-spacing:.02em;transform:translate(2px,3px);white-space:nowrap}
@@ -602,7 +528,7 @@ const CSS = `
 .hqo-controls small{color:var(--muted);margin-left:auto;font-size:11.5px}
 .hqo-feed{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0;max-height:560px;display:flex;flex-direction:column}
 .hqo-feed h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:6px}
-.hqo-feed ol{list-style:none;margin:0;padding:0;overflow:auto;display:grid;gap:6px}
+.hqo-feed ol{max-height:280px;list-style:none;margin:0;padding:0;overflow:auto;display:grid;gap:6px}
 .hqo-ev{display:grid;grid-template-columns:28px 1fr;gap:7px;padding:7px;background:#fff;border-radius:9px;border:1px solid #e3ebf2;font-size:12.5px}
 .hqo-ev canvas,.hqo-mini{width:28px;height:28px;image-rendering:pixelated;border-radius:7px;background:#eaf1f7}
 .hqo-ev small{display:block;color:var(--muted);font-size:11px}
@@ -639,9 +565,9 @@ const CSS = `
 let ROOT = null, STATE = null;
 
 function miniAvatar(p, size = 28, scale = 2) {
-  const cv = document.createElement('canvas'); cv.width = 20 * scale; cv.height = 20 * scale;
+  const cv = document.createElement('canvas'); cv.width = 24 * scale; cv.height = 24 * scale;
   const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.scale(scale, scale);
-  drawCreature(c, p, {x: 10, y: 19, t: 0, seed: 0, dir: 'down'});
+  drawPerson(c, p, {x: 12, y: 22, t: 0, seed: 0, dir: 'down'});
   cv.setAttribute('aria-hidden', 'true'); cv.style.width = size + 'px'; cv.style.height = size + 'px';
   return cv;
 }
@@ -670,11 +596,11 @@ function build() {
     '<nav class="hqo-tabs" role="tablist" aria-label="Secciones de la oficina">' +
     [['oficina', 'Oficina'], ['reportes', 'Reportes'], ['ideas', 'Ideas'], ['proyectos', 'Proyectos'], ['equipo', 'Equipo']].map(([k, v], i) => '<button type="button" role="tab" data-hqo-tab="' + k + '" aria-selected="' + (i === 0) + '">' + v + '<b data-hqo-count="' + k + '" hidden></b></button>').join('') + '</nav>' +
     '<section class="hqo-panel" data-hqo-panel="oficina"><div class="hqo-office"><div class="hqo-stagewrap"><div class="hqo-scroll"><div class="hqo-stage"><canvas width="' + W * SCALE + '" height="' + H * SCALE + '" role="img" aria-label="Oficina animada de GESTLOK HQ con el equipo trabajando"></canvas><div class="hqo-ov" data-hqo-ov></div></div></div>' +
-    '<div class="hqo-controls"><button type="button" class="hqo-btn" data-hqo-act="pause">Pausar</button><button type="button" class="hqo-btn" data-hqo-act="zoom">Ampliar</button><button type="button" class="hqo-btn" data-hqo-act="meeting">Llamar a reunión</button><small data-hqo-clock></small></div></div>' +
+    '<div class="hqo-controls"><button type="button" class="hqo-btn" data-hqo-act="pause">Pausar</button><button type="button" class="hqo-btn" data-hqo-act="zoom">Ampliar</button><button type="button" class="hqo-btn" data-hqo-act="meeting">Llamar a reunión</button><small data-hqo-clock></small></div><p class="hqo-empty" style="margin:8px 0 0">Deslizá el plano para recorrer los ambientes. Tocá una persona para abrir su ficha y hablar en privado.</p></div>' +
     '<aside class="hqo-feed" aria-label="Lo que pasa en la oficina"><h3><span class="hqo-live" aria-hidden="true"></span>Qué pasa ahora</h3><ol data-hqo-feed aria-live="polite"></ol></aside></div></section>' +
     '<section class="hqo-panel" data-hqo-panel="reportes" hidden></section><section class="hqo-panel" data-hqo-panel="ideas" hidden></section>' +
     '<section class="hqo-panel" data-hqo-panel="proyectos" hidden></section><section class="hqo-panel" data-hqo-panel="equipo" hidden></section>' +
-    '<p class="hqo-honest">Los paseos, cafés, descansos y reuniones son animación. Lo que dicen sale de datos reales de GESTLOK (sin IA) o de informes de IA ya registrados. La IA solo trabaja cuando vos iniciás una tarea, y ningún empleado cambia nada sin tu aprobación.</p>';
+    '<p class="hqo-honest">Los paseos, cafés, descansos y reuniones son animación. Lo que dicen sale de datos reales de GESTLOK (sin IA) o de informes de IA ya registrados. Las conversaciones usan el motor gratuito cuando vos enviás una consulta, y ningún empleado cambia nada sin tu aprobación.</p>';
   const canvas = root.querySelector('canvas'), ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   STATE = {root, canvas, ctx, ov: root.querySelector('[data-hqo-ov]'), sim: createSim(), model: {}, handlers: {}, insights: [], ideas: [],
@@ -710,7 +636,7 @@ function onClick(ev) {
   if (t.dataset.hqoTab) return setTab(t.dataset.hqoTab);
   if (t.dataset.hqoAct === 'pause') { STATE.paused = !STATE.paused; t.textContent = STATE.paused ? 'Reanudar' : 'Pausar'; return; }
   if (t.dataset.hqoAct === 'zoom') { const z = STATE.root.classList.toggle('zoom'); t.textContent = z ? 'Achicar' : 'Ampliar'; return; }
-  if (t.dataset.hqoAct === 'meeting') { startMeeting('manual'); return; }
+  if (t.dataset.hqoAct === 'meeting') { STATE.handlers.onMeeting?.(); if (!STATE.sim.meeting) startMeeting('manual'); return; }
   if (t.dataset.hqoAssign) { STATE.handlers.onAssign?.(t.dataset.hqoAssign); return; }
   if (t.dataset.hqoPrivate) { STATE.handlers.onPrivate?.(t.dataset.hqoPrivate); return; }
   if (t.dataset.hqoCanal) { t.disabled = true; STATE.handlers.onCanal?.(t.dataset.hqoCanal, t.dataset.hqoEstado); return; }
@@ -891,7 +817,7 @@ function draw(now) {
   for (const a of order) {
     const focusDim = STATE.focus && STATE.focus !== a.id;
     if (focusDim) c.globalAlpha = .45;
-    drawCreature(c, a.p, {x: a.pos.x, y: a.pos.y, t, seed: a.seed, dir: a.dir, walking: a.path.length > 0, frame: a.frame, sit: a.sit, typing: a.typing, sleep: a.sleep, hold: a.hold, jump: a.act === 'ping' && !a.path.length && Math.sin(t * 8 + a.seed) > .7});
+    drawPerson(c, a.p, {x: a.pos.x, y: a.pos.y, t, seed: a.seed, dir: a.dir, walking: a.path.length > 0, frame: a.frame, sit: a.sit, typing: a.typing, sleep: a.sleep, hold: a.hold, jump: a.act === 'ping' && !a.path.length && Math.sin(t * 8 + a.seed) > .7});
     c.globalAlpha = 1;
     // escritorio delante del que está sentado en su puesto
     if (a.sit && a.tile[0] === a.p.seat[0] && a.tile[1] === a.p.seat[1]) {
@@ -905,7 +831,7 @@ function draw(now) {
     if (icon) drawIcon(c, icon, a.pos.x + (icon === 'zzz' ? 4 : 0), a.pos.y - 20 + (a.sit ? 2 : 0), t);
     if (STATE.selected === a.id) { c.strokeStyle = '#5fd0ff'; c.lineWidth = 1; c.strokeRect(Math.round(a.pos.x) - 9.5, Math.round(a.pos.y) - 19.5, 19, 21); }
   }
-  if (night) { c.fillStyle = 'rgba(8,14,34,.22)'; c.fillRect(0, 0, W, H); }
+  if (night) { c.fillStyle = 'rgba(8,14,34,.07)'; c.fillRect(0, 0, W, H); }
   drawOverlay(now);
 }
 
@@ -929,7 +855,7 @@ function drawOverlay(now) {
   }
   if (STATE.selected) {
     const a = sim.agents.find(x => x.id === STATE.selected), rs = realState(a.id, STATE.model);
-    parts.push('<div class="hqo-card" role="dialog" aria-label="Ficha de ' + esc(a.p.name) + '"><h4>' + esc(a.p.name) + ' · ' + esc(a.p.animal) + '</h4><p><strong>' + esc(a.p.puesto) + '</strong></p><p>' + esc(a.p.foco) + '</p><p>Ahora: ' + esc(a.label) + '</p><p style="color:' + rs.color + '">● ' + esc(rs.text) + '</p><div class="row"><button type="button" class="hqo-btn primary" data-hqo-assign="' + a.id + '">Asignar tarea</button><button type="button" class="hqo-btn" data-hqo-private="' + a.id + '">Su oficina</button><button type="button" class="hqo-btn" data-hqo-close-card="1">Cerrar</button></div></div>');
+    parts.push('<div class="hqo-card" role="dialog" aria-label="Ficha de ' + esc(a.p.name) + '"><h4>' + esc(a.p.name) + ' · ' + esc(a.p.puesto) + '</h4><p><strong>' + esc(a.p.puesto) + '</strong></p><p>' + esc(a.p.foco) + '</p><p>Ahora: ' + esc(a.label) + '</p><p style="color:' + rs.color + '">● ' + esc(rs.text) + '</p><div class="row"><button type="button" class="hqo-btn primary" data-hqo-assign="' + a.id + '">Asignar tarea</button><button type="button" class="hqo-btn" data-hqo-private="' + a.id + '">Hablar en privado</button><button type="button" class="hqo-btn" data-hqo-close-card="1">Cerrar</button></div></div>');
   }
   const html = parts.join('');
   if (html !== STATE.ovHTML) { ov.innerHTML = html; STATE.ovHTML = html; }
@@ -1054,17 +980,17 @@ function renderPanels() {
       const a = STATE.sim.agents.find(x => x.id === p.id), rs = realState(p.id, m);
       const mine = tasks.filter(t => t.agent === p.id), done = mine.filter(t => t.status === 'cerrada').length, reports = runs.filter(r => r.state === 'review' && mine.some(t => t.id === r.task_id)).length;
       const xp = done * 25 + reports * 15, level = 1 + Math.floor(xp / 60);
-      html += '<div class="hqo-box"><div class="hqo-member"><canvas data-hqo-portrait="' + p.id + '" width="60" height="60"></canvas><div><h3 style="margin:0">' + esc(p.name) + ' <small class="hqo-empty">· ' + esc(p.animal) + '</small></h3><strong style="font-size:13px">' + esc(p.puesto) + '</strong><p style="margin:4px 0;color:#5b6f84;font-size:12.5px">' + esc(p.foco) + '</p></div></div>' +
+      html += '<div class="hqo-box"><div class="hqo-member"><canvas data-hqo-portrait="' + p.id + '" width="60" height="60"></canvas><div><h3 style="margin:0">' + esc(p.name) + ' <small class="hqo-empty">· ' + 'Asistente IA' + '</small></h3><strong style="font-size:13px">' + esc(p.puesto) + '</strong><p style="margin:4px 0;color:#5b6f84;font-size:12.5px">' + esc(p.foco) + '</p></div></div>' +
         '<p style="margin:8px 0 2px;color:' + rs.color + ';font-weight:700">● ' + esc(rs.text) + '</p><p style="margin:0;font-size:12.5px">Ahora: ' + esc(a?.label || '') + '</p>' +
         '<p style="margin:8px 0 0;font-size:12px">Nivel ' + level + ' · ' + xp + ' XP <small class="hqo-empty">(tareas reales cerradas e informes)</small></p><div class="hqo-bar"><span style="width:' + (xp % 60) / 60 * 100 + '%"></span></div>' +
         (m.quota?.caps ? '<p style="margin:6px 0 0;font-size:12px">IA hoy: ' + (m.quota.perAgent?.[p.id] || 0) + ' de ' + m.quota.caps[p.id] + ' consultas <small class="hqo-empty">(límite diario del plan gratuito)</small></p><div class="hqo-bar"><span style="width:' + Math.min(100, (m.quota.perAgent?.[p.id] || 0) / m.quota.caps[p.id] * 100) + '%;background:#5fa8e8"></span></div>' : '') +
         '<p style="margin:6px 0 0;font-size:12px">Energía (animación)</p><div class="hqo-bar"><span style="width:' + Math.round(a?.energy || 0) + '%;background:#ffb35c"></span></div>' +
-        '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button type="button" class="hqo-btn primary" data-hqo-assign="' + p.id + '">Asignar tarea</button><button type="button" class="hqo-btn" data-hqo-pick="' + p.id + '">Ver en la oficina</button><button type="button" class="hqo-btn" data-hqo-private="' + p.id + '">Su oficina</button></div></div>';
+        '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button type="button" class="hqo-btn primary" data-hqo-assign="' + p.id + '">Asignar tarea</button><button type="button" class="hqo-btn" data-hqo-pick="' + p.id + '">Ver en la oficina</button><button type="button" class="hqo-btn" data-hqo-private="' + p.id + '">Hablar en privado</button></div></div>';
     }
     html += '</div>';
   }
   panel.innerHTML = html;
-  panel.querySelectorAll('canvas[data-hqo-portrait]').forEach(cv => { const p = BY_ID[cv.dataset.hqoPortrait]; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 60, 60); c.save(); c.scale(3, 3); drawCreature(c, p, {x: 10, y: 19, t: STATE.sim.t, seed: 0, dir: 'down'}); c.restore(); });
+  panel.querySelectorAll('canvas[data-hqo-portrait]').forEach(cv => { const p = BY_ID[cv.dataset.hqoPortrait]; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 60, 60); c.save(); c.scale(2.5, 2.5); drawPerson(c, p, {x: 12, y: 22, t: STATE.sim.t, seed: 0, dir: 'down'}); c.restore(); });
 }
 
 // ---------- API pública ----------
@@ -1103,5 +1029,7 @@ export function attach(slot, model, handlers = {}) {
   return ROOT;
 }
 
+export function reset() { if (STATE?.raf) cancelAnimationFrame(STATE.raf); ROOT = null; STATE = null; }
 export function select(id) { if (STATE && BY_ID[id]) STATE.selected = id; }
-export const __test = {MAP, blocked, findPath, FURNITURE, MEETING_SEATS, SPOTS, ruleDayMatch};
+export const __test = {MAP, blocked, findPath, FURNITURE, MEETING_SEATS, SPOTS, ruleDayMatch, drawPerson};
+

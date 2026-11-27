@@ -421,14 +421,14 @@ test('HQ: cada empleado conserva su identidad en la oficina, la ficha y el módu
  const office=readFileSync('public/stock/gestlok-hq-office.mjs','utf8');
  const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}));
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
- const people=[['desarrollo','Nicolás','Castor'],['calidad','Camila','Coneja'],['testing','Tomás','Rana'],['atencion','Renata','Gata'],['marketing','Martina','Zorra'],['datos','Santiago','Pulpo'],['soporte','Facundo','Robot'],['lider','Alex','Búho']];
+ const people=[['desarrollo','Nicolás'],['calidad','Camila'],['testing','Tomás'],['atencion','Renata'],['marketing','Martina'],['datos','Santiago'],['soporte','Facundo'],['difusion','Valentina'],['soporte_general','Lucas'],['lider','Alex']];
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
- for(const [id,name,animal] of people){
-  assert.ok(office.includes("{id: '"+id+"', name: '"+name+"', animal: '"+animal+"'"),id);
+ for(const [id,name] of people){
+  assert.ok(office.includes("{id: '"+id+"', name: '"+name+"', avatar: 'Humano'"),id);
   if(id==='lider')click('[data-ch-hq-leader]');else{click('[data-ch-hq-agent]',{chHqAgent:id});click('[data-ch-hq-room]',{chHqRoom:'private'});}
   const room=r.h.view({parts:{}});
   assert.ok(room.includes('Oficina privada · '+name),id);
-  assert.ok(room.includes(name+' · '+animal),id);
+  assert.ok(room.includes(name+' · Avatar humano · asistente IA'),id);
  }
 });
 
@@ -797,4 +797,59 @@ test('Los controles de Chat tienen una sola ubicación principal para la adminis
   const other=load(async()=>({data:DASH,error:null}),{email:'otra@empresa.com'});
   other.h.mode();await tick();await tick();
   assert.doesNotMatch(other.h.view({parts:{}}),/gl-ch-group-nav|gl-ch-admin-summary|data-ch-tab="habilitacion"/);
+});
+
+
+test('HQ: conversa en privado y en reunión, separa las salas y conserva las respuestas reales',async()=>{
+ const tasks=[],runs=[],calls=[];let accepted=true;
+ const rpc=async(fn,args)=>{
+  if(fn==='gestlok_hq_list_tasks')return {data:tasks.slice()};
+  if(fn==='gestlok_hq_list_runs')return {data:runs.slice()};
+  if(fn==='gestlok_hq_add_task'){const id='c'+(tasks.length+1);tasks.unshift({id,agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:new Date().toISOString()});return {data:id};}
+  if(fn==='gestlok_hq_close_task'){tasks.find(t=>t.id===args.p_id).status=args.p_status;return {data:true};}
+  return {data:DASH};
+ };
+ const r=load(rpc,{confirm:()=>accepted,invoke:async(name,o)=>{
+  if(o.body.action==='status')return {data:{configured:true,verified:true}};
+  calls.push(o.body);runs.unshift({task_id:o.body.task_id,state:'review',result:'Respuesta de IA <'+o.body.task_id+'>',quota_units:1,created_at:new Date().toISOString()});
+  return {data:{state:'review'}};
+ }});
+ const click=(sel,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===sel?{dataset}:null}});
+ const submit=message=>r.listeners.submit({preventDefault(){},target:{matches:q=>q==='[data-hq-chat-form]',querySelector:()=>({value:message})}});
+ const wait=async()=>{for(let i=0;i<7;i++)await tick();};
+ r.h.mode();await wait();r.h.setTab('hq');await wait();
+ click('[data-ch-hq-ai-status]');await wait();
+ click('[data-ch-hq-leader]');await wait();
+ accepted=false;submit('No se envía');await wait();assert.equal(tasks.length,0);
+ accepted=true;submit('Pregunta privada de Alex');await wait();
+ assert.equal(tasks.length,1);assert.equal(tasks[0].agent,'lider');assert.equal(tasks[0].status,'cerrada');
+ assert.deepEqual(JSON.parse(tasks[0].instruction.slice('HQ_CHAT_V1\n'.length)),{mode:'private',message:'Pregunta privada de Alex'});
+ assert.equal(calls.length,1);assert.equal(calls[0].action,'chat');
+ assert.match(r.h.view({parts:{}}),/Respuesta de IA &lt;c1&gt;/);
+ click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
+ assert.doesNotMatch(r.h.view({parts:{}}),/Pregunta privada de Alex/);
+ click('[data-hq-chat-open]',{hqChatOpen:'meeting'});
+ assert.match(r.h.view({parts:{}}),/Sala de reuniones/);
+ assert.doesNotMatch(r.h.view({parts:{}}),/Pregunta privada de Alex/);
+ // The user selects a recipient using the meeting select (the document's earlier listener).
+ submit('Pregunta pública de la reunión');await wait();
+ assert.equal(calls.length,2);assert.equal(JSON.parse(tasks[0].instruction.slice('HQ_CHAT_V1\n'.length)).mode,'meeting');
+ assert.match(r.h.view({parts:{}}),/Pregunta pública de la reunión/);
+ click('[data-ch-hq-leader]');
+ assert.doesNotMatch(r.h.view({parts:{}}),/Pregunta pública de la reunión/);
+ assert.match(r.h.view({parts:{}}),/Pregunta privada de Alex/);
+});
+
+test('HQ: avatares humanos, ampliación de la oficina y cupo servidor exclusivo',async()=>{
+ const office=await import('../public/stock/gestlok-hq-office.mjs');
+ assert.equal(office.TEAM.length,10);assert.ok(office.TEAM.every(p=>p.avatar==='Humano'&&p.skin&&p.hair&&p.shirt));
+ const c={fillStyle:'',fillRect(){}};
+ for(const p of office.TEAM)office.__test.drawPerson(c,p,{x:24,y:24,t:0,dir:'down'});
+ const js=readFileSync('public/stock/gestlok-hq-office.mjs','utf8');
+ assert.match(js,/data-hqo-private/);assert.match(js,/onMeeting/);assert.match(js,/width:max\(100%,720px\)/);
+ const sql=readFileSync('supabase/migrations/20261127031100_gestlok_hq_conversation.sql','utf8');
+ assert.match(sql,/pg_advisory_xact_lock/);assert.match(sql,/values\(p_task,p_user,1\)/);
+ assert.match(sql,/revoke all on function public\.gestlok_hq_claim_chat\(uuid,uuid\) from public,anon,authenticated/);
+ assert.match(sql,/grant execute on function public\.gestlok_hq_claim_chat\(uuid,uuid\) to service_role/);
+ assert.match(sql,/tokens_usados/);
 });
