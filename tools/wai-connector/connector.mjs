@@ -1,4 +1,4 @@
-import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2,decryptPollVote} from '@whiskeysockets/baileys';
+import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2,decryptPollVote,downloadMediaMessage} from '@whiskeysockets/baileys';
 import pino from 'pino';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -17,6 +17,22 @@ async function rpc(s,name,args){
  const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_id:s.id,p_clave:s.key,...args}),signal:AbortSignal.timeout(7000),redirect:'error'});
  if(!r.ok)throw Error('Control remoto no disponible');
  return r.json();
+}
+// Bounded media stream, not a public image URL. Do not request view-once
+// media or re-upload old messages. The server rechecks file signature.
+async function receiveAuthorizedImage(message,metadata){
+ const mime=metadata?.mimetype;
+ const max=2*1024*1024;
+ if(!['image/jpeg','image/png','image/webp'].includes(mime)||Number(metadata.fileLength)>max)return null;
+ const stream=await downloadMediaMessage(message,'stream',{options:{signal:AbortSignal.timeout(12000)}},undefined);
+ const chunks=[];let size=0;const timer=setTimeout(()=>stream.destroy(Error('Tiempo de descarga vencido')),12000);
+ try{
+  for await(const chunk of stream){size+=chunk.length;if(size>max){stream.destroy();return null;}chunks.push(Buffer.from(chunk));}
+  if(size<12)return null;
+  const bytes=Buffer.concat(chunks,size);
+  const actual=bytes.subarray(0,3).equals(Buffer.from('ffd8ff','hex'))?'image/jpeg':bytes.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex'))?'image/png':bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP'?'image/webp':null;
+  return actual===mime?{mime,base64:bytes.toString('base64')}:null;
+ }finally{clearTimeout(timer);}
 }
 function transportFor(s){
  return async({reset,revision,onEvent})=>{
@@ -40,7 +56,7 @@ function transportFor(s){
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
   const pollStore=createPollStore(privateDir);await pollStore.prune();
-  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrant,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});

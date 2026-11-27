@@ -155,3 +155,20 @@ test('un evento del contacto despierta el motor sin esperar el próximo heartbea
  assert.deepEqual(sent,['Primera respuesta','Segunda respuesta']);
  assert.ok(calls.includes('recibir'));
 });
+
+test('solo imagen ordinaria del contacto autorizado se descarga y guarda; duplicados y fallos son explícitos',async()=>{
+ const t=Date.now(),downloads=[],uploads=[];
+ const p=pilotTransport({active:()=>true,now:()=>t,socket:{},receiveImage:async(m)=>{downloads.push(m.key.id);if(m.key.id==='broken')throw Error('expired');return {mime:'image/png',base64:'AA=='}},rpc:async(name,a)=>{
+  if(name==='gestlok_chat_wai_recibir_imagen'){uploads.push(a);return {ok:true}}
+  if(a.p_accion==='control')return {id:'img',tester:'+5491100000003',creado_at:new Date(t-1000).toISOString(),vence_at:new Date(t+60000).toISOString()};
+  return null;
+ }});
+ const m=(remoteJid,id,message,fromMe=false)=>({key:{remoteJid,id,fromMe},message,messageTimestamp:Math.floor(t/1000)});
+ const ordinary={imageMessage:{mimetype:'image/png',caption:'Comprobante'}};
+ await p.tick('rev');
+ await p.receive({type:'notify',messages:[m(other,'wrong',ordinary),m(jid,'me',ordinary,true),m(jid,'view-once',{viewOnceMessage:{message:ordinary}}),m(jid,'ok',ordinary),m(jid,'ok',ordinary),m(jid,'broken',ordinary)]});
+ await p.tick('rev');
+ assert.deepEqual(downloads,['ok','broken']);assert.equal(uploads.length,2);
+ assert.equal(uploads[0].p_texto,'Comprobante');assert.equal(uploads[0].p_base64,'AA==');
+ assert.equal(uploads[1].p_base64,null);assert.equal(uploads[1].p_evento,'broken');
+});
