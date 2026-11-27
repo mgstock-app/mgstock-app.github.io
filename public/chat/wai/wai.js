@@ -180,7 +180,7 @@ function renderMessage(c,m){
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    !m.eliminado&&m.imagen_url?node('a',{href:m.imagen_url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar foto de la carta'},node('img',{class:'wai-menu-photo',src:m.imagen_url,alt:'Foto de la carta',loading:'lazy',referrerpolicy:'no-referrer'})):null,
    m.imagen_url&&!m.eliminado?null:node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
-   !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(m.interaccion.seleccion===o.id?' chosen':'')},(m.interaccion.seleccion===o.id?'✓ ':'○ ')+o.label))):null,
+   !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(String(m.interaccion.seleccion||'').split(',').includes(o.id)?' chosen':'')},(String(m.interaccion.seleccion||'').split(',').includes(o.id)?'✓ ':'○ ')+o.label))):null,
    node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
@@ -322,7 +322,9 @@ function renderOrder(c){
  }else if(['listo','en_camino'].includes(last?.estado)){
    next=button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn order-main',{disabled});
  }
- const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,ficha?privateOrderSheet(c,ficha):null,next,menu);
+ const transferSelected=(ficha?.pago==='transferencia')&&!c.cerrado_at&&(c.pedido_pendiente||activeOrder||ficha?.estado==='cotizacion');
+ const transfer=transferSelected?button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn wai-transfer-direct',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Enviar el alias y titular de este local':'Completá los datos en Ajustes'}):null;
+ const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,ficha?privateOrderSheet(c,ficha):null,transfer,next,menu);
  const content=[panel];
  if(c.alerta_sync&&c.alerta_sync_at)content.unshift(node('div',{class:'order-complaint compact'},node('strong',{},'⚠ Incidencia de sincronización · '+time(c.alerta_sync_at)),node('small',{},c.alerta_sync.startsWith('voto_')?'Una selección no se confirmó. Pedile al cliente que escriba su respuesta.':'Revisá la conexión y los mensajes recibidos.'),button('Marcar revisado',()=>void attentionAction(c,'sync_revisado'),'btn order-btn',{disabled:orderBusy})));
  if(c.cerrado_at&&c.aviso_cierre)content.unshift(node('div',{class:'wai-close-status'},c.aviso_cierre==='sin_autorizacion'?'⚠ Chat cerrado. No se pudo avisar al cliente: ensayo vencido o sin autorización.':c.aviso_cierre==='limite'?'⚠ Chat cerrado. Se alcanzó el límite de envíos.':'Aviso de cierre: '+({entregado:'entregado',aceptado:'enviado',pendiente:'en cola',reservado:'enviando',incierto:'sin confirmación'}[c.aviso_cierre_estado]||'en cola')));

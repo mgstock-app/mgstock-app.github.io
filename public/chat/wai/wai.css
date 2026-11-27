@@ -183,3 +183,6 @@ a{color:#087a98}
 .wai-close-status{padding:5px 12px;background:#eef5f8;color:#2b5269;font-size:12px;border-top:1px solid #c9dce6}.notice.bad{font-weight:600}
 
 .wai-sheet-item{display:grid;gap:6px;border:1px solid var(--line,#d7e4eb);border-radius:9px;padding:10px;margin:4px 0;background:#f7fafb}.wai-sheet-extra{color:#526a7a;padding-left:8px}
+
+.wai-transfer-direct{flex:none;border-color:#16879b;color:#126f80;white-space:normal;font-size:12px;min-height:36px;max-width:170px;text-align:center}.wai-transfer-direct:disabled{opacity:.56}@media(max-width:680px){.wai-order-strip:has(.wai-transfer-direct){flex-wrap:wrap}.wai-transfer-direct{max-width:none;flex:1;min-width:130px;font-size:11px}}
+.wai-order-strip:has(.wai-transfer-direct){flex-wrap:wrap}.wai-order-strip:has(.wai-transfer-direct) .wai-order-info{flex-basis:120px}

@@ -1,4 +1,4 @@
-// Explicit, short test transport: one consenting number, text and single-choice polls.
+// Explicit, short test transport: one consenting number, text and authorized polls.
 // Server authorizes scripted replies. No bulk messaging or unrelated history.
 // A reserved reply is never retried after ambiguity.
 import {phoneKey} from './session.mjs';
@@ -117,7 +117,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
       const voters=[...new Set([sender.route,sender.pn,p.tester.slice(1)+'@s.whatsapp.net',mappedLid].filter(Boolean))],creators=[...new Set(ownJids().map(routeOf).filter(Boolean))];
       let choice=null,withdrawn=false;
       for(const pollCreatorJid of creators){for(const voterJid of voters){
-       try{const decoded=decryptVote(v.vote,{pollCreatorJid,pollMsgId:id,pollEncKey:Buffer.from(r.secret,'base64'),voterJid});withdrawn=Array.isArray(decoded?.selectedOptions)&&decoded.selectedOptions.length===0;choice=selectionFromVote(r.opciones,decoded);}catch{}
+       try{const decoded=decryptVote(v.vote,{pollCreatorJid,pollMsgId:id,pollEncKey:Buffer.from(r.secret,'base64'),voterJid});withdrawn=Array.isArray(decoded?.selectedOptions)&&decoded.selectedOptions.length===0;choice=selectionFromVote(r.opciones,decoded,r.multiple===true);}catch{}
        if(choice)break;
       }if(choice)break;}
       if(choice&&active()&&mine===epoch&&valid()){
@@ -180,7 +180,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
   lastRevision=revision;working=true;rerun=false;
   try{
    const call=(action,args={})=>rpc('gestlok_chat_wai_piloto_motor',{p_revision:revision,p_accion:action,...args});
-   const capabilities=pollStore&&decryptVote?{p_estado:'opciones_imagen_v1'}:{};
+   const capabilities=pollStore&&decryptVote?{p_estado:'opciones_imagen_v2'}:{};
    const next=await call('control',capabilities);
    if(!active())return;
    const remoteTime=Date.parse(next?.hora_servidor);if(Number.isFinite(remoteTime))serverOffset=remoteTime-now();
