@@ -4,6 +4,7 @@ import {readFile,writeFile,mkdir,stat} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
+import {pilotTransport} from './pilot.mjs';
 
 process.umask(0o077);
 const configFile=resolve(process.argv[2]||'config.private.json');
@@ -22,9 +23,14 @@ for(const s of config.sessions){
  if(!/^[a-f0-9-]{36}$/i.test(s.id)||!/^[a-f0-9]{64}$/.test(s.key)||!phoneKey(s.number)||ids.has(s.id)||numbers.has(phoneKey(s.number)))throw Error('Sesión inválida o repetida.');
  ids.add(s.id);numbers.add(phoneKey(s.number));
 }
-if(config.testOnly!==true)throw Error('Este conector es de prueba: no autoriza números comerciales ni envía mensajes.');
+if(config.testOnly!==true)throw Error('Este conector es de prueba: no autoriza números comerciales ni envíos automáticos.');
 const root=resolve(process.env.HOME||'.','.gestlok-wai-pilot');
 await mkdir(root,{recursive:true,mode:0o700});
+async function rpc(s,name,args){
+ const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_id:s.id,p_clave:s.key,...args}),signal:AbortSignal.timeout(7000),redirect:'error'});
+ if(!r.ok)throw Error('Control remoto no disponible');
+ return r.json();
+}
 function transportFor(s){
  return async({reset,onEvent})=>{
   const path=join(root,s.id);
@@ -44,8 +50,10 @@ function transportFor(s){
     markOnlineOnConnect:false,syncFullHistory:false,shouldSyncHistoryMessage:()=>false,
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
-  let ended=false,save=Promise.resolve();
-  const close=async()=>{if(ended)return;ended=true;try{sock.end(undefined);}finally{await save.catch(()=>{});}};
+  let ended=false,verified=false,save=Promise.resolve();
+  const pilot=config.enableTestMessages===true?pilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified}):null;
+  if(pilot)sock.ev.on('messages.upsert',pilot.receive);
+  const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};
   sock.ev.on('creds.update',()=>{if(!ended)save=save.then(saveCreds).catch(()=>{onEvent({type:'close',retryable:false});void close();});});
   sock.ev.on('connection.update',update=>{
     if(ended)return;
@@ -53,24 +61,22 @@ function transportFor(s){
     if(update.connection==='open'){
       const jid=sock.user?.id||state.creds.me?.id||'';
       const match=/^(\d+)(?::\d+)?@s\.whatsapp\.net$/.exec(jid);
+      verified=!!match&&phoneKey('+'+match[1])===phoneKey(s.number);
       onEvent({type:'open',number:match?'+'+match[1]:null});
     }
     if(update.connection==='close'){
+      verified=false;pilot?.reset();
       const status=update.lastDisconnect?.error?.output?.statusCode;
       const retryable=[DisconnectReason.connectionClosed,DisconnectReason.connectionLost,DisconnectReason.timedOut,DisconnectReason.restartRequired].includes(status);
       onEvent({type:'close',retryable});void close();
     }
   });
-  return {close};
+  return {close,pilotTick:revision=>pilot?.tick(revision)};
  };
 }
 const sessions=config.sessions.map(s=>createSession({id:s.id,number:s.number,transport:transportFor(s),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m),
- exchange:async report=>{
-  const r=await fetch(new URL('/rest/v1/rpc/gestlok_chat_wai_senal',url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({...report,p_clave:s.key}),signal:AbortSignal.timeout(7000),redirect:'error'});
-  if(!r.ok)throw Error('Control remoto no disponible');
-  return r.json();
- }}));
-console.log('GESTLOK WAI · conexión de ensayo sin envío de mensajes · '+sessions.length+' sesiones aisladas.');
+ exchange:report=>rpc(s,'gestlok_chat_wai_senal',report)}));
+console.log('GESTLOK WAI · ensayo aislado · '+sessions.length+' sesiones. Mensajes de prueba: '+(config.enableTestMessages===true?'permitidos solo por autorización temporal':'desactivados'));
 console.log('La conexión no oficial puede ocasionar restricciones. Usá solo números de ensayo autorizados.');
 const tick=()=>Promise.allSettled(sessions.map(s=>s.tick()));
 await tick();

@@ -87,7 +87,7 @@ adaptDemo();
 // Migraciones Chat nuevas se agregan automáticamente en orden al manifiesto, nunca las
 // migraciones generales de GESTLOK ni SQL de producción ajeno a este módulo.
 const migrations=readdirSync(join(source,'supabase/migrations'))
- .filter(name=>/^\d{14}_gestlok_chat_.*\.sql$/.test(name)&&name>='20261119210000')
+ .filter(name=>/^\d{14}_gestlok_(?:chat|wai)_.*\.sql$/.test(name)&&name>='20261119210000')
  .sort().map(name=>'supabase/migrations/'+name);
 for(const file of migrations)copy(file);
 const manifestFile='entornos/sql.txt';

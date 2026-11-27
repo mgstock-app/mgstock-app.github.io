@@ -1,4 +1,4 @@
-// Connection management only: no message listeners, outbound messages, or order mutations.
+// Connection management; optional bounded test transport runs only after a verified heartbeat.
 export const phoneKey = n => /^\+[1-9]\d{7,14}$/.test(n||'') ? n.replace(/^\+549(?=\d{10}$)/,'+54') : null;
 export function createSession({id,number,exchange,transport,now=Date.now,logger=()=>{}}){
   let revision=null, socket=null,state='sin_senal',actual=null,qr=null,qrAt=0,retryAt=0,attempt=0,busy=false,closed=false,epoch=0;
@@ -48,6 +48,7 @@ export function createSession({id,number,exchange,transport,now=Date.now,logger=
       }else if(state==='desconectado'&&now()>=retryAt){
         await end();await connect(false);
       }
+      if(state==='conectado'&&report.p_estado==='conectado'&&report.p_revision===revision)await socket?.pilotTick?.(revision);
     }catch{
       // If control cannot be reached, close the transport rather than leave an unmanaged account.
       mark('sin_senal');revision=null;await end().catch(()=>{});logger('Sin acceso al control remoto; sesión pausada hasta nueva comprobación.');

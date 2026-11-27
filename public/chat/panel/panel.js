@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261127wai2';
+  const VERSION_CSS = '20261127portal1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -39,6 +39,7 @@
   const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
+  const WAI_SLUG = !DEMO && EMBED && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(op.waiSlug||'') ? op.waiSlug : '';
   const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const GRUPOS_PANEL = [
@@ -53,7 +54,7 @@
         onclick: DEMO ? e => e.preventDefault() : undefined,
         'aria-label': DEMO ? 'Demostración de GESTLOK Chat' : 'Volver a GESTLOK', text: '‹'}),
       el('img', {class: 'tope-marca', src: '/chat/gestlok-monograma.svg', alt: '', width: 29, height: 32, 'aria-hidden': 'true'}),
-      el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
+      el('div', {class: 'tope-texto'}, el('h1', {text: WAI_SLUG ? 'Configuración WAI' : 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('div', {class:'navegacion-panel', id:'navegacion-panel', hidden:true},
       el('nav', {class:'pestanas', id:'pestanas', role:'tablist', 'aria-label':'Secciones principales'},
@@ -184,6 +185,16 @@
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
     }
+    if (WAI_SLUG) {
+      try {
+        const r=await rpc('wai_portal_inicio',{p_slug:WAI_SLUG});
+        const a=(r?.locales||[]).find(s=>s.slug===WAI_SLUG);
+        if(!a||!['gestionar','configurar'].includes(a.nivel))throw Error('Tu cuenta no tiene acceso a este local.');
+        S.suc=a; S.sucursales=[a]; S.pestana='ajustes';
+        $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
+        $('panel').setAttribute('aria-busy','false'); $('navegacion-panel').hidden=false; mostrar();return;
+      }catch(e){return fijo('Sin acceso a la configuración',e.message);}
+    }
     if (ADMIN_CONFIG) {
       try {
         const a=await rpc('panel_config',{p_sucursal:ADMIN_CONFIG});
@@ -223,6 +234,7 @@
     }
   }
   function seccionPermitida(pestana) {
+    if (WAI_SLUG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&(pestana!=='excluidos'||puede('configurar'));
     if (ADMIN_CONFIG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&puede('configurar');
     if (pestana==='excluidos') return puede('configurar')&&!DEMO;
     if (pestana==='whatsapp') return puede('gestionar')&&!DEMO;
@@ -240,7 +252,7 @@
     S.pestana=b.dataset.p;mostrar();
   });
   function mostrar() {
-    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG?'ajustes':'pedidos';
+    if(!seccionPermitida(S.pestana)) S.pestana=ADMIN_CONFIG||WAI_SLUG?'ajustes':'pedidos';
     const grupo=grupoDe(S.pestana);
     for(const b of $('pestanas').querySelectorAll('[data-grupo]')){
       b.hidden=!seccionPermitida(b.dataset.grupo);
@@ -303,7 +315,7 @@
     const status=el('p',{class:'nota',role:'status',text:'Consultando autorización…'});
     const list=el('div',{class:'wa-bandeja-lista'});
     const refresh=el('button',{type:'button',class:'boton',text:'Actualizar'});
-    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
+    box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('a',{href:'/chat/wai/?local='+encodeURIComponent(S.suc.slug),class:'boton principal',text:'Abrir espacio WAI del local'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
     contenido.replaceChildren(box);
     const active=()=>marco.isConnected&&box.isConnected&&S.suc?.id===id&&S.pestana==='whatsapp';
     const support=waiLocalView(id,active);box.prepend(support.box);
@@ -1270,7 +1282,7 @@
     canalPedir.addEventListener('click',()=>canalAccion('solicitar'));
     canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
     if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
-    else if(!ADMIN_CONFIG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
+    else if(!ADMIN_CONFIG&&!WAI_SLUG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1303,10 +1315,10 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    const suscripcion = editable && !ADMIN_CONFIG ? bloqueSuscripcion() : null;
-    const gerentes = editable && !ADMIN_CONFIG ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, ADMIN_CONFIG?null:canalWhatsApp, ADMIN_CONFIG?null:pushCampanas].filter(Boolean));
-    if(ADMIN_CONFIG)return;
+    const suscripcion = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueSuscripcion() : null;
+    const gerentes = editable && !ADMIN_CONFIG && !WAI_SLUG ? bloqueGerentes() : null;
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, WAI_SLUG?null:llevar, WAI_SLUG?null:contactoWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:canalWhatsApp, ADMIN_CONFIG||WAI_SLUG?null:pushCampanas].filter(Boolean));
+    if(ADMIN_CONFIG||WAI_SLUG)return;
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;

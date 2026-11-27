@@ -33,7 +33,7 @@ test("cobros: el dueño ve su suscripción en Ajustes y la administradora los li
   const panel = leer("public/chat/panel/panel.js");
   assert.match(panel, /rpc\('panel_suscripcion', \{p_sucursal: S\.suc\.id\}\)/);
   assert.match(panel, /sb\.functions\.invoke\('gestlok-cobros'/);
-  assert.match(panel, /const suscripcion = editable && !ADMIN_CONFIG \? bloqueSuscripcion\(\) : null;/);
+  assert.match(panel, /const suscripcion = editable && !ADMIN_CONFIG && !WAI_SLUG \? bloqueSuscripcion\(\) : null;/);
   const home = leer("public/stock/gestlok-creator-home.js");
   assert.match(home, /rpc\('gestlok_chat_admin_cobros'\)/);
   assert.match(home, /functions\.invoke\('gestlok-cobros'/);

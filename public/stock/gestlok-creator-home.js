@@ -354,7 +354,7 @@
        (r.preparada&&r.habilitada&&!signal?'<small>Revisá el dispositivo del conector. Sin internet no se puede recuperar a distancia.</small><button type="button" class="btn" data-wai-support="rotar_clave" data-id="'+esc(r.id)+'"'+(waiBusy?' disabled':'')+'>Reemplazar clave del conector</button>':'')+'</div></article>';
     }).join('');
     return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Centro de conexiones GESTLOK WAI"><header><h2>GESTLOK WAI · Conexiones por usuario y local</h2><button type="button" class="btn" data-wai-support="listar"'+(waiBusy?' disabled':'')+'>Actualizar estado</button></header>'+
-      '<p>Incidencias de todos los comercios y recuperación de sesiones. No requieren contratar YCloud. El estado de sesión no confirma que la IA esté respondiendo.</p>'+
+      '<p><a class="btn" href="/chat/wai/" target="_blank" rel="noopener">Abrir espacios WAI de los locales</a></p><p>Incidencias de todos los comercios y recuperación de sesiones. No requieren contratar YCloud. El estado de sesión no confirma que la IA esté respondiendo.</p>'+
       (waiRows?'<p role="status"><b>'+online+' sesiones conectadas · '+(active-online)+' requieren revisión · '+(rows.length-active)+' pausadas</b></p>':'')+
       (waiError?'<p role="alert" class="gl-wa-error">'+esc(waiError)+'</p>':'')+
       (waiBusy?'<p role="status">Consultando conexiones…</p>':'')+

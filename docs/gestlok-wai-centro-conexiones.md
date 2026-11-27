@@ -24,3 +24,6 @@ El conector nuevo conserva la separación de identidades y aprovecha ese transpo
 6. Si se decide avanzar, revisar riesgo de restricciones de WhatsApp por tratarse de un transporte **no oficial**. Antes de permitir mensajes comerciales, desarrollar y probar la integración multiempresa del motor de pedidos de GESTLOK y habilitar envíos solo con consentimiento del comercio, exclusiones, suscripción, control de idempotencia, derivación humana y verificación de conexión real. No confundir una sesión abierta con respuestas automáticas 24/7.
 
 La preparación del panel y el código no constituyen una activación comercial, una garantía de disponibilidad ni una promesa de compatibilidad. La migración es aditiva. No se modifica la conexión oficial de YCloud, sus registros o sus flags.
+
+## Segunda etapa: portal WAI
+Se agregó el portal por local y una bandeja manual **sólo de ensayo** que permanece desactivada por defecto. Ver `docs/gestlok-wai-portal.md`. La fase de conexión descrita arriba sigue sin recepción ni envíos cuando `enableTestMessages: false`.
