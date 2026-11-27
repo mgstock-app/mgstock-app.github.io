@@ -1,0 +1,299 @@
+/* GESTLOK Chat · panel. Compacto y legible en el celular; dos columnas de tarjetas en computadora. */
+:root,:host{
+  --azul:#13294b; --azul-suave:#eef2f8; --acento:#c2410c; --tinta:#0f172a; --gris:#475569; --gris-claro:#94a3b8;
+  --linea:#e2e8f0; --fondo:#f6f7f9; --papel:#fff; --ok:#15803d; --ok-suave:#ecfdf3; --mal:#b91c1c; --mal-suave:#fef2f2;
+  --espera:#a16207; --espera-suave:#fefce8;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--fondo);color:var(--tinta)}
+body{font-size:15px;line-height:1.4;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.oculto{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.panel{max-width:1100px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;font-size:15px;line-height:1.4;color:var(--tinta);text-align:left}
+:host{display:block;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.panel *,.panel *::before,.panel *::after{box-sizing:border-box}
+
+.tope{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));background:var(--azul);color:#fff}
+.volver{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;color:#fff;font-size:30px;line-height:1;text-decoration:none}
+.tope-marca{width:29px;height:32px;object-fit:contain;flex:none;background:#f5f8fb;border-radius:7px;padding:2px}
+.embebido .tope-marca{display:none}
+.tope-texto{flex:1;min-width:0}
+.tope h1{margin:0;font-size:16px;font-weight:750;letter-spacing:.01em}
+.tope p{margin:0;font-size:13px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tope select{max-width:46%;border:0;border-radius:10px;padding:8px 10px;background:#fff;color:var(--tinta);font-weight:650}
+.pestanas{position:sticky;top:58px;z-index:4;display:flex;gap:2px;overflow-x:auto;background:var(--papel);border-bottom:1px solid var(--linea);padding:0 6px;scrollbar-width:none}
+.pestanas::-webkit-scrollbar{display:none}
+.pestanas button{flex:none;border:0;background:transparent;padding:12px 12px;font-weight:650;color:var(--gris);border-bottom:3px solid transparent}
+.pestanas button[aria-selected="true"]{color:var(--azul);border-bottom-color:var(--acento)}
+.globo{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--acento);color:#fff;font-size:12px;margin-left:4px}
+.contenido{padding:12px;flex:1}
+.contenido:focus{outline:none}
+
+.filtros,.fila-botones{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--linea);background:var(--papel);border-radius:999px;padding:7px 12px;font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:#fff}
+.boton{border:1px solid var(--linea);background:var(--papel);border-radius:10px;padding:10px 14px;font-weight:650;min-height:42px}
+.boton.principal{background:var(--azul);border-color:var(--azul);color:#fff}
+.boton.peligro{background:var(--mal);border-color:var(--mal);color:#fff}
+.boton.ancho{width:100%}
+.boton:disabled{opacity:.55}
+.enlace{border:0;background:transparent;color:var(--azul);font-weight:650;text-decoration:underline;padding:4px;margin-left:auto;font-size:14px}
+.enlace.peligro{color:var(--mal);margin-left:0}
+.nota{color:var(--gris);font-size:14px;margin:0 0 12px}
+.error{color:var(--mal);font-size:14px}
+.vacio{margin:40px auto;max-width:420px;text-align:center;color:var(--gris)}
+.vacio h2{color:var(--tinta);font-size:19px}
+.vacio .boton{display:inline-block;text-decoration:none;margin-top:8px}
+
+.comandas-resumen{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:8px 12px 0;background:#fff8e8;border:1px solid #d7b264;border-left:4px solid #b77913;border-radius:10px;font-size:14px}
+.comandas-resumen strong{color:#704e16}
+.comandas-resumen span{font-weight:650;font-variant-numeric:tabular-nums}
+.comandas-resumen .boton{margin-left:auto;min-height:36px;padding:7px 10px}
+.comandas-resumen.sin-comandas{background:#f6f8fa;border-color:#dce4eb;color:#475569}
+@media(max-width:600px){.comandas-resumen .boton{width:100%;margin-left:0}}
+.tarjetas{display:grid;gap:10px}
+@media(min-width:820px){.tarjetas{grid-template-columns:1fr 1fr}}
+.tarjeta{background:var(--papel);border:1px solid var(--linea);border-left:4px solid var(--linea);border-radius:12px;padding:12px}
+.tarjeta.pendiente{border-left-color:var(--espera)}
+.tarjeta.confirmado{border-left-color:var(--ok)}
+.tarjeta.rechazado,.tarjeta.cancelado{border-left-color:var(--mal)}
+.tarjeta header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tarjeta header strong{font-size:17px}
+.tarjeta header small{margin-left:auto;color:var(--gris)}
+.estado{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--azul-suave);color:var(--azul)}
+.estado.pendiente{background:var(--espera-suave);color:var(--espera)}
+.estado.confirmado{background:var(--ok-suave);color:var(--ok)}
+.estado.rechazado,.estado.cancelado{background:var(--mal-suave);color:var(--mal)}
+.cliente,.entrega{margin:8px 0 0;font-size:14.5px;overflow-wrap:anywhere}
+.cliente a{color:var(--azul);font-weight:600}
+.items{list-style:none;margin:10px 0 0;padding:8px 0 0;border-top:1px dashed var(--linea)}
+.items li{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14.5px}
+.items li span:last-child{white-space:nowrap;color:var(--gris)}
+.nota-cliente{margin:8px 0 0;background:var(--azul-suave);border-radius:8px;padding:6px 8px;font-size:14px}
+.totales{margin:8px 0 0;text-align:right;font-weight:750;font-size:16px}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.acciones>.boton{flex:1}
+.rechazo{flex-basis:100%;display:flex;flex-direction:column;gap:6px}
+.rechazo input{border:1px solid var(--linea);border-radius:10px;padding:10px;font-size:16px}
+
+.categoria{background:var(--papel);border:1px solid var(--linea);border-radius:12px;padding:4px 12px;margin-bottom:10px}
+.categoria h3{display:flex;align-items:center;gap:6px;font-size:15px;margin:10px 0 4px}
+.categoria h3 small{color:var(--gris);font-weight:500}
+.producto{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linea)}
+.producto.inactivo{opacity:.6}
+.producto-texto{flex:1;min-width:0}
+.producto-texto strong{display:block;font-weight:650}
+.producto-texto small{color:var(--gris)}
+.interruptor{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--gris)}
+.interruptor input{width:22px;height:22px;accent-color:var(--ok)}
+.ok{color:var(--ok);font-weight:650;font-size:13px}
+.agotado{color:var(--mal);font-weight:650;font-size:13px}
+
+.ajustes{max-width:640px}
+.bloque{background:var(--papel);border:1px solid var(--linea);border-radius:12px;padding:12px;margin-bottom:10px}
+.bloque h3{margin:0 0 10px;font-size:15px}
+.campo{display:block;margin-bottom:10px}
+.campo span,.etiqueta{display:block;font-size:13.5px;font-weight:650;margin:0 0 4px;color:var(--gris)}
+.campo input,.campo select,.campo textarea{width:100%;border:1px solid var(--linea);border-radius:10px;padding:10px;font-size:16px;background:var(--papel)}
+.campo input:disabled,.campo textarea:disabled{background:var(--fondo)}
+.check{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:15px}
+.check input{width:20px;height:20px;accent-color:var(--azul)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.medios{display:grid;grid-template-columns:1fr 1fr}
+.enlace-publico{word-break:break-all;margin:0 0 8px}
+.enlace-publico a{color:var(--azul);font-weight:650}
+.qr img{width:150px;height:150px;image-rendering:pixelated;border:1px solid var(--linea);border-radius:8px;margin:6px 0}
+
+.charla{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;background:var(--papel);border:1px solid var(--linea);border-radius:12px;padding:10px 12px}
+.charla-cab{display:flex;gap:8px;align-items:center}
+.charla-ult{color:var(--gris);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hilo{
+ display:flex;flex-direction:column;gap:6px;
+ padding:12px;border-radius:12px;
+ background-color:#f3f5f8;
+ background-image:url('/chat/wallpaper-gestlok.svg?v=20261121contraste1');
+ background-position:center center;background-size:cover;background-repeat:no-repeat;
+}
+.msj{margin:0;padding:8px 10px;border-radius:12px;max-width:88%;white-space:pre-wrap;font-size:14.5px}
+.msj.cliente{align-self:flex-end;background:var(--azul);color:#fff}
+.msj.asistente,.msj.local{align-self:flex-start;background:var(--azul-suave)}
+
+.dialogo{border:0;border-radius:16px;padding:0;width:min(560px,calc(100vw - 20px));max-height:calc(100dvh - 30px);box-shadow:0 20px 60px rgba(15,23,42,.3)}
+.dialogo::backdrop{background:rgba(15,23,42,.45)}
+.dialogo form{display:flex;flex-direction:column;max-height:calc(100dvh - 30px)}
+.dialogo header{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--linea)}
+.dialogo h2{margin:0;font-size:17px;flex:1}
+.dialogo .cerrar{border:0;background:transparent;font-size:26px;line-height:1;width:38px;height:38px;color:var(--gris)}
+.dialogo-cuerpo{padding:12px 14px;overflow-y:auto}
+.dialogo h4{margin:14px 0 6px}
+.dialogo .error{margin:0 14px 8px}
+.dialogo footer{display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--linea)}
+.grupo{border:1px solid var(--linea);border-radius:10px;padding:8px 10px;margin:0 0 10px}
+.grupo legend{font-weight:700;font-size:13.5px;padding:0 4px}
+.opciones>.boton{width:100%}
+
+.aviso{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tinta);color:#fff;border-radius:10px;padding:10px 16px;font-size:14.5px;z-index:50;max-width:calc(100vw - 24px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.aviso.error{background:var(--mal)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Mensajes configurables */
+.plantilla{border-top:1px solid var(--linea);padding-top:10px;margin-top:10px}
+.plantilla:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.plantilla .ayuda{display:block;color:var(--gris);font-size:13px;margin:-6px 0 6px}
+.vista-previa{margin:0 0 4px;background:var(--azul-suave);border-radius:10px;padding:8px 10px;font-size:14px;white-space:pre-wrap}
+.plantilla .enlace{margin-left:0;padding-left:0}
+/* Integrado en GESTLOK: sin cabecera propia, la Central ocupa el lugar de la sección */
+.embebido .tope{display:none}
+.embebido .pestanas{top:0;border-radius:12px 12px 0 0;border:1px solid var(--linea)}
+.panel.embebido{min-height:0;background:var(--fondo);border-radius:12px}
+.embebido .contenido{padding:12px 4px}
+@media(min-width:900px){.embebido .contenido{padding:14px 0}}
+
+/* Stock interno: vista compacta con categorías plegables, inspirada en la botonera operativa del local. */
+.stock-encabezado{margin:0 0 10px}
+.stock-encabezado h2{margin:0;font-size:17px;color:var(--azul)}
+.stock-encabezado .nota{margin:3px 0 0}
+.stock-bloque{margin-bottom:8px;border:1px solid var(--linea);border-radius:10px;background:var(--papel);overflow:hidden}
+.stock-cabecera{display:flex;align-items:center;gap:10px;padding:4px 11px;background:#2d658f;color:#fff}
+.stock-cabecera.empanadas{background:#d67a18}
+.stock-desplegar{flex:1;text-align:left;font-size:13.5px;font-weight:750;color:inherit;background:transparent;border:0;padding:7px 4px;min-height:34px}
+.stock-desplegar::before{content:'▸';display:inline-block;margin-right:7px;transition:transform .14s;color:inherit}
+.stock-desplegar[aria-expanded="true"]::before{transform:rotate(90deg)}
+.stock-conteo{color:#fff;font-size:11.5px;opacity:.92;margin-left:auto;white-space:nowrap}
+.stock-grupo-accion{border:1px solid #c8d9eb;background:#f6fbff;color:var(--azul);font-size:12px;font-weight:650;padding:6px 10px;border-radius:7px;min-height:32px}
+.stock-grupo-accion:disabled{opacity:.55}
+.stock-lista{padding:0 12px 4px;border-top:1px solid var(--linea)}
+.stock-acciones{display:flex;justify-content:flex-end;padding:7px 0;border-bottom:1px solid var(--linea)}
+.stock-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eef1f5;min-height:42px}
+.stock-item:last-child{border-bottom:0}
+.stock-led{flex:0 0 8px;height:8px;width:8px;border-radius:50%;background:#b91c1c}
+.stock-led.encendido{background:#16a34a}
+.stock-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.stock-item-txt strong{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.stock-item-txt small{font-size:12px;color:var(--gris)}
+.stock-estado{font-size:12px;font-weight:650;white-space:nowrap}
+.stock-estado.encendido{color:#166534}
+.stock-estado.apagado{color:#b91c1c}
+.stock-switch{position:relative;display:inline-flex;width:38px;height:23px;align-items:center;flex:none;cursor:pointer}
+.stock-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.stock-slider{display:block;width:38px;height:22px;border-radius:99px;background:#cbd5e1;transition:background .12s}
+.stock-slider::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .12s}
+.stock-switch input:checked + .stock-slider{background:#16804d}
+.stock-switch input:checked + .stock-slider::after{transform:translateX(16px)}
+.stock-switch input:focus-visible + .stock-slider{outline:2px solid var(--azul);outline-offset:2px}
+.stock-switch input:disabled + .stock-slider{opacity:.5}
+.stock-inactivo{font-size:12px;color:var(--gris)}
+@media(max-width:480px){
+ .stock-cabecera{gap:6px;padding:6px 9px}
+ .stock-grupo-accion{padding:6px 7px}
+ .stock-conteo{font-size:11px}
+ .stock-item{gap:7px}
+ .stock-estado{font-size:11px}
+}
+
+/* Soporte humano del chat: lista por local, sin controles duplicados. */
+.soporte-reclamo{border:1px solid var(--linea);border-left:4px solid #b45309;background:#fff;border-radius:12px;padding:12px;margin-bottom:10px}
+.soporte-reclamo header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.soporte-reclamo p{white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}
+.soporte-reclamo small{display:block;color:var(--gris);margin-bottom:9px}
+.soporte-reclamo .boton{font-size:13px;min-height:38px}
+.soporte-texto{display:block;width:100%;min-height:88px;padding:10px;border:1px solid var(--linea);border-radius:10px;resize:vertical;font:inherit}
+.hilo{max-height:42vh;overflow-y:auto;margin-bottom:14px}
+.msj.local{background:#e8f6ec;color:#164e31}
+
+/* Reporte diario: tarjetas sencillas para móvil y escritorio, sin exponer clientes. */
+.reporte-resumen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.reporte-cifra{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:12px}
+.reporte-cifra small{display:block;color:var(--gris);font-size:12px}
+.reporte-cifra strong{display:block;font-size:22px;color:var(--azul)}
+.reporte-dia{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:12px;margin:0 0 10px}
+.reporte-dia header{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.reporte-dia header strong{text-transform:capitalize}
+.reporte-detalle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;font-size:13px;color:var(--gris)}
+@media(min-width:850px){.reporte-resumen{grid-template-columns:repeat(4,minmax(0,1fr))}.reporte-detalle{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Fotos de comprobantes: miniaturas privadas dentro de la conversación del gerente. */
+.hilo{max-height:min(46vh,480px);overflow-y:auto;padding:4px 0}
+.hilo .msj a{display:block;margin-top:8px}
+.hilo .msj img{display:block;max-width:min(260px,70vw);max-height:260px;object-fit:contain;border-radius:9px;background:#fff}
+.dialogo .acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.dialogo .acciones .boton{flex:1;min-width:180px;white-space:normal}
+.dialogo .acciones .boton:disabled{opacity:.5}
+
+/* Jerarquía legible y controles táctiles en todas las vistas de la Central. */
+.panel{font-size:16px;line-height:1.5}
+.pestanas button{font-size:15px;min-height:48px}
+.boton{font-size:15.5px;min-height:46px}
+.chip{font-size:15px;min-height:44px}
+.tarjeta header strong{font-size:18px}
+.cliente,.entrega,.items li,.msj{font-size:16px}
+.campo span,.etiqueta{font-size:14.5px}
+.campo input,.campo select,.campo textarea{min-height:46px}
+@media(max-width:620px){
+ .tope h1{font-size:18px}
+ .tope p{font-size:14px}
+ .contenido{padding:14px 12px}
+ .pestanas button{padding:12px 14px}
+ .tarjeta{padding:14px}
+ .acciones>.boton{flex:1 1 100%;min-height:48px}
+ .bloque{padding:14px}
+ .dos{grid-template-columns:minmax(0,1fr)}
+}
+
+
+/* Métricas compactas y alerta de espera, también dentro del shadow DOM de GESTLOK. */
+.reporte-indicadores{margin:14px 0;border-top:1px solid var(--linea);padding-top:12px}
+.reporte-indicadores h3{font-size:15px;margin:12px 0 8px}
+.reporte-indicadores .reporte-resumen{margin-bottom:8px}
+.reporte-top{margin:0 0 16px;padding:0;list-style:none;display:grid;gap:7px}
+.reporte-top li{display:flex;justify-content:space-between;gap:12px;align-items:center;
+  border:1px solid var(--linea);background:var(--papel);border-radius:9px;padding:9px 11px;font-size:14px}
+.reporte-top li span{min-width:0;overflow-wrap:anywhere}
+.reporte-top li strong{white-space:nowrap;color:var(--azul)}
+.alerta-demora{background:var(--mal-suave);color:var(--mal);font-weight:700;
+  border-radius:8px;padding:8px 10px;margin:8px 0 0;font-size:13px}
+.gerentes .codigo-local{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gerentes .codigo-local b{font:700 1.25rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;padding:6px 10px;border-radius:10px;background:#eef6f5}
+.gerentes .fila-gerente{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e3e8ee}
+.gerentes .fila-gerente span{flex:1 1 200px;overflow-wrap:anywhere}
+
+/* Bandeja de atención manual, separada de pedidos. */
+.wa-bandeja{display:grid;gap:12px}
+.wa-bandeja-lista{display:grid;gap:12px}
+.wa-bandeja-card{border:1px solid var(--linea,#dbe2ea);border-radius:14px;padding:14px;display:grid;gap:10px}
+.wa-bandeja-card h3,.wa-bandeja-card p{margin:0;overflow-wrap:anywhere}
+.wa-bubble{border-radius:12px;max-width:90%;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.wa-bubble.in{background:#eef2f8;color:#13294b;justify-self:start}
+.wa-bubble.out{background:#def7e8;color:#145332;justify-self:end}
+.wa-bubble small{display:block;font-weight:700;margin-bottom:5px}
+.wa-bandeja-card textarea{box-sizing:border-box;width:100%;font-size:16px;min-height:80px;padding:10px}
+.excluidos-panel{display:grid;gap:12px}
+.excluidos-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--linea,#dbe2ea);padding:12px 0}
+.excluidos-fila div{display:grid;gap:4px;min-width:0}
+.excluidos-fila span{overflow-wrap:anywhere}
+
+/* Navegación de la Central: tres secciones principales y herramientas relacionadas. */
+.navegacion-panel{position:sticky;top:58px;z-index:4;background:var(--papel);border-bottom:1px solid var(--linea)}
+.navegacion-panel .pestanas{position:static;display:flex;gap:4px;padding:4px 6px 0}
+.navegacion-panel .pestanas button{flex:1 1 0;min-width:0;padding:11px 5px;font-weight:750;font-size:clamp(13px,3.7vw,17px)}
+.navegacion-panel .pestanas button[aria-selected="true"]{background:var(--azul-suave);border-radius:9px 9px 0 0}
+.embebido .navegacion-panel{top:0;border-radius:12px 12px 0 0}
+.subpestanas{display:flex;gap:6px;padding:8px;overflow-x:auto;scrollbar-width:thin}
+.subpestanas button{flex:0 0 auto;border:1px solid var(--linea);border-radius:8px;background:var(--papel);color:var(--gris);padding:8px 12px;min-height:42px;font-size:14px;font-weight:650}
+.subpestanas button[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:white}
+.pedidos-titulo h2{margin:0 0 4px;font-size:21px;color:var(--azul)}
+/* Cada estado tiene color de tarjeta y etiqueta textual (no depende solo del color). */
+.tarjeta.pendiente,.filtro-estado.pendiente{--estado-fondo:#fff8e8;--estado-borde:#95600a;--estado-texto:#854b07}
+.tarjeta.confirmado,.filtro-estado.confirmado{--estado-fondo:#edf5ff;--estado-borde:#2563b8;--estado-texto:#1e4b90}
+.tarjeta.terminado,.filtro-estado.terminado{--estado-fondo:#eaf9ef;--estado-borde:#23804a;--estado-texto:#176039}
+.tarjeta.rechazado,.filtro-estado.rechazado{--estado-fondo:#fff0f0;--estado-borde:#b91c1c;--estado-texto:#922121}
+.tarjeta.cancelado,.filtro-estado.cancelado{--estado-fondo:#f1f3f6;--estado-borde:#64748b;--estado-texto:#475569}
+.tarjeta[class]{background:var(--estado-fondo,var(--papel));border-left-width:6px;border-left-color:var(--estado-borde,var(--linea))}
+.tarjeta .estado{background:var(--estado-borde,var(--azul));color:#fff;padding:4px 9px}
+.filtro-estado:not(.todos){background:var(--estado-fondo);color:var(--estado-texto);border-color:var(--estado-borde)}
+.filtro-estado:not(.todos)[aria-pressed="true"]{background:var(--estado-borde);color:white}
