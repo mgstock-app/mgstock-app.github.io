@@ -264,14 +264,31 @@ async function attentionAction(c,a){
  catch(e){if(me===generation&&selected===chat)orderMessage(e.message);}
  finally{if(me===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
 }
+const orderMoney=n=>n==null?'—':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2,minimumFractionDigits:0}).format(n);
+function privateOrderSheet(c,f){
+ const row=(label,value)=>node('div',{class:'wai-sheet-row'},node('span',{},label),node('strong',{},value||'Pendiente'));
+ const choiceLines=(f.selecciones||[]).map(g=>node('div',{class:'wai-sheet-group'},node('strong',{},g.grupo),...g.valores.map(v=>node('small',{},v.cantidad+' × '+v.nombre))));
+ const extras=(f.extras||[]).map(v=>v.nombre+' · '+orderMoney(v.precio));
+ const detail=node('details',{class:'wai-order-menu wai-sheet-menu'});
+ detail.append(node('summary',{class:'btn order-btn wai-sheet-summary','aria-label':'Ver ficha privada del pedido'},'Ver pedido'),node('div',{class:'wai-order-popover wai-sheet'},
+  node('strong',{class:'wai-sheet-title'},'Ficha privada del pedido'),
+  node('small',{class:'hint'},'Solo el equipo autorizado del local puede verla.'),
+  row('Cliente',f.nombre),row('WhatsApp',c.cliente),row('Pedido',f.producto),...choiceLines,
+  row('Bebidas / postres',extras.length?extras.join(' · '):'Sin adicionales'),
+  row('Modalidad',f.modalidad==='delivery'?'Delivery':f.modalidad==='retiro'?'Retiro en el local':'Pendiente'),
+  f.modalidad==='delivery'?row('Dirección',f.direccion):null,row('Forma de pago',f.pago?.replaceAll('_',' ')),
+  row('Subtotal',orderMoney(f.subtotal)),row('Envío',orderMoney(f.envio)),row('Demora',f.demora),
+  row('Total',orderMoney(f.total)),node('span',{class:'order-state'},f.estado==='pendiente'?'Esperando confirmación':f.estado==='confirmado'||f===c.pedidos?.[0]?.ficha?'Confirmado':'Completando datos')));
+ return detail;
+}
 function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
  const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at]);
+ const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready||!!c.cerrado_at;
- const activeOrder=last&&last.estado!=='entregado',modeKey=activeOrder?last.modalidad:c.modalidad_detectada;
+ const activeOrder=last&&last.estado!=='entregado',ficha=activeOrder?last.ficha:c.ficha||last?.ficha,collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),modeKey=activeOrder?last.modalidad:c.modalidad_detectada;
  const mode=modeKey==='retiro'?'Retiro':modeKey==='delivery'?'Delivery':null;
  const status=c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente apagado';
  const closeDisabled=orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'||o.valoracion==='problema'&&!o.resuelto);
@@ -282,7 +299,7 @@ function renderOrder(c){
    button('Enviar datos de transferencia',()=>{menu.open=false;void orderAction(c,'transferencia');},'btn order-btn',{disabled:disabled||!c.transferencia_configurada}),
    button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>{menu.open=false;void attentionAction(c,c.atencion_manual?'asistido':'manual');},'btn order-btn',{disabled:orderBusy||!!c.cerrado_at||!c.agente_activo}),
    c.atencion_pendiente?button('Marcar atendido',()=>{menu.open=false;void attentionAction(c,'atendido');},'btn order-btn',{disabled:orderBusy}):null,
-   c.pedido_pendiente?button('Descartar pedido pendiente',()=>{if(confirm('¿Descartar esta solicitud sin borrar sus mensajes?')){menu.open=false;void attentionAction(c,'descartar_pedido');}},'btn order-btn danger',{disabled:orderBusy}):null,
+   (c.pedido_pendiente||collecting)?button('Descartar pedido pendiente',()=>{if(confirm('¿Descartar esta solicitud sin borrar sus mensajes?')){menu.open=false;void attentionAction(c,'descartar_pedido');}},'btn order-btn danger',{disabled:orderBusy}):null,
    button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? Un mensaje nuevo reabrirá el chat con su historial.')){menu.open=false;void attentionAction(c,'finalizar');}},'btn order-btn',{disabled:closeDisabled}),
    node('small',{class:'hint'},'Consulta de satisfacción: '+(c.seguimiento_min||2)+' min · Ajustes WAI.'),
    !c.transferencia_configurada?node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'):null,
@@ -290,19 +307,19 @@ function renderOrder(c){
    c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
    last?.consulta_at?node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_cancelada?'Consulta anterior omitida por nueva atención.':last.consulta_vencida?'Consulta fuera del ensayo.':last.consulta_encolada?'Consulta registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)):null);
  menu.append(node('summary',{class:'wai-manage','aria-label':'Más opciones de la conversación',title:'Gestionar conversación'},'⋯'),options);
- const info=node('div',{class:'wai-order-info'},node('strong',{},activeOrder?orderLabels[last.estado]||last.estado:c.pedido_pendiente?'Pedido para confirmar':last?.estado==='entregado'?'Pedido entregado':'Atención al cliente'),
+ const info=node('div',{class:'wai-order-info'},node('strong',{},activeOrder?orderLabels[last.estado]||last.estado:c.pedido_pendiente?'Pedido para confirmar':collecting?'Completando pedido':last?.estado==='entregado'?'Pedido entregado':'Atención al cliente'),
    mode?node('span',{class:'order-detected confirmed'},mode):null,
    !mode&&c.pedido_pendiente?node('small',{class:'hint'},'Esperando modalidad'):null,
    c.pedido_pendiente&&c.pedido_texto?node('small',{class:'wai-order-draft',title:c.pedido_texto},c.pedido_texto):null);
  let next=null;
- if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)&&mode&&!c.cerrado_at){
+ if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)&&mode&&!c.cerrado_at&&!collecting&&(!c.ficha||c.ficha.estado==='pendiente')){
    next=button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn order-main',{disabled});
  }else if(last?.estado==='preparacion'){
    next=button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn order-main',{disabled});
  }else if(['listo','en_camino'].includes(last?.estado)){
    next=button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn order-main',{disabled});
  }
- const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,next,menu);
+ const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,ficha?privateOrderSheet(c,ficha):null,next,menu);
  const content=[panel];
  for(const issue of issues){
   content.unshift(node('div',{class:'order-complaint compact'},node('strong',{},'⚠ Problema con el pedido'),issue.detalle?node('p',{},issue.detalle):null,node('div',{class:'order-actions'},issue.tiene_foto?button('Ver foto',()=>void showOrderPhoto(c,issue),'btn order-btn'):null,button('Resolver reclamo',()=>{if(confirm('¿El reclamo ya fue atendido?'))void orderAction(c,'resolver',issue);},'btn order-btn',{disabled:orderBusy}))));

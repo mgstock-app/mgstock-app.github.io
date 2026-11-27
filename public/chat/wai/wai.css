@@ -174,3 +174,8 @@ a{color:#087a98}
 .pending-order-label{display:block;color:#267444;font-size:11px;font-weight:800;margin-top:5px}
 .wai-menu-photo{display:block;max-width:100%;max-height:min(430px,54vh);object-fit:contain;border-radius:9px;margin-bottom:8px}
 @media(max-width:680px){.wai-order-strip{gap:6px;padding:6px 9px}.wai-order-strip .order-main{font-size:11px;white-space:normal;max-width:58%;padding:7px 8px}.wai-order-info strong{white-space:normal}.wai-order-info{gap:4px}.wai-order-menu{margin-left:auto}.wai-order-popover{max-height:55vh}}
+
+/* Compact, private order sheet; the conversation remains the main workspace. */
+.wai-sheet-menu{margin-left:0;flex:none}.wai-sheet-summary{list-style:none;cursor:pointer;font-size:11px;min-height:34px;display:flex;align-items:center;white-space:nowrap}.wai-sheet-summary::-webkit-details-marker{display:none}
+.wai-sheet{width:min(360px,83vw);gap:9px;max-height:min(65vh,510px)}.wai-sheet-title{font-size:15px;color:#183b53}.wai-sheet-row{display:grid;grid-template-columns:minmax(70px,1fr) minmax(0,1.7fr);gap:8px;border-bottom:1px solid #eaf0f4;padding:5px 0}.wai-sheet-row span{color:#637b8c}.wai-sheet-row strong{overflow-wrap:anywhere;text-align:right;font-weight:600}.wai-sheet-group{background:#eef5f8;border-radius:8px;padding:8px;display:grid;gap:4px}.wai-sheet-group small{color:#294b60}.wai-sheet .order-state{justify-self:stretch;text-align:center}
+@media(max-width:680px){.wai-sheet-summary{padding:6px;font-size:10px}.wai-sheet-menu{position:static}.wai-sheet{right:9px;max-width:calc(100vw - 22px)}}
