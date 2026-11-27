@@ -2,6 +2,7 @@
 // no provider sends, no order execution. Explicitly report unsupported web UI.
 import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea,pagosDe,soloEfectivo,totalCarrito,PAGOS,descuentoEfectivoAplica,totalSinDescuento} from '../gestlok-chat/motor.js';
 import {responderIA} from '../gestlok-chat/ia.js';
+import {safeIntentSignals,allowedIntents} from './gemini-intent.mjs';
 const text=v=>String(v??'').trim();
 const available=p=>!!p&&p.activo!==false&&p.disponible!==false&&p.precio!==null&&p.precio!==undefined&&p.precio!==''&&Number.isFinite(Number(p.precio))&&Number(p.precio)>=0;
 export function projectWhatsApp(turn,catalogo,{categories=false}={}){
@@ -37,7 +38,7 @@ export function projectWhatsApp(turn,catalogo,{categories=false}={}){
  if(turn.accion)pending.add('accion_'+turn.accion.tipo);
  return {messages,selectors,options:options.map((o,i)=>({...o,number:i+1})),pending:[...pending],sendAllowed:false};
 }
-export async function previewWhatsApp({sucursal,catalogo,privado={},estado,historial=[],entrada,config={},fetchImpl,ahora=new Date(),whatsappCategories=false}){
+export async function previewWhatsApp({sucursal,catalogo,privado={},estado,historial=[],entrada,config={},fetchImpl,geminiClassifier,ahora=new Date(),whatsappCategories=false}){
  const active=carteleraDelDia(sucursal,catalogo,ahora);
  const x={sucursal:active.sucursal,catalogo:active.catalogo,estado,entrada,mensajes:privado.mensajes||{},ahora};
  const raw=text(entrada?.texto).slice(0,600);
@@ -47,12 +48,32 @@ export async function previewWhatsApp({sucursal,catalogo,privado={},estado,histo
  }
  let turn=responder(support==='consulta_demora'?{...x,entrada:{boton:'demora'}}:x),motor='guiado';
  const unknown=t=>t.mensajes?.length===1&&!t.accion&&/^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(text(t.mensajes[0].texto));
+ // Gemini never receives the text, identity, state or catalogue; it only
+ // classifies locally projected signals. The real motor owns every response.
+ // The product matcher can interpret a colloquial question as a nonexistent
+ // item. Only static informational signals can trigger reclassification of
+ // that exact fallback; actual matched products and all actions stay guided.
+ const productFallback=turn.mensajes?.length===1&&!turn.accion&&/^Lo sentimos, «[^»]+» no lo trabajamos\./i.test(text(turn.mensajes[0].texto));
+ let geminiAttempted=false;
+ if(raw&&(unknown(turn)||productFallback)&&privado.ia_activa!==false&&!estado?.carrito?.length&&Object.keys(entrada||{}).length===1&&typeof geminiClassifier==='function'){
+  const signals=safeIntentSignals(raw),allowed=allowedIntents(signals);
+  if(allowed.length)try{
+   geminiAttempted=true;
+   const intent=await geminiClassifier(signals);
+   if(allowed.includes(intent)){
+    const classified=responder({...x,entrada:{boton:intent}});
+    if(!classified.accion&&!unknown(classified)&&!classified.estado?.carrito?.length){
+     turn=classified;motor='gemini';
+    }
+   }
+  }catch{/* fail back to the guided handoff */}
+ }
  // Only an explicitly injected fake provider is allowed in the preview.
  if(raw&&unknown(turn)&&privado.ia_activa!==false&&config.clave&&typeof fetchImpl==='function'){
   try{turn=await responderIA({...x,privado,historial,texto:raw,config,fetchImpl});motor='ia';}catch{/* same guided fallback */}
  }
  const projection=projectWhatsApp(turn,active.catalogo,{categories:whatsappCategories});
- if(raw&&unknown(turn))projection.pending.push('derivacion_humana');
+ if(raw&&(unknown(turn)||(geminiAttempted&&productFallback&&motor==='guiado')))projection.pending.push('derivacion_humana');
  return {motor,estado:turn.estado,projection};
 }
 // Selection maps must be scoped to one conversation and one turn by the future backend.

@@ -1,11 +1,11 @@
-// Internal common processor for verified pilot transports only. No provider calls.
+// Internal common processor for verified pilot transports only. No WhatsApp provider calls.
 // Call only after signature, route, sender and message validation. Both providers
 // share the same scope and WhatsApp ID deduplication; never enable both for one number.
 import {conversationPreview} from './conversation.mjs';
 import {excludedSender} from './exclusions.mjs';
 const enc=new TextEncoder();
 const digest=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(s))),x=>x.toString(16).padStart(2,'0')).join('');
-export async function processVerifiedPilotText({route,store,from,eventId,messageId,wamid,customer,interactiveId,cart,now=Date.now()}){
+export async function processVerifiedPilotText({route,store,from,eventId,messageId,wamid,customer,interactiveId,cart,geminiClassifier,now=Date.now()}){
  const drop=status=>({status,sendAllowed:false});
  if(excludedSender(route.exclusions,from))return drop('excluded_sender');
  if(!route.allowSenders.includes(from))return drop('not_allowlisted');
@@ -19,7 +19,7 @@ export async function processVerifiedPilotText({route,store,from,eventId,message
    if(await isExcluded())return drop('excluded_sender');
    const current=await store.load({slug:route.slug,sucursal:route.sucursalId,scope});
    const result=await conversationPreview({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:from},sucursal:current.sucursal,
-     catalogo:current.catalogo,publicSlug:route.slug,commerceRoute:route,privado:current.privado||{},session:current.state,
+     catalogo:current.catalogo,publicSlug:route.slug,commerceRoute:route,privado:current.privado||{},session:current.state,geminiClassifier,
      event:{id:messageId,text:customer,interactiveId,cart},ahora:new Date(now)});
    if(result.duplicate)return drop('duplicate');
    const order=result.action?.type==='simulated_order'?result.action.pedido:null;

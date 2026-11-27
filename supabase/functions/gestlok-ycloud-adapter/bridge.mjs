@@ -33,7 +33,7 @@ export function createSupabasePilotStore(rpc){
      p_wamid:wamid??null,p_state:state,p_cliente:customer,p_reply:reply,p_order:order??null})
  };
 }
-export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
+export function createSignedYCloudBridge({secret,routes,store,enabled=false,geminiClassifier}){
  if(!Array.isArray(routes)||!store||typeof store.isExcluded!=='function'||typeof store.load!=='function'||typeof store.commit!=='function')throw Error('Configuración incompleta');
  assertDistinctCommerceCatalogs(routes);
  const used=new Set(),registry=[];
@@ -58,7 +58,7 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   // wins over allowlist, before loading data, invoking AI, committing orders,
   // or preparing an outbound response. The native WhatsApp chat is untouched.
   if(!route)return drop('not_allowlisted');
-  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:input.text,interactiveId:input.interactiveId,cart:input.cart,now});
+  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:input.text,interactiveId:input.interactiveId,cart:input.cart,geminiClassifier,now});
  };
 }
 

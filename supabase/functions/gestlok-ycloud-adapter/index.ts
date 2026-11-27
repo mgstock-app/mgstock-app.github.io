@@ -4,6 +4,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {createSignedYCloudBridge,createSupabasePilotStore} from './bridge.mjs';
 import {selectTestRoute} from './test-route.mjs';
+import {createGeminiPilotClassifier} from './gemini-intent.mjs';
 
 const env=(key:string)=>Deno.env.get(key)||'';
 const TEST_URL='https://irqeitzbfyerxcrogkyh.supabase.co';
@@ -24,7 +25,14 @@ try {
   if(!route)throw Error('Invalid pilot route');
   const db=createClient(TEST_URL,env('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}});
   const store=createSupabasePilotStore((fn:string,args:Record<string,unknown>)=>db.rpc(fn,args));
-  handle=createSignedYCloudBridge({secret:env('YCLOUD_WEBHOOK_SECRET'),routes:[route],store,enabled:true});
+  const geminiClassifier=createGeminiPilotClassifier({
+   projectUrl:env('SUPABASE_URL'),apiKey:env('GESTLOK_WAI_GEMINI_API_KEY'),
+   enabled:env('GESTLOK_WAI_GEMINI_PILOT_ENABLED')==='true',
+   freeProjectConfirmed:env('GESTLOK_WAI_GEMINI_FREE_PROJECT_CONFIRMED')==='true',
+   adultTesterConfirmed:env('GESTLOK_WAI_GEMINI_ADULT_TESTER_CONFIRMED')==='true',
+   expiresAt:env('GESTLOK_WAI_GEMINI_PILOT_UNTIL')
+  });
+  handle=createSignedYCloudBridge({secret:env('YCLOUD_WEBHOOK_SECRET'),routes:[route],store,enabled:true,geminiClassifier});
   readiness='ready';
  }
 }catch{handle=null;}

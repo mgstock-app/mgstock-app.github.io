@@ -22,7 +22,7 @@ function snapshot(c,s,now,st,d){
  return JSON.stringify(canonical({cart:st.carrito,prices:st.carrito.map(l=>({total:importeLinea(a.catalogo,l),description:describirLinea(a.catalogo,l)})),
   datos:d,minimum:a.sucursal.pedido_minimo??0,delivery:a.sucursal.envio_costo??null,discount:a.sucursal.descuento_efectivo_pct??0,discountApplies:descuentoEfectivoAplica(a.sucursal,d.entrega),cashOnly:soloEfectivo(a.catalogo,st.carrito),payments:pagosDe(a.sucursal,d.entrega),scheduled:st.programado,at:a.sucursal.atencion?.abierto??null,opens:a.sucursal.atencion?.proxima_apertura??null,board:a.clave}));
 }
-export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,publicSlug,commerceRoute,ahora=new Date()}){
+export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,geminiClassifier,publicSlug,commerceRoute,ahora=new Date()}){
  if(!identity||!['empresa','sucursal','phone'].every(k=>typeof identity[k]==='string'&&identity[k].length>0)||!/^\+[1-9]\d{7,14}$/.test(identity.phone))throw Error('Identidad de piloto inválida');
  if(!event||event.cart!==undefined&&(event.interactiveId!==undefined||event.text!=='')||typeof event.id!=='string'||!event.id||event.id.length>200||typeof event.text!=='string'||event.text.length>600||event.interactiveId!==undefined&&!isNativeReplyId(event.interactiveId))throw Error('Evento inválido');
  const scope=JSON.stringify([identity.empresa,identity.sucursal,identity.phone]);
@@ -94,7 +94,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
  async function run(entrada,explicitQuantity,expectedProductId){
   // Always present a selector on WhatsApp (no ambiguous cart writes).
   const fake=typeof iaSimulada==='function'?{config:{proveedor:'openai',clave:'ficticia',url:'https://mock.invalid'},fetchImpl:iaSimulada}:{};
-  const r=await previewWhatsApp({sucursal:{...sucursal,menu_interactivo:true},catalogo,privado,estado:st.engine,entrada,ahora,whatsappCategories:true,...fake});
+  const r=await previewWhatsApp({sucursal:{...sucursal,menu_interactivo:true},catalogo,privado,estado:st.engine,entrada,ahora,whatsappCategories:true,...(st.stage==='menu'?{geminiClassifier}:{}),...fake});
   st.engine=r.estado??st.engine;
   const p=r.projection;
   if(p.pending.includes('derivacion_humana')||p.pending.some(x=>x==='accion_cancelar'||x==='accion_estado'||x==='accion_derivar')){
