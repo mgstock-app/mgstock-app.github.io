@@ -417,7 +417,8 @@
     finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
   }
   document.addEventListener('input',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-numeros')premiumWADraft=ev.target.value;});
-  document.addEventListener('change',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local'&&!premiumWABusy){if(premiumWALocal!==ev.target.value)premiumWADraft='';premiumWALocal=ev.target.value;premiumWAError='';api?.render?.();}});
+  document.addEventListener('change',ev=>{
+    if(hqAllowed()&&ev.target?.id==='gl-hq-chat-recipient'&&HQ_PEOPLE[ev.target.value]){hqMeetingRecipient=ev.target.value;hqChatError='';api?.render();return;}if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local'&&!premiumWABusy){if(premiumWALocal!==ev.target.value)premiumWADraft='';premiumWALocal=ev.target.value;premiumWAError='';api?.render?.();}});
   document.addEventListener('submit',ev=>{
     if(!ev.target?.matches?.('[data-ch-wa-form]'))return;
     ev.preventDefault();if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy)return;
@@ -965,18 +966,98 @@
   ]);
   let hqAgent = 'desarrollo';
   const HQ_PEOPLE=Object.freeze({
-    desarrollo:{name:'Nicolás',animal:'Castor',role:'Producto GESTLOK Chat',skills:'Mejoras y nuevas funciones del chat, siempre primero en Prueba.'},
-    calidad:{name:'Camila',animal:'Coneja',role:'Calidad de la carta',skills:'Productos agotados, precios, descripciones claras y criterios de aceptación.'},
-    testing:{name:'Tomás',animal:'Rana',role:'Pruebas del chat',skills:'Recorridos de prueba en los dos locales, Cypress y CI en verde antes de publicar.'},
-    atencion:{name:'Renata',animal:'Gata',role:'Mesa de pedidos · GESTLOK Chat',skills:'Pedidos sin abrir, reclamos y experiencia de compra. No accede a conversaciones ni envía mensajes.'},
-    marketing:{name:'Martina',animal:'Zorra',role:'Promos y ventas',skills:'Promos del día, venta sugerida, reseñas y difusión del QR. No publica ni compra publicidad.'},
-    datos:{name:'Santiago',animal:'Pulpo',role:'Métricas de los locales',skills:'Conversión, ticket promedio, tiempos de confirmación y oportunidades por local.'},
-    difusion:{name:'Valentina',animal:'Loro',role:'Marketing de GESTLOK Chat',skills:'Investiga dónde publicitar la micro app gratis (redes, directorios de software, prensa) y deja los textos listos. No publica ni compra publicidad.'},
-    soporte_general:{name:'Lucas',animal:'Perro',role:'Soporte general de GESTLOK',skills:'Altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones y locales sin carta. Redacta respuestas; no envía mensajes ni aprueba altas.'},
-    soporte:{name:'Facundo',animal:'Robot',role:'Guardia técnica de los locales',skills:'Control preventivo del sitio, pruebas, Conteo y cierres automáticos. Solo lectura; toda modificación requiere aprobación de la administradora.'},
-    lider:{name:'Alex',animal:'Búho',role:'Directora de la oficina',skills:'Coordina al equipo, junta las ideas, prioriza y eleva informes. Solo propone: decide la administradora.'}
+    desarrollo:{name:'Nicolás',avatar:'Avatar humano · asistente IA',role:'Producto GESTLOK Chat',skills:'Mejoras y nuevas funciones del chat, siempre primero en Prueba.'},
+    calidad:{name:'Camila',avatar:'Avatar humano · asistente IA',role:'Calidad de la carta',skills:'Productos agotados, precios, descripciones claras y criterios de aceptación.'},
+    testing:{name:'Tomás',avatar:'Avatar humano · asistente IA',role:'Pruebas del chat',skills:'Recorridos de prueba en los dos locales, Cypress y CI en verde antes de publicar.'},
+    atencion:{name:'Renata',avatar:'Avatar humano · asistente IA',role:'Mesa de pedidos · GESTLOK Chat',skills:'Pedidos sin abrir, reclamos y experiencia de compra. No accede a conversaciones ni envía mensajes.'},
+    marketing:{name:'Martina',avatar:'Avatar humano · asistente IA',role:'Promos y ventas',skills:'Promos del día, venta sugerida, reseñas y difusión del QR. No publica ni compra publicidad.'},
+    datos:{name:'Santiago',avatar:'Avatar humano · asistente IA',role:'Métricas de los locales',skills:'Conversión, ticket promedio, tiempos de confirmación y oportunidades por local.'},
+    difusion:{name:'Valentina',avatar:'Avatar humano · asistente IA',role:'Marketing de GESTLOK Chat',skills:'Investiga dónde publicitar la micro app gratis (redes, directorios de software, prensa) y deja los textos listos. No publica ni compra publicidad.'},
+    soporte_general:{name:'Lucas',avatar:'Avatar humano · asistente IA',role:'Soporte general de GESTLOK',skills:'Altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones y locales sin carta. Redacta respuestas; no envía mensajes ni aprueba altas.'},
+    soporte:{name:'Facundo',avatar:'Avatar humano · asistente IA',role:'Guardia técnica de los locales',skills:'Control preventivo del sitio, pruebas, Conteo y cierres automáticos. Solo lectura; toda modificación requiere aprobación de la administradora.'},
+    lider:{name:'Alex',avatar:'Avatar humano · asistente IA',role:'Directora de la oficina',skills:'Coordina al equipo, junta las ideas, prioriza y eleva informes. Solo propone: decide la administradora.'}
   });
-  let hqRoom=false;
+  let hqRoom=false, hqMeetingRoom=false, hqMeetingRecipient='lider', hqChatDrafts={}, hqChatError='', hqChatBusy=false;
+  const HQ_CHAT_PREFIX='HQ_CHAT_V1\n';
+  function hqChatEntry(t){
+    if(!String(t?.instruction||'').startsWith(HQ_CHAT_PREFIX))return null;
+    try{const v=JSON.parse(t.instruction.slice(HQ_CHAT_PREFIX.length));return ['private','meeting'].includes(v.mode)&&typeof v.message==='string'&&v.message.trim()&&v.message.length<=1200&&HQ_PEOPLE[t.agent]?v:null;}catch{return null;}
+  }
+  const hqOperationalTasks=()=>hqTasks.filter(t=>!hqChatEntry(t));
+  const hqChatMode=()=>hqRoom?'private':'meeting';
+  const hqChatRecipient=()=>hqRoom?hqAgent:hqMeetingRecipient;
+  const hqChatKey=()=>hqRoom?'private:'+hqAgent:'meeting';
+  const hqEditing=()=>['gl-hq-task','gl-hq-scope','gl-hq-chat-text','gl-hq-chat-recipient'].includes(document.activeElement?.id);
+  function hqChatRows(mode,recipient){
+    return hqTasks.map(t=>({t,v:hqChatEntry(t),r:hqRuns.find(r=>r.task_id===t.id)})).filter(x=>x.v?.mode===mode&&(mode==='meeting'||x.t.agent===recipient)).sort((a,b)=>Date.parse(a.t.created_at)-Date.parse(b.t.created_at)).slice(-40);
+  }
+  const hqChatCanRun=recipient=>{
+    const q=hqQuota();
+    return hqAIReady===true&&!!q&&q.remaining>0&&(q.perAgent[recipient]||0)<hqAgentCap(recipient)&&(!q.tokens||q.tokens.used+5000<=q.tokens.limit);
+  };
+  function hqChatView(){
+    const mode=hqChatMode(),recipient=hqChatRecipient(),person=HQ_PEOPLE[recipient],rows=hqChatRows(mode,recipient),locked=hqChatBusy||hqBusy||hqAIBusy;
+    const ready=hqChatCanRun(recipient);
+    const history=rows.map(({t,v,r})=>{
+      const who=HQ_PEOPLE[t.agent]?.name||'Equipo';
+      const state=r?.state==='review'?'Respuesta de IA registrada':r?.state==='working'?'Consultando IA…':r?.state==='error'?'No se pudo responder':t.status==='cancelada'?'Cancelado':'Pregunta guardada · sin ejecutar';
+      return '<article style="display:grid;gap:5px;margin-bottom:12px"><div style="margin-left:12%;padding:10px 12px;background:#d9edf7;border-radius:12px 12px 3px 12px;overflow-wrap:anywhere;white-space:pre-wrap"><strong>Vos · para '+esc(who)+'</strong><br>'+esc(v.message)+'</div><div style="margin-right:10%;padding:10px 12px;background:#fff;border:1px solid #dce4eb;border-radius:12px 12px 12px 3px;overflow-wrap:anywhere;white-space:pre-wrap"><strong>'+esc(who)+'</strong><br>'+(r?.state==='review'&&r.result?esc(r.result):esc(state)+(r?.state==='error'&&r.result?' · '+esc(r.result):''))+
+        (!r&&t.status==='pendiente'?'<div style="margin-top:6px"><button type="button" class="btn" data-hq-chat-retry="'+esc(t.id)+'" '+(locked||!hqChatCanRun(t.agent)?'disabled':'')+'>Pedir respuesta</button></div>':'')+'</div><small style="color:#63798b">'+esc(new Date(t.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}))+' · '+esc(state)+'</small></article>';
+    }).join('');
+    return '<section id="gl-hq-conversation" aria-label="'+(mode==='meeting'?'Reunión del equipo':'Chat privado')+'" style="margin:12px 0;border:1px solid #cbdce7;border-radius:16px;overflow:hidden;background:#f4f8fb"><header style="background:#153b54;color:white;padding:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><strong style="font-size:17px">'+(mode==='meeting'?'Sala de reuniones · Equipo HQ':'Conversación privada · '+esc(person.name))+'</strong><div style="font-size:12px;color:#d2e4f1">'+(mode==='meeting'?'Elegí quién toma la palabra. Cada respuesta usa una consulta real.':'Historial de esta sala · no se mezcla con otras conversaciones.')+'</div></div>'+(mode==='meeting'?'<button type="button" class="btn" data-hq-chat-end>Finalizar reunión</button>':'')+'</header><div style="padding:12px">'+
+      (mode==='meeting'?'<label for="gl-hq-chat-recipient"><strong>¿A quién le hablás?</strong></label><select id="gl-hq-chat-recipient" style="display:block;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #b7cbd9;border-radius:9px" '+(locked?'disabled':'')+'>'+Object.entries(HQ_PEOPLE).map(([id,x])=>'<option value="'+id+'" '+(recipient===id?'selected':'')+'>'+esc(x.name+' · '+x.role)+'</option>').join('')+'</select>':'')+
+      '<div role="log" aria-label="Historial de la conversación" aria-live="polite" style="max-height:400px;overflow-y:auto;min-height:100px;padding:8px 0">'+(history||'<p style="color:#577188">Todavía no hay mensajes. Escribí tu primera pregunta para '+esc(person.name)+'.</p>')+'</div>'+
+      '<form data-hq-chat-form style="display:grid;gap:8px"><label for="gl-hq-chat-text">Tu mensaje</label><textarea id="gl-hq-chat-text" maxlength="1200" rows="3" required style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #b7cbd9;border-radius:12px;font:inherit;color:#10243a;background:#fff" placeholder="Preguntá, conversá o pedí una propuesta…">'+esc(hqChatDrafts[hqChatKey()]||'')+'</textarea><button class="btn primary" type="submit" '+(locked||!hqLoaded||!hqRunsLoaded?'disabled':'')+'>'+(hqChatBusy?'Procesando…':ready?'Enviar y conversar':'Guardar consulta')+'</button><p role="status" style="margin:0;font-size:13px;color:#425970">'+esc(hqChatError||(ready?'IA gratuita disponible · una consulta por respuesta.':'IA o cupo no disponible. Podés guardar tu consulta y pedir la respuesta cuando se libere.'))+'</p><small>No incluyas datos personales de clientes, claves ni códigos. Solo análisis: ningún asistente modifica GESTLOK.</small></form></div></section>';
+  }
+  function hqOpenConversation(mode,id){
+    if(!hqAllowed())return;
+    hqChatError='';
+    if(mode==='private'&&hqArea(id)){hqAgent=id;hqRoom=true;hqMeetingRoom=false;}
+    else{hqRoom=false;hqMeetingRoom=true;}
+    api?.render();
+    queueMicrotask(()=>{try{document.getElementById?.('gl-hq-conversation')?.scrollIntoView?.({block:'start',behavior:'smooth'});}catch{}});
+  }
+  async function hqChatSend(message,retryId){
+    if(!hqAllowed()||(!hqRoom&&!hqMeetingRoom)||hqChatBusy||hqBusy||hqAIBusy||!hqLoaded||!hqRunsLoaded)return;
+    const mode=hqChatMode(),key=hqChatKey(),recipient=hqChatRecipient(),raw=String(message||'').trim();
+    const existing=retryId&&hqChatRows(mode,recipient).find(x=>x.t.id===retryId&&x.t.status==='pendiente'&&!x.r);
+    if(retryId&&!existing)return;
+    const agent=existing?existing.t.agent:recipient;
+    if(!existing&&(!raw||raw.length>1200))return;
+    if(!existing&&/(?:\b(?:sk-|gsk_|whsec_|eyJ)[A-Za-z0-9_-]{12,}|(?:contraseña|password|api[_ -]?key|token|secreto)\s*[=:]\s*\S{6,})/i.test(raw)){hqChatError='Quitá las claves o credenciales antes de enviar.';api?.render();return;}
+    const ready=hqChatCanRun(agent);
+    if(existing&&!ready)return;
+    if(ready&&!window.confirm('¿Enviar esta consulta al motor gratuito de IA de HQ? Se usa una consulta. No incluyas datos privados ni secretos.'))return;
+    const epoch=hqEpoch,alive=()=>epoch===hqEpoch&&hqAllowed();
+    hqChatBusy=true;hqChatError='';api?.render();
+    let taskId=existing?.t.id;
+    try{
+      const sb=window.GestLokSupabase;
+      const refresh=async()=>{const [tasks,runs]=await Promise.all([sb.rpc('gestlok_hq_list_tasks'),sb.rpc('gestlok_hq_list_runs')]);if(!alive())return false;if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('No se confirmó el historial');hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;return true;};
+      if(!taskId){
+        const res=await sb.rpc('gestlok_hq_add_task',{p_agent:agent,p_instruction:HQ_CHAT_PREFIX+JSON.stringify({mode,message:raw})});
+        if(res.error||typeof res.data!=='string')throw Error('No se confirmó el mensaje');
+        taskId=res.data;if(!alive())return;hqChatDrafts[key]='';
+      }
+      if(!await refresh())return;
+      if(!ready){hqChatError='Consulta guardada. Pedí respuesta cuando haya cupo.';return;}
+      api?.render();
+      const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action:'chat',task_id:taskId}});
+      if(!alive())return;
+      if(!await refresh())return;
+      if(res.error||res.data?.state!=='review'){hqChatError=res.data?.diagnostic||'No se confirmó la respuesta. Revisá el historial antes de volver a intentar.';return;}
+      // The response is stored in the existing private ledger, never simulated.
+      const saved=hqRuns.find(r=>r.task_id===taskId&&r.state==='review');
+      if(!saved){hqChatError='La respuesta todavía no figura en el historial.';return;}
+      const done=await sb.rpc('gestlok_hq_close_task',{p_id:taskId,p_status:'cerrada'});
+      if(!alive())return;
+      if(done.error||done.data!==true)hqChatError='Respuesta guardada; el cierre de la consulta sigue pendiente.';
+      else await refresh();
+    }catch{if(alive())hqChatError='No se confirmó la operación. Actualizá el historial antes de repetir.';}
+    finally{if(epoch===hqEpoch){hqChatBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqKnowledgeView(){return '<details style="margin:12px 0;padding:12px;background:#edf5f8;border:1px solid #c3dce5;border-radius:12px"><summary style="cursor:pointer;font-weight:800">Conocimiento compartido del equipo</summary><p>Todos los asistentes reciben la misma base de GESTLOK y el pulso de los locales habilitados. Contexto común: módulos y roles, GESTLOK Chat y WAI, circuito de pedidos y confirmación por gerente, Mi Gusto Munro y Don Torcuato, ambientes de Prueba/Testing, decisiones y reglas de seguridad. Las conversaciones privadas no se mezclan con la sala de reuniones. No se copian chats personales de ChatGPT, credenciales ni datos de clientes. Cada asistente diferencia decisiones de hechos verificados.</p></details>';}
+
   const HQ_LEADER=['lider','Dirección de IA','Coordina las nueve áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
@@ -985,7 +1066,7 @@
   // Read-only provider status; never requests completion tokens or starts tasks.
   async function hqCheckConnection(force=false){
     if(!hqAllowed()||!hqLoaded||hqBusy||hqAIBusy||hqAIStatusBusy||document.visibilityState==='hidden')return;
-    if(!force&&(Date.now()-hqAIStatusAt<(hqAIReady===true?300000:60000)||['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)))return;
+    if(!force&&(Date.now()-hqAIStatusAt<(hqAIReady===true?300000:60000)||hqEditing()))return;
     const epoch=hqEpoch;hqAIStatusBusy=true;hqAIStatusAt=Date.now();
     const before=JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]);
     try{
@@ -996,7 +1077,7 @@
       hqAIConfigured=res.data?.configured===true;hqAIReady=hqAIConfigured&&res.data?.verified===true;
       hqAIStatusError=String(res.data?.diagnostic||(!hqAIConfigured?'Falta configurar la clave gratuita de Groq.':!hqAIReady?'Groq todavía no confirmó la conexión.':''));
     }catch{if(epoch===hqEpoch){hqAIReady=false;hqAIStatusError='No se pudo verificar la conexión con Groq. Volvé a comprobar.';}}
-    finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
+    finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!hqEditing())api?.render();}}
   }
   setInterval(()=>{void hqCheckConnection();},2000);
   // Límites diarios para no salir nunca del plan gratuito de Groq (openai/gpt-oss-20b Free:
@@ -1016,7 +1097,7 @@
   async function hqReadSupport(){
     if(!hqAllowed()||!hqLoaded||hqSupportBusy||document.visibilityState==='hidden'||Date.now()-hqSupportAt<60000)return;
     const epoch=hqEpoch;hqSupportBusy=true;hqSupportAt=Date.now();
-    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_support_status');if(epoch!==hqEpoch||!hqAllowed())return;if(res.error||!Array.isArray(res.data?.checks))return;const changed=JSON.stringify(hqSupport)!==JSON.stringify(res.data);hqSupport=res.data;if(changed&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}
+    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_support_status');if(epoch!==hqEpoch||!hqAllowed())return;if(res.error||!Array.isArray(res.data?.checks))return;const changed=JSON.stringify(hqSupport)!==JSON.stringify(res.data);hqSupport=res.data;if(changed&&!hqEditing())api?.render();}
     catch{/* keep last observed data */}
     finally{if(epoch===hqEpoch)hqSupportBusy=false;}
   }
@@ -1059,7 +1140,7 @@
     finally{if(epoch===hqEpoch){hqDailyBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqTeam(id){
-    if(!hqAllowed()||hqBusy||hqAIBusy||!hqTasks.some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
+    if(!hqAllowed()||hqBusy||hqAIBusy||hqChatBusy||!hqOperationalTasks().some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
     const initial=!hqTasks.some(t=>t.parent_task_id===id);
     if(hqTasks.some(t=>t.id===id&&t.auto_enabled))return;
     if(!initial&&(!hqAIReady||!window.confirm('¿Continuar las tareas pendientes del equipo con Groq gratuito? Se conserva cada resultado y se detiene al alcanzar la cuota o un error. No se modifica GESTLOK.')))return;
@@ -1102,7 +1183,8 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqAI(action,taskId){
-    if(!hqAllowed()||hqAIBusy||hqBusy)return;
+    if(!hqAllowed()||hqAIBusy||hqBusy||hqChatBusy)return;
+    if(action==='run'&&hqTasks.some(t=>t.id===taskId&&hqChatEntry(t)))return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
     if(action==='run'){const q=hqQuota(),ag=hqTasks.find(t=>t.id===taskId)?.agent,cost=ag==='lider'&&!hqTasks.some(t=>t.parent_task_id===taskId)?8:1;
       if(q&&ag&&(q.perAgent[ag]||0)+cost>hqAgentCap(ag)){hqAIError='Límite diario de '+(HQ_PEOPLE[ag]?.name||'este empleado')+': '+hqAgentCap(ag)+' consultas por 24 horas (plan gratuito). La tarea sigue pendiente.';api?.render();return;}
@@ -1213,7 +1295,7 @@
     return '<div style="margin:10px 0;padding:10px;border:1px solid #cbd8e2;border-radius:8px"><strong>Avisos de Alex en tu teléfono</strong><p style="font-size:13px">Desde el teléfono, activá las notificaciones. Solo se avisará que hay un informe nuevo; el detalle queda en tu oficina privada.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-push="on" '+(hqPushBusy?'disabled':'')+'>Activar en este dispositivo</button><button type="button" class="btn" data-ch-hq-push="off" '+(hqPushBusy?'disabled':'')+'>Desactivar</button></div><p role="status">'+esc(hqPushMessage)+'</p></div>';
   }
   function hqExecutiveInbox(){
-    const pending=hqTasks.filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
+    const pending=hqOperationalTasks().filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
     const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
     return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
       '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para revisar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
@@ -1293,11 +1375,11 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
+  function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqMeetingRoom=false;hqMeetingRecipient='lider';hqChatDrafts={};hqChatError='';hqChatBusy=false;hqOfficeMod?.reset?.();hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
-    if(!hqAllowed()||!hqAttempted||hqBusy||hqSyncBusy||document.visibilityState==='hidden')return;
+    if(!hqAllowed()||!hqAttempted||hqBusy||hqChatBusy||hqSyncBusy||document.visibilityState==='hidden')return;
     const epoch=hqEpoch;hqSyncBusy=true;
     try{
       const sb=window.GestLokSupabase;if(!sb?.rpc)throw Error('sin conexión');
@@ -1306,15 +1388,15 @@
       if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('sin resultados');
       const changed=!hqLoaded||!hqRunsLoaded||hqSyncError||JSON.stringify(tasks.data)!==JSON.stringify(hqTasks)||JSON.stringify(runs.data)!==JSON.stringify(hqRuns);
       // Do not interrupt active editing or overwrite a draft.
-      if(changed&&['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))return;
+      if(changed&&hqEditing())return;
       hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;hqSyncError='';hqRunsError='';
       if(changed)api?.render();
-    }catch{if(epoch===hqEpoch&&hqAllowed()&&!hqSyncError){hqSyncError='Sincronización interrumpida. Se volverá a consultar.';if(!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
+    }catch{if(epoch===hqEpoch&&hqAllowed()&&!hqSyncError){hqSyncError='Sincronización interrumpida. Se volverá a consultar.';if(!hqEditing())api?.render();}}
     finally{if(epoch===hqEpoch)hqSyncBusy=false;}
   }
   setInterval(()=>{void hqSync();},4000);
   async function hqRequest(fn,args){
-    if(!hqAllowed()||hqBusy||hqAIBusy)return;
+    if(!hqAllowed()||hqBusy||hqAIBusy||hqChatBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
     api?.render();
     try{
@@ -1339,7 +1421,7 @@
     const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(hqArea(t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+hqRunView(t)+
       (t.status==='pendiente'?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||(t.agent==='lider'&&!hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))?'disabled':'')+'>'+(t.agent==='lider'?'Aprobar informe':'Marcar cerrada')+'</button><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy?'disabled':'')+'>'+(t.agent==='lider'?'Descartar informe':'Cancelar tarea')+'</button></div>':'')+'</article>';
     return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Sincronización automática cada 4 segundos · ejecución de servidor solo en misiones autorizadas'))+'</p>'+
-      (hqLoaded?'<h4>Pendientes</h4>'+(hqTasks.filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqTasks.filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
+      (hqLoaded?'<h4>Pendientes</h4>'+(hqOperationalTasks().filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqOperationalTasks().filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
   }
   // HQ 3.0 · La Oficina: pixel art animado (gestlok-hq-office.mjs). Las animaciones son visuales;
   // los estados de ejecución salen solo de tareas reales y los comentarios, de datos reales.
@@ -1354,16 +1436,16 @@
       if(res.error||!Array.isArray(res.data?.sucursales)){
         const msg=String(res.error?.message||'')+' '+String(res.error?.code||'');
         hqPulseError=/gestlok_hq_pulso|PGRST202|42883/i.test(msg)?'El pulso de los locales todavía no está activo: falta aplicar la migración gestlok_hq_pulso.':'No se pudo leer el pulso de los locales. Se vuelve a intentar en un minuto.';
-      }else{const before=JSON.stringify(hqPulse?.jornada||null);hqPulse=res.data;hqPulseError='';if(before!==JSON.stringify(hqPulse.jornada||null)&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)){api?.render();return;}}
+      }else{const before=JSON.stringify(hqPulse?.jornada||null);hqPulse=res.data;hqPulseError='';if(before!==JSON.stringify(hqPulse.jornada||null)&&!hqEditing()){api?.render();return;}}
       hqOfficeSync();
     }catch{if(epoch===hqEpoch){hqPulseError='No se pudo leer el pulso de los locales.';hqOfficeSync();}}
     finally{if(epoch===hqEpoch)hqPulseBusy=false;}
   }
   setInterval(()=>{void hqReadPulse();},30000);
   let hqOfficeMod=null,hqOfficeLoading=false;
-  const hqMeetingActive=()=>hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
+  const hqMeetingActive=()=>hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqOperationalTasks().some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
   function hqOfficeModel(){
-    return {tasks:hqLoaded?hqTasks:[],runs:hqRunsLoaded?hqRuns:[],support:hqSupport,pulse:hqPulse,pulseError:hqPulseError,
+    return {tasks:hqLoaded?hqOperationalTasks():[],runs:hqRunsLoaded?hqRuns.filter(r=>hqOperationalTasks().some(t=>t.id===r.task_id)):[],support:hqSupport,pulse:hqPulse,pulseError:hqPulseError,
       aiReady:hqAIReady,quota:hqQuota(),meeting:hqMeetingActive(),focus:hqRoom?hqAgent:null};
   }
   function hqFocusForm(){
@@ -1371,9 +1453,10 @@
   }
   const hqOfficeHandlers=Object.freeze({
     onAssign:id=>{if(!hqAllowed()||!hqArea(id))return;if(hqAgent!==id)hqDraft='';hqAgent=id;api?.render();hqFocusForm();},
-    onPrivate:id=>{if(!hqAllowed()||!hqArea(id))return;if(hqAgent!==id)hqDraft='';hqAgent=id;hqRoom=true;api?.render();},
+    onPrivate:id=>hqOpenConversation('private',id),
+    onMeeting:()=>hqOpenConversation('meeting'),
     // La idea solo precarga el formulario: la creadora la revisa y decide si la guarda.
-    onIdea:(id,text)=>{if(!hqAllowed()||!hqArea(id))return;hqAgent=id;hqRoom=false;hqDraft=String(text||'').slice(0,4000);api?.render();hqFocusForm();},
+    onIdea:(id,text)=>{if(!hqAllowed()||!hqArea(id))return;hqAgent=id;hqRoom=false;hqMeetingRoom=false;hqDraft=String(text||'').slice(0,4000);api?.render();hqFocusForm();},
     onSelect:()=>{},
     // Mapa de difusión: la creadora marca dónde ya publicó GESTLOK Chat. No publica nada por ella.
     onCanal:(id,estado)=>{void hqSetCanal(id,estado);}
@@ -1397,7 +1480,7 @@
     if(hqOfficeMod){try{hqOfficeMod.attach(slot,hqOfficeModel(),hqOfficeHandlers);}catch{slot.textContent='No se pudo dibujar la oficina. El Centro de control sigue disponible.';}return;}
     if(hqOfficeLoading)return;
     hqOfficeLoading=true;
-    import('./gestlok-hq-office.mjs?rev=hq-office-20261125b').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
+    import('./gestlok-hq-office.mjs?rev=hq-office-20261127-human-v1').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
       .catch(()=>{const s=document.querySelector('[data-hq-office-slot]');if(s)s.textContent='No se pudo cargar la oficina animada. El Centro de control sigue disponible.';})
       .finally(()=>{hqOfficeLoading=false;});
   }
@@ -1418,7 +1501,7 @@
     const meetingActive=hqMeetingActive();
     const anyWorking=hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.status==='pendiente'));
     const activityText=hqSyncError?hqSyncError:meetingActive?'Reunión de IA en ejecución':anyWorking?'Tareas en ejecución':!hqRunsLoaded?'Consultando actividad':'Sin tareas en ejecución · equipo disponible';
-    const missionBoard='<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:#112c43;color:#f3f8fc;border-radius:12px 12px 0 0"><strong>GESTLOK HQ · Centro de misiones</strong><small>'+esc(hqLoaded?hqTasks.filter(t=>t.status==='pendiente').length+' pendientes · '+(hqRunsLoaded?hqRuns.filter(r=>r.state==='working').length+' en ejecución':'consultando ejecuciones'):'Tareas sin consultar')+'</small></div>';
+    const missionBoard='<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:#112c43;color:#f3f8fc;border-radius:12px 12px 0 0"><strong>GESTLOK HQ · Centro de misiones</strong><small>'+esc(hqLoaded?hqOperationalTasks().filter(t=>t.status==='pendiente').length+' pendientes · '+(hqRunsLoaded?hqRuns.filter(r=>r.state==='working').length+' en ejecución':'consultando ejecuciones'):'Tareas sin consultar')+'</small></div>';
     queueMicrotask(hqOfficeSync);
     const slot='<div data-hq-office-slot data-hq-focus="'+esc(hqRoom?selected[0]:'')+'" data-hq-meeting="'+meetingActive+'" style="padding:10px;min-height:120px"><p role="status" style="margin:0;color:#425970">Abriendo la oficina…</p></div>';
     const personButton=a=>{const st=states(a),p=HQ_PEOPLE[a[0]],leader=a[0]==='lider';
@@ -1427,16 +1510,16 @@
     const legend='<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;border-top:1px solid #e3ebf2;font-size:11px;color:#425970"><span>● IA no verificada o no disponible</span><span style="color:#87621c">● Tarea pendiente · sin iniciar</span><span style="color:#28765a">● Disponible</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div>';
     const office='<div data-hq-scene-shell aria-label="Plano interactivo de la oficina" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f6f9fb">'+missionBoard+'<p role="status" style="padding:8px 12px;margin:0">'+esc(activityText)+'</p>'+slot+roster+legend+'</div>';
     const person=HQ_PEOPLE[selected[0]];
-    const roomTasks=hqTasks.filter(t=>t.agent===selected[0]);
+    const roomTasks=hqOperationalTasks().filter(t=>t.agent===selected[0]);
     const room='<section data-hq-scene-shell aria-label="Oficina privada del empleado" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f3f7fa">'+
       '<header style="padding:12px;background:#112c43;color:#fff"><strong>Oficina privada · '+esc(person.name)+'</strong><small style="display:block">'+esc(person.role)+'</small></header>'+slot+
-      '<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>'+esc(person.name)+' · '+esc(person.animal)+'</strong><p>'+esc(person.skills)+'</p><small>'+esc(states(selected)[0])+'</small></div>'+
+      '<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>'+esc(person.name)+' · '+esc(person.avatar)+'</strong><p>'+esc(person.skills)+'</p><small>'+esc(states(selected)[0])+'</small></div>'+
       (selected[0]==='soporte'?'<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>Control preventivo · solo lectura</strong><p>Prioridad: todos los roles y los locales activos de GESTLOK Chat. Verificar accesos, stock, conteo, pagos, staff, historial y sincronización. Registrar evidencia y elevar a Alex; ninguna configuración o reparación automática.</p></div>':'')+
       '<div style="padding:12px;border-top:1px solid #cbd8e2"><strong>Proyectos del sector</strong><p>'+esc(hqLoaded?roomTasks.length+' registrados · '+roomTasks.filter(t=>t.status==='pendiente').length+' pendientes':'Sin consultar')+'</p>'+roomTasks.slice(0,5).map(t=>'<p style="overflow-wrap:anywhere;margin:6px 0">'+esc(t.status+' · '+t.instruction.slice(0,100))+'</p>').join('')+'</div></section>';
     const navigation='<div role="group" aria-label="Ambientes de GESTLOK HQ" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><button type="button" class="btn" data-ch-hq-room="general" aria-pressed="'+!hqRoom+'">Oficina general</button><button type="button" class="btn" data-ch-hq-room="private" aria-pressed="'+hqRoom+'">Oficina privada de '+esc(person.name)+'</button></div>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>GESTLOK HQ · La Oficina</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tu equipo de IA trabaja enfocado en GESTLOK Chat y en los locales activos. Caminan, toman café, charlan, hacen reuniones y anotan ideas: eso es animación. Lo que dicen sale de datos reales de los locales o de informes de IA registrados; los estados de ejecución corresponden únicamente a tareas reales. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos.</p>'+
-      navigation+(hqRoom?room:office)+hqExecutiveInbox()+hqSupportView()+
+      '<p>Tu equipo de asistentes con avatares humanos trabaja para GESTLOK y sus locales activos. Caminan, toman café, charlan, hacen reuniones y anotan ideas: eso es animación. Lo que dicen sale de datos reales de los locales o de informes de IA registrados; los estados de ejecución corresponden únicamente a tareas reales. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos.</p>'+
+      navigation+(hqRoom?room:office)+(hqRoom||hqMeetingRoom?hqChatView():'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button type="button" class="btn primary" data-hq-chat-open="meeting">Conversar en reunión</button><button type="button" class="btn" data-hq-chat-open="private">Hablar en privado con '+esc(person.name)+'</button></div>')+hqKnowledgeView()+hqExecutiveInbox()+hqSupportView()+
       '<h3 style="margin-top:20px">Centro de control</h3>'+
       '<div aria-label="Ficha del empleado" style="margin-top:8px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
@@ -1521,8 +1604,9 @@
     if(!premiumAdmin()||tab!=='locales')return;
     const f=ev.target?.closest?.('[data-ch-local-plan]');if(f&&ev.target.name==='numeros')localPlanDraftSave(f);
   });
-  document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
+  document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-chat-text')hqChatDrafts[hqChatKey()]=String(ev.target.value||'').slice(0,1200);if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-hq-chat-form]')){ev.preventDefault();void hqChatSend(ev.target.querySelector('textarea')?.value);return;}
     if(ev.target?.matches?.('[data-ch-local-plan]')){ev.preventDefault();void saveLocalChatPlan(ev.target);return;}
     if(ev.target?.matches?.('[data-ch-hq-form]')){
       ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
@@ -1537,6 +1621,9 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const chatOpen=ev.target.closest?.('[data-hq-chat-open]');if(chatOpen){ev.preventDefault();hqOpenConversation(chatOpen.dataset.hqChatOpen,hqAgent);return;}
+    const chatEnd=ev.target.closest?.('[data-hq-chat-end]');if(chatEnd){ev.preventDefault();if(hqAllowed()){hqMeetingRoom=false;api?.render();}return;}
+    const retry=ev.target.closest?.('[data-hq-chat-retry]');if(retry){ev.preventDefault();void hqChatSend('',retry.dataset.hqChatRetry);return;}
     const artifact=ev.target.closest?.('[data-ch-hq-download],[data-ch-hq-piece],[data-ch-hq-issue]');if(artifact){ev.preventDefault();hqDownloadArtifact(artifact.dataset.chHqDownload||artifact.dataset.chHqPiece||artifact.dataset.chHqIssue,artifact.dataset.chHqPiece?'piece':artifact.dataset.chHqIssue?'issue':'text');return;}
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
@@ -1548,8 +1635,8 @@
     const hqPush=ev.target.closest?.('[data-ch-hq-push]');if(hqPush){ev.preventDefault();void hqPushToggle(hqPush.dataset.chHqPush==='on');return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
     const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status)&&!(hqTasks.some(t=>t.id===hqClose.dataset.chHqClose&&t.agent==='lider')&&hqClose.dataset.status==='cerrada'&&!hqRuns.some(r=>r.task_id===hqClose.dataset.chHqClose&&r.state==='review')))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
-    const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';api?.render();}return;}
-    const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;api?.render();}return;}
+    const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';hqMeetingRoom=false;api?.render();}return;}
+    const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;hqMeetingRoom=false;api?.render();}return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
     if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
       if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
@@ -1647,3 +1734,4 @@
     dailyVisible, refreshDaily, dailySettingsView
   });
 })();
+
