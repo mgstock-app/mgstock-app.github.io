@@ -18,7 +18,6 @@ export const EMMA_SALUDO =
 
 export const EMMA_SUGERENCIAS = [
   "¿Qué es GESTLOK Chat?",
-  "¿Qué es GESTLOK WAI?",
   "¿Cómo funciona?",
   "Quiero ver la demo",
   "¿Cuánto cuesta?",
