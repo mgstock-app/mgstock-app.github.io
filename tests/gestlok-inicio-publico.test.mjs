@@ -24,6 +24,7 @@ test("el inicio publicita GESTLOK Chat con cuadros reales, contacto sin número 
   assert.match(home, /href="\/login\/">Ingresar</);
   assert.match(home, /href="\/login\/#registrarme">Registrarme</);
   assert.match(home, /Así funciona GESTLOK Chat/);
+  assert.match(home, /GESTLOK WAI/);
   assert.match(home, /Local, productos y precios de ejemplo/);
   assert.doesNotMatch(home, /Mi Gusto|Munro/);
   for (const img of ["1-bienvenida", "2-carta", "3-promo", "4-sugerencia", "5-gerente", "6-seguimiento"]) {
@@ -48,10 +49,12 @@ test("Emma responde los temas principales y deriva lo demás a Contacto", { skip
   assert.match(precio.texto, /\$ 70\.000 por mes para el primer local, con soporte incluido/);
   assert.match(precio.texto, /15% de descuento: \$ 59\.500/);
   assert.match(precio.texto, /\$ 50\.000, opcional/);
-  assert.match(precio.texto, /Premium cuesta \$ 150\.000 por mes/);
+  assert.match(precio.texto, /GESTLOK WAI cuesta \$ 150\.000 por mes/);
   assert.match(precio.texto, /Local adicional \(opcional\): \$ 50\.000 por mes por cada local adicional/);
   assert.equal(precio.registrarme, true);
-  const premium = responderEmma("¿Cuánto cuesta Premium?");
+  const premium = responderEmma("¿Cuánto cuesta GESTLOK WAI?");
+  assert.equal(responderEmma("¿Cuánto cuesta Premium?").texto, premium.texto);
+  assert.match(responderEmma("¿Qué es GESTLOK WAI?").texto, /GESTLOK WAI/);
   assert.match(premium.texto, /\$ 150\.000 por mes/);
   assert.match(premium.texto, /previa habilitación y verificación/);
   assert.equal(premium.contacto, true);
