@@ -48,7 +48,7 @@ begin
    if f->>'estado'<>'extras' or not exists(select 1 from jsonb_array_elements(f->'selecciones'->1->'valores') x where x->>'id'='crema_de_ajo' and x->>'cantidad'='2') then raise exception 'Salsas repetidas no registradas: %',f;end if;
    if pack=12 and not exists(select 1 from jsonb_array_elements(f->'selecciones'->1->'valores') x where x->>'id'='cheddar' and x->>'cantidad'='1') then raise exception 'Mezcla de salsas no registrada';end if;
    if (select count(*) from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='agente-voto:'||pollid||':salsas')<>1 then raise exception 'Voto duplicado';end if;
-   foreach paso in array array['No gracias','Continuar con el pedido','Cliente ficticio','Delivery','Calle Ejemplo 123, Localidad','transferencia','Confirmar mi pedido'] loop
+   foreach paso in array array['No gracias','Cliente ficticio','Delivery','Calle Ejemplo 123 entre Calle A y Calle B','transferencia','Confirmar mi pedido'] loop
     e=e+1;
     insert into gestlok_chat_private.wai_mensajes(piloto_id,direccion,texto,estado,evento,jid,ciclo_id)
     values(p.id,'entrada',paso,'recibido','qa:'||e,tester_jid,ci) returning * into m;
@@ -56,6 +56,9 @@ begin
     update gestlok_chat_private.wai_mensajes set agente_procesado_at=now() where id=m.id;
    end loop;
 
+   select ficha into f from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id;
+   if f->>'nombre'<>'Cliente ficticio' or f->>'direccion'<>'Calle Ejemplo 123' or f->>'entrecalles'<>'Calle A y Calle B' or f->>'estado'<>'pendiente' then raise exception 'Datos entrega incorrectos: %',f;end if;
+   if exists(select 1 from gestlok_chat_private.wai_pedidos where hilo_id=p.id) then raise exception 'El bot confirmó sin gerente';end if;
    if not public.gestlok_chat_wai_pedido(s.id,p.id,'transferencia',null,null,2,gen_random_uuid()) then raise exception 'Falló datos de transferencia';end if;
    if not exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento like 'transferencia:%' and strpos(texto,s.datos_transferencia)>0) then raise exception 'Datos incorrectos';end if;
    if not public.gestlok_chat_wai_pedido(s.id,p.id,'aceptar',null,null,2,gen_random_uuid()) then raise exception 'No se aceptó';end if;
@@ -66,18 +69,22 @@ begin
    if not coalesce((public.gestlok_chat_wai_piloto_motor(h,llave,rev,'resultado',p.id,tester_jid,'qa-preparacion',null,m.id,'aceptado')->>'ok')::boolean,false) then raise exception 'Resultado no recibido';end if;
    select * into m from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='pedido:'||o.id||':resena';
    if m.id is null or m.interaccion->>'tipo'<>'resena' then raise exception 'Falta reseña al aceptar';end if;
-   update gestlok_chat_private.wai_mensajes set estado='aceptado',wa_id='qa-resena',wa_ruta=tester_jid where id=m.id;
+   update gestlok_chat_private.wai_mensajes set estado='reservado',reservado_at=clock_timestamp() where id=m.id;
+   if not coalesce((public.gestlok_chat_wai_piloto_motor(h,llave,rev,'resultado',p.id,tester_jid,'qa-resena',null,m.id,'aceptado')->>'ok')::boolean,false) then raise exception 'Reseña no confirmada';end if;
+   if not exists(select 1 from gestlok_chat_private.wai_ciclos where id=ci and cerrado_at is not null and motivo='resena') or not exists(select 1 from gestlok_chat_private.wai_pedidos where id=o.id and atencion_finalizada_at is not null and estado='preparacion') then raise exception 'No cerró tras invitación (sin fingir entrega)';end if;
+   if not public.gestlok_chat_wai_pedido(s.id,p.id,'transferencia',null,null,2,gen_random_uuid()) then raise exception 'Transferencia posterior al cierre no disponible';end if;
    if not coalesce((public.gestlok_chat_wai_piloto_motor(h,llave,rev,'voto',p.id,tester_jid,'qa-resena','resena_si')->>'ok')::boolean,false) then raise exception 'Voto reseña rechazado';end if;
    if not exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='pedido:'||o.id||':resena:link' and strpos(texto,s.mensajes->>'resena_url')>0) then raise exception 'Link incorrecto';end if;
    perform public.gestlok_chat_wai_pedido(s.id,p.id,'listo',o.id,null,2,gen_random_uuid());
-   perform public.gestlok_chat_wai_pedido(s.id,p.id,'entregado',o.id,null,2,gen_random_uuid());
+   perform gestlok_chat_private.wai_pedido_tick(p);
+   if exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento like 'pedido:%:consulta' and cancelada_at is null) then raise exception 'Encuesta no solicitada';end if;
    select * into o from gestlok_chat_private.wai_pedidos where id=o.id;
    perform gestlok_chat_private.wai_resena_invitar(p,o);
    if (select count(*) from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='pedido:'||o.id||':resena')<>1 then raise exception 'Reseña duplicada';end if;
    raise exception using errcode='ZX001',message='Rollback de fixture exitoso';
-  exception when sqlstate 'ZX001' then raise notice '%: salsas, transferencia, demora y reseña OK (revertido)',s.slug;end;
+  exception when sqlstate 'ZX001' then raise notice '%: salsas, transferencia, demora y cierre OK (revertido)',s.slug;end;
   end loop;
  end loop;
 end
 $test$;
-select 'Pack 6 y pack 12: salsas, transferencia, demora y reseña OK en ambas sucursales' as resultado;
+select 'Pack 6 y pack 12: pedido, transferencia, cierre y reseña OK en ambas sucursales' as resultado;

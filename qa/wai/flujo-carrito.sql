@@ -24,7 +24,7 @@ begin
    values(h,s.id,phone,u,now()+interval '25 minutes') returning * into p;
    insert into gestlok_chat_private.wai_ciclos(hilo_id) values(p.id) returning id into ci;
    insert into gestlok_chat_private.wai_atencion_hilos(hilo_id,ciclo_id,ultima_carta) values(p.id,ci,'carta_empanadas_promos');
-   foreach paso in array array['Pack 6','6 Jamón y Queso','2 Cheddar','salsa adicional','Crema de ajo','Agregar otro producto','Promociones de empanadas','Pack 8','8 Carne Suave','2 Criolla','No gracias','Continuar con el pedido','Cliente ficticio','Delivery','Calle Ejemplo 123, Localidad','transferencia','Confirmar mi pedido'] loop
+   foreach paso in array array['Pack 6','6 Jamón y Queso','2 Cheddar','salsa adicional','Crema de ajo','Agregar otro producto','Promociones de empanadas','Pack 8','8 Carne Suave','2 Criolla','No gracias','Cliente ficticio','Delivery','Calle Ejemplo 123 entre Calle A y Calle B','transferencia','Confirmar mi pedido'] loop
     e=e+1;
     insert into gestlok_chat_private.wai_mensajes(piloto_id,direccion,texto,estado,evento,jid,ciclo_id)
     values(p.id,'entrada',paso,'recibido','qa:'||e,tester_jid,ci) returning * into m;
@@ -39,19 +39,18 @@ begin
     perform public.gestlok_chat_wai_pedido(s.id,p.id,'aceptar',null,null,2,gen_random_uuid());
     raise exception using errcode='ZX002',message='Se aceptó dos veces';
    exception when raise_exception then null;end;
-   perform public.gestlok_chat_wai_pedido(s.id,p.id,'listo',o.id,null,2,gen_random_uuid());
-   perform public.gestlok_chat_wai_pedido(s.id,p.id,'entregado',o.id,null,2,gen_random_uuid());
-   select * into o from gestlok_chat_private.wai_pedidos where id=o.id;
-   if o.estado<>'entregado' then raise exception 'No entregado';end if;
-   -- Simulate a transport acceptance, not physical WhatsApp delivery.
-   update gestlok_chat_private.wai_mensajes set estado='aceptado',reservado_at=now()-interval '25 minutes',wa_id='qa-entregado',wa_ruta=tester_jid where piloto_id=p.id and evento='pedido:'||o.id||':entregado';
+   -- Simulate transport acceptance; no physical delivery or satisfaction poll.
+   update gestlok_chat_private.wai_mensajes set estado='aceptado',reservado_at=clock_timestamp(),wa_id='qa-preparacion',wa_ruta=tester_jid where piloto_id=p.id and evento='pedido:'||o.id||':preparacion';
    if not gestlok_chat_private.wai_resena_invitar(p,o) then raise exception 'No se pudo encolar la reseña';end if;
-   if not exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento='pedido:'||o.id||':resena') then raise exception 'Falta la invitación de reseña: %',s.slug;end if;
-   update gestlok_chat_private.wai_pedidos set consulta_at=now()-interval '1 minute' where id=o.id;
+   update gestlok_chat_private.wai_mensajes set estado='aceptado',reservado_at=clock_timestamp(),wa_id='qa-resena',wa_ruta=tester_jid where piloto_id=p.id and evento='pedido:'||o.id||':resena';
    perform gestlok_chat_private.wai_pedido_tick(p);
-   update gestlok_chat_private.wai_mensajes set estado='aceptado',wa_id='qa-encuesta',wa_ruta=tester_jid where piloto_id=p.id and evento='pedido:'||o.id||':consulta';
-   if not coalesce((gestlok_chat_private.wai_recibir_voto(p,tester_jid,'qa-encuesta','problema')->>'ok')::boolean,false) then raise exception 'Voto de reclamo no registrado';end if;
+   if not exists(select 1 from gestlok_chat_private.wai_ciclos where id=ci and cerrado_at is not null and motivo='resena') then raise exception 'No cerró después de reseña';end if;
+   perform public.gestlok_chat_wai_pedido(s.id,p.id,'listo',o.id,null,2,gen_random_uuid());
+   if exists(select 1 from gestlok_chat_private.wai_mensajes where piloto_id=p.id and evento like 'pedido:%:consulta') then raise exception 'Consulta no solicitada';end if;
+   insert into gestlok_chat_private.wai_mensajes(piloto_id,direccion,texto,estado,evento,jid) values(p.id,'entrada','Tuve un problema','recibido','qa-reclamo',tester_jid) returning * into m;
+   if not gestlok_chat_private.wai_postventa_texto(p,m.id,m.texto) then raise exception 'No reconoce reclamo';end if;
    perform gestlok_chat_private.wai_pedido_tick(p);
+   select ciclo_id into ci from gestlok_chat_private.wai_atencion_hilos where hilo_id=p.id;
    if not exists(select 1 from gestlok_chat_private.wai_pedidos x join gestlok_chat_private.wai_atencion_hilos a on a.hilo_id=x.hilo_id where x.id=o.id and x.valoracion='problema' and a.pendiente and a.manual and x.respuesta_encolada_at is not null) then raise exception 'Reclamo no escalado';end if;
    perform public.gestlok_chat_wai_pedido(s.id,p.id,'resolver',o.id,null,2,gen_random_uuid());
    perform public.gestlok_chat_wai_atencion_accion(s.id,p.id,'finalizar',gen_random_uuid());
