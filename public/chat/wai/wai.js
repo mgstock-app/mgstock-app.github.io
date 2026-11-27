@@ -24,7 +24,7 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 const readBusy=new Set();
-let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,orderBusy=false,orderSignature="";
+let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,orderBusy=false,orderSignature="",orderMenuOpen=false;
 let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
@@ -109,13 +109,13 @@ function renderShell(){
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
   node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{class:'inbox-title'},'Conversaciones',unreadSummary),search),list),
-   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,historyNotice,orderHost,orderStatus,thread,messageActionHost,compose)),overlay);
+   node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,historyNotice,thread,messageActionHost,orderHost,orderStatus,compose)),overlay);
  root.replaceChildren(shell);renderList();renderThread(true);
 }
 function selection(id){
  cancelMessageAction();
  if(selected&&textarea)drafts.set(selected,textarea.value);
- selected=id;orderSignature='';if(orderStatus){orderStatus.hidden=true;orderStatus.textContent='';}shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
+ selected=id;orderSignature='';orderMenuOpen=false;if(orderStatus){orderStatus.hidden=true;orderStatus.textContent='';}shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
 }
 function displayName(c){return c?.alias||c?.nombre_agenda||c?.cliente||'';}
 function unreadIds(c){return (c?.mensajes||[]).filter(m=>m.direccion==='entrada'&&m.leido===false).map(m=>m.id);}
@@ -124,9 +124,9 @@ function renderList(){
  const total=chats.reduce((n,c)=>n+unreadIds(c).length,0);
  if(unreadSummary){unreadSummary.hidden=!total;unreadSummary.textContent=total?total+' sin leer':'';}
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
- list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)||Number(!!b.atencion_pendiente)-Number(!!a.atencion_pendiente)).map(c=>{
+ list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)||Number(!!b.pedido_pendiente)-Number(!!a.pedido_pendiente)||Number(!!b.atencion_pendiente)-Number(!!a.atencion_pendiente)).map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':c.atencion_pendiente?' needs-human':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):c.atencion_pendiente?node('span',{class:'human-label'},'Solicita atención humana'):null,c.cerrado_at?node('span',{class:'history-label'},'Finalizado · historial guardado'):c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':c.pedido_pendiente?' order-pending':c.atencion_pendiente?' needs-human':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):c.pedido_pendiente?node('span',{class:'pending-order-label'},'Pedido para confirmar'):c.atencion_pendiente?node('span',{class:'human-label'},'Solicita atención humana'):null,c.cerrado_at?node('span',{class:'history-label'},'Finalizado · historial guardado'):c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
@@ -178,6 +178,7 @@ function renderMessage(c,m){
  if(m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
+   !m.eliminado&&m.imagen_url?node('a',{href:m.imagen_url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar foto de la carta'},node('img',{class:'wai-menu-photo',src:m.imagen_url,alt:'Foto de la carta',loading:'lazy',referrerpolicy:'no-referrer'})):null,
    node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
    !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(m.interaccion.seleccion===o.id?' chosen':'')},(m.interaccion.seleccion===o.id?'✓ ':'○ ')+o.label))):null,
    node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
@@ -259,7 +260,7 @@ async function showOrderPhoto(c,o){
 async function attentionAction(c,a){
  if(orderBusy||selected!==c.id||!sessionLocal)return;
  const me=generation,chat=c.id;orderBusy=true;orderSignature='';renderOrder(c);
- try{const ok=await rpc('wai_atencion_accion',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:a,p_evento:crypto.randomUUID()});if(ok!==true)throw Error('No se confirmó la solicitud.');if(me===generation){if(selected===chat)orderMessage(a==='finalizar'?'Conversación finalizada. Historial conservado.':a==='enviar'?'Opciones en cola para WhatsApp.':a==='manual'?'Atención manual. Respuestas del menú pausadas.':a==='asistido'?'Atención asistida reactivada.':'Solicitud atendida.');await refresh();}}
+ try{const ok=await rpc('wai_atencion_accion',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:a,p_evento:crypto.randomUUID()});if(ok!==true)throw Error('No se confirmó la solicitud.');if(me===generation){if(selected===chat)orderMessage(a==='finalizar'?'Conversación finalizada. Historial conservado.':a==='descartar_pedido'?'Pedido pendiente descartado. El historial se conserva.':a==='enviar'?'Opciones en cola para WhatsApp.':a==='manual'?'Atención manual. Respuestas del menú pausadas.':a==='asistido'?'Atención asistida reactivada.':'Solicitud atendida.');await refresh();}}
  catch(e){if(me===generation&&selected===chat)orderMessage(e.message);}
  finally{if(me===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
 }
@@ -267,38 +268,46 @@ function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
  const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.atencion_manual,c.atencion_pendiente,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at]);
+ const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready||!!c.cerrado_at;
- const transfer=button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Envía los datos de Ajustes al contacto':'Cargá los datos en Ajustes del local'});
- const actions=node('div',{class:'order-actions'},transfer);
- const attention=node('div',{class:'order-actions'},
-  button('Enviar opciones',()=>void attentionAction(c,'enviar'),'btn order-btn',{disabled:disabled||!c.opciones_activas,title:c.opciones_activas?'Enviar opciones configuradas al chat de WhatsApp':'Actualizá el conector privado para activar las opciones'}),
-  button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>void attentionAction(c,c.atencion_manual?'asistido':'manual'),'btn order-btn',{disabled:orderBusy||!!c.cerrado_at||!c.agente_activo}),
-  button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? El historial se conserva y un mensaje nuevo reabrirá la conversación.'))void attentionAction(c,'finalizar');},'btn order-btn',{disabled:orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||orders.some(o=>o.estado!=='entregado'||o.valoracion==='problema'&&!o.resuelto)}),
-  c.atencion_pendiente?button('Marcar atendido',()=>void attentionAction(c,'atendido'),'btn order-btn',{disabled:orderBusy}):null);
- const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Atención'),node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente desactivado')),attention,
-  c.pedidos_habilitados!==false||last?node('div',{class:'order-heading'},node('strong',{},'Pedido del cliente'),last?node('span',{class:'order-state'},orderLabels[last.estado]||last.estado):node('span',{class:'hint'},'Sin pedido registrado')):null,actions);
- if(c.archivado)panel.append(node('small',{class:'hint'},'Ensayo vencido. En Vincular, autorizá al contacto para probar opciones y respuestas.'));
- if(!c.opciones_activas&&ready)panel.append(node('small',{class:'hint'},'Opciones en WhatsApp: conector actualizado requerido.'));
- if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)){
-  const mode=c.modalidad_detectada==='retiro'?'Retiro en el local':c.modalidad_detectada==='delivery'?'Delivery':null;
-  actions.append(node('span',{class:'order-detected'+(mode?' confirmed':'')},mode?'Modalidad detectada: '+mode:'Esperando que el cliente confirme retiro o delivery'));
-  actions.append(button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn',{disabled:disabled||!mode}));
-  panel.append(node('small',{class:'hint'},'Consulta de satisfacción: '+(c.seguimiento_min||2)+' min · se configura en Ajustes del local.'));
+ const activeOrder=last&&last.estado!=='entregado',modeKey=activeOrder?last.modalidad:c.modalidad_detectada;
+ const mode=modeKey==='retiro'?'Retiro':modeKey==='delivery'?'Delivery':null;
+ const status=c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente apagado';
+ const closeDisabled=orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'||o.valoracion==='problema'&&!o.resuelto);
+ const menu=node('details',{class:'wai-order-menu',open:orderMenuOpen,ontoggle:e=>{if(e.currentTarget.isConnected)orderMenuOpen=e.currentTarget.open;}});
+ const options=node('div',{class:'wai-order-popover'},node('strong',{},'Gestionar conversación'),
+   node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},status),
+   button('Enviar opciones',()=>{menu.open=false;void attentionAction(c,'enviar');},'btn order-btn',{disabled:disabled||!c.opciones_activas}),
+   button('Enviar datos de transferencia',()=>{menu.open=false;void orderAction(c,'transferencia');},'btn order-btn',{disabled:disabled||!c.transferencia_configurada}),
+   button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>{menu.open=false;void attentionAction(c,c.atencion_manual?'asistido':'manual');},'btn order-btn',{disabled:orderBusy||!!c.cerrado_at||!c.agente_activo}),
+   c.atencion_pendiente?button('Marcar atendido',()=>{menu.open=false;void attentionAction(c,'atendido');},'btn order-btn',{disabled:orderBusy}):null,
+   c.pedido_pendiente?button('Descartar pedido pendiente',()=>{if(confirm('¿Descartar esta solicitud sin borrar sus mensajes?')){menu.open=false;void attentionAction(c,'descartar_pedido');}},'btn order-btn danger',{disabled:orderBusy}):null,
+   button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? Un mensaje nuevo reabrirá el chat con su historial.')){menu.open=false;void attentionAction(c,'finalizar');}},'btn order-btn',{disabled:closeDisabled}),
+   node('small',{class:'hint'},'Consulta de satisfacción: '+(c.seguimiento_min||2)+' min · Ajustes WAI.'),
+   !c.transferencia_configurada?node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'):null,
+   ready&&!c.imagenes_activas?node('small',{class:'hint'},'Fotos de carta: actualizá el conector privado para enviarlas como imagen.'):null,
+   c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
+   last?.consulta_at?node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_vencida?'Consulta fuera del ensayo.':last.consulta_encolada?'Consulta registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)):null);
+ menu.append(node('summary',{class:'wai-manage','aria-label':'Más opciones de la conversación',title:'Gestionar conversación'},'⋯'),options);
+ const info=node('div',{class:'wai-order-info'},node('strong',{},activeOrder?orderLabels[last.estado]||last.estado:c.pedido_pendiente?'Pedido para confirmar':last?.estado==='entregado'?'Pedido entregado':'Atención al cliente'),
+   mode?node('span',{class:'order-detected confirmed'},mode):null,
+   !mode&&c.pedido_pendiente?node('small',{class:'hint'},'Esperando modalidad'):null,
+   c.pedido_pendiente&&c.pedido_texto?node('small',{class:'wai-order-draft',title:c.pedido_texto},c.pedido_texto):null);
+ let next=null;
+ if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)&&mode&&!c.cerrado_at){
+   next=button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn order-main',{disabled});
  }else if(last?.estado==='preparacion'){
-  actions.append(button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn',{disabled}));
+   next=button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn order-main',{disabled});
  }else if(['listo','en_camino'].includes(last?.estado)){
-  actions.append(button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn',{disabled}));
+   next=button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn order-main',{disabled});
  }
- if(!c.resena_configurada&&last&&last.estado!=='entregado')panel.append(node('small',{class:'hint'},'Reseñas: configurá el enlace en Ajustes.'));
- if(!c.transferencia_configurada)panel.append(node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'));
- if(last?.consulta_at)panel.append(node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_vencida?'Consulta fuera del ensayo autorizado.':last.consulta_encolada?'Consulta de satisfacción registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)+' · se envía con WhatsApp conectado.'));
+ const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,next,menu);
+ const content=[panel];
  for(const issue of issues){
-  const box=node('div',{class:'order-complaint'},node('strong',{},'⚠ Tuvo un problema con su pedido'),issue.detalle?node('p',{},issue.detalle):node('small',{},'Esperando los detalles del cliente.'),node('div',{class:'order-actions'},issue.tiene_foto?button('Ver foto del reclamo',()=>void showOrderPhoto(c,issue),'btn order-btn'):null,button('Marcar reclamo resuelto',()=>{if(confirm('¿El reclamo ya fue atendido?'))void orderAction(c,'resolver',issue);},'btn order-btn',{disabled:orderBusy})));
-  panel.append(box);
+  content.unshift(node('div',{class:'order-complaint compact'},node('strong',{},'⚠ Problema con el pedido'),issue.detalle?node('p',{},issue.detalle):null,node('div',{class:'order-actions'},issue.tiene_foto?button('Ver foto',()=>void showOrderPhoto(c,issue),'btn order-btn'):null,button('Resolver reclamo',()=>{if(confirm('¿El reclamo ya fue atendido?'))void orderAction(c,'resolver',issue);},'btn order-btn',{disabled:orderBusy}))));
  }
- orderHost.replaceChildren(panel);
+ orderHost.replaceChildren(...content);
 }
 function renderThread(force=false){
  const c=chats.find(x=>x.id===selected);

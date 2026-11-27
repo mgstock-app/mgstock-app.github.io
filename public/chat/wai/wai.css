@@ -152,3 +152,25 @@ a{color:#087a98}
 .order-detected{display:inline-flex;align-items:center;color:#647b8c;font-size:.79rem;font-weight:600;padding:7px 9px;border-radius:8px;background:#eef4f7}
 .order-detected.confirmed{color:#19624e;background:#e1f2e9}
 .cycle-divider{align-self:center;margin:12px auto;padding:5px 12px;border-radius:999px;background:#e8f2f7;border:1px solid #c4dbe7;color:#506b80;font-size:.75rem;font-weight:600;text-align:center}
+
+/* The conversation owns the available height; the order action stays by the composer. */
+.order-host{position:relative;overflow:visible;max-height:none;border-top:1px solid #d6e4ec;border-bottom:0;z-index:2}
+.wai-order-strip{display:flex;align-items:center;gap:10px;padding:7px 15px;min-height:51px;background:#fff}
+.wai-order-strip.wai-order-alert{background:#eef9f2;border-left:4px solid #27835b}
+.wai-order-info{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1;font-size:12px}
+.wai-order-info strong{font-size:12px;white-space:nowrap}
+.wai-order-strip .order-detected{font-size:11px;padding:3px 7px}
+.wai-order-draft{flex-basis:100%;display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#48685b}
+.wai-order-strip .order-main{flex:none;font-size:12px;min-height:37px;box-shadow:0 2px 7px #16788d19}
+.wai-order-menu{position:relative;flex:none}
+.wai-manage{list-style:none;cursor:pointer;display:grid;place-items:center;color:#28546d;border:1px solid #cbdde7;border-radius:9px;width:37px;height:36px;font-size:23px;line-height:1;background:white}
+.wai-manage::-webkit-details-marker{display:none}
+.wai-order-popover{position:absolute;bottom:calc(100% + 10px);right:0;width:min(280px,75vw);background:#fff;border:1px solid #c9dce6;border-radius:13px;box-shadow:0 7px 28px #17384c25;padding:12px;display:grid;gap:7px;max-height:min(52vh,420px);overflow:auto;z-index:6;font-size:12px}
+.wai-order-popover .btn{justify-content:flex-start;text-align:left;min-height:33px}
+.wai-order-popover .order-state{justify-self:start}
+.wai-order-popover .hint{font-size:11px;color:#5f7889;margin:0}
+.order-complaint.compact{max-height:100px;overflow:auto;border-radius:0;padding:7px 12px;gap:4px}
+.chat-row.order-pending,.chat-row.order-pending[aria-current=true]{background:#ecf8ef;border-color:#cde9d4;box-shadow:inset 4px 0 #328356}
+.pending-order-label{display:block;color:#267444;font-size:11px;font-weight:800;margin-top:5px}
+.wai-menu-photo{display:block;max-width:100%;max-height:min(430px,54vh);object-fit:contain;border-radius:9px;margin-bottom:8px}
+@media(max-width:680px){.wai-order-strip{gap:6px;padding:6px 9px}.wai-order-strip .order-main{font-size:11px;white-space:normal;max-width:58%;padding:7px 8px}.wai-order-info strong{white-space:normal}.wai-order-info{gap:4px}.wai-order-menu{margin-left:auto}.wai-order-popover{max-height:55vh}}
