@@ -42,11 +42,11 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-push.js?rev=hq-push-20261125",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123",
-    "/stock/gestlok-chat-central.js?rev=chat-pedidos-20261126",
+    "/stock/gestlok-chat-central.js?rev=chat-wai-20261127",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
-    "/stock/gestlok-creator-home.js?rev=plan-chat-local-20261126",
+    "/stock/gestlok-creator-home.js?rev=wai-autogestion-20261127",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -88,7 +88,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123");
       if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=recuperar-noche-20261117");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=conteo-cierre-sin-stock-20261123");
-      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-pedidos-20261126");
+      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-wai-20261127");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
@@ -114,7 +114,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
-      await load("/stock/gestlok-creator-home.js?rev=plan-chat-local-20261126");
+      await load("/stock/gestlok-creator-home.js?rev=wai-autogestion-20261127");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");

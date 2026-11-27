@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261126pedidos1';
+  const VERSION_CSS = '20261127wai1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -188,7 +188,7 @@
       try {
         const a=await rpc('panel_config',{p_sucursal:ADMIN_CONFIG});
         if(!a.administradora_chat)throw Error('Configuración administrativa exclusiva de la creadora.');
-        S.suc={id:ADMIN_CONFIG,nivel:a.nivel,nombre:a.nombre,slug:a.slug}; S.pestana='ajustes';
+        S.suc={id:ADMIN_CONFIG,nivel:a.nivel,nombre:a.nombre,slug:a.slug}; S.pestana=new URLSearchParams(location.search).get('seccion')==='excluidos'?'excluidos':'ajustes';
         $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
         $('panel').setAttribute('aria-busy','false'); $('comandas-resumen')?.remove();
         $('navegacion-panel').hidden=false; mostrar(); return;
@@ -223,8 +223,9 @@
     }
   }
   function seccionPermitida(pestana) {
-    if (ADMIN_CONFIG) return ['ajustes','carta','mensajes'].includes(pestana);
-    if (['whatsapp','excluidos'].includes(pestana)) return puede('gestionar')&&!DEMO;
+    if (ADMIN_CONFIG) return ['ajustes','carta','mensajes','excluidos'].includes(pestana)&&puede('configurar');
+    if (pestana==='excluidos') return puede('configurar')&&!DEMO;
+    if (pestana==='whatsapp') return puede('gestionar')&&!DEMO;
     if (['charlas','soporte','clientes'].includes(pestana)) return puede('gestionar');
     if (['ajustes','mensajes'].includes(pestana)) return puede('ver');
     return !!grupoDe(pestana);
@@ -1286,25 +1287,25 @@
   const numeroInternacional = v => String(v || '').trim().replace(/[\s()-]/g,'');
   const claveExclusion = v => numeroInternacional(v).replace(/^\+54(?:9)?([0-9]{10})$/,'AR:$1');
   async function verExcluidos() {
-    if (!puede('gestionar')) return;
+    if (!puede('configurar')) return;
     const id = S.suc.id;
-    const numero = el('input',{id:'excluidos-numero',type:'tel',inputmode:'tel',autocomplete:'off',maxlength:40,required:true,placeholder:'+54 9 11 0000 0000'});
+    const numero = el('input',{id:'excluidos-numero',type:'tel',inputmode:'tel',autocomplete:'off',maxlength:40,required:true,placeholder:'+5491100000000'});
     const nombre = el('input',{id:'excluidos-nombre',type:'text',autocomplete:'off',maxlength:60,placeholder:'Dueña, gerente, proveedor…'});
-    const agregar = el('button',{class:'boton principal',type:'submit',text:'Agregar número',disabled:true});
+    const agregar = el('button',{class:'boton principal',type:'submit',text:'Agregar a exclusiones',disabled:true});
     const estado = el('p',{role:'status','aria-live':'polite',class:'nota',text:'Cargando números…'});
     const lista = el('div',{id:'excluidos-lista',class:'excluidos-lista'});
     const form = el('form',{class:'excluidos-form',onsubmit:e=>{
       e.preventDefault();
       const n=numeroInternacional(numero.value);
-      if(!/^\+[1-9]\d{7,14}$/.test(n)){estado.textContent='Ingresá el número completo con código de país (+54 9 para celulares argentinos).';return;}
+      if(!/^\+[1-9]\d{7,14}$/.test(n)||(n.startsWith('+54')&&!/^\+54(9)?\d{10}$/.test(n))){estado.textContent='Ingresá el número internacional completo. Argentina: +549 y 10 dígitos para celulares, o +54 y 10 dígitos para líneas fijas.';return;}
       void trabajar('agregar',n,nombre.value.trim());
-    }},campo('Número de WhatsApp (con código de país)',numero),campo('Referencia (opcional)',nombre),agregar);
+    }},campo('Número de WhatsApp (con código de país)',numero),el('p',{class:'nota',text:'Ejemplo: +5491100000000. No uses 0 ni 15 de la marcación local.'}),campo('Referencia (opcional)',nombre),agregar);
     const caja = el('section',{class:'bloque excluidos-panel'},el('h2',{text:'Números excluidos · '+S.suc.nombre}),
       el('p',{class:'nota',text:'El asistente no procesa ni responde mensajes de estos números por WhatsApp. Podés conversar normalmente desde WhatsApp: no se bloquea el contacto. La lista es privada de esta sucursal y no activa el canal.'}),
       DEMO?el('p',{class:'nota',text:'Demostración: usá números ficticios. Los cambios no se guardan en el servidor.'}):null,
       form,estado,lista);
     poner(contenido,caja);
-    const vigente=()=>caja.isConnected&&S.suc?.id===id&&S.pestana==='excluidos'&&puede('gestionar');
+    const vigente=()=>caja.isConnected&&S.suc?.id===id&&S.pestana==='excluidos'&&puede('configurar');
     let ocupado=false,cargado=false;
     function bloquear(){
       form.querySelectorAll('input,button').forEach(n=>{n.disabled=ocupado||!cargado;});

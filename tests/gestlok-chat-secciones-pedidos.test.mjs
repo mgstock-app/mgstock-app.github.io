@@ -11,7 +11,7 @@ test('la Central agrupa las herramientas existentes y conserva los avisos',()=>{
   for(const item of ['pedidos','whatsapp','reporte','stock','clientes','ajustes','carta','mensajes','excluidos','soporte'])assert.ok(js.includes("['"+item+"',"));
   assert.match(js,/id:'globo'/);
   assert.match(js,/id:'globo-soporte'/);
-  assert.match(js,/ADMIN_CONFIG\) return \['ajustes','carta','mensajes'\]\.includes\(pestana\)/);
+  assert.match(js,/ADMIN_CONFIG\) return \['ajustes','carta','mensajes','excluidos'\]\.includes\(pestana\)/);
 });
 test('cada estado tiene un color diferente, etiqueta y filtro',()=>{
   const colores=new Set();

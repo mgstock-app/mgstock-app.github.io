@@ -12,29 +12,34 @@ function fixture(role=true,email='kmu15lopez@gmail.com'){
     {tenant_id:'b',local_id:'uno',nombre:'Local B',sucursal_id:'chat-b'}];
   const numeros=[{id:'num-b',tenant_id:'b',local_id:'uno',habilitada:true,local_existe:true}];
   const calls=[],messages=[],handlers={},storage=new Map();
+  let providerReady=false;const connections={};
   const win={confirm:()=>true,scrollTo(){},sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
     GestLokOwnerAreas:{creatorCompanies:()=>companies,companyFolders:()=>''},
-    GestLokSupabase:{rpc:async(name,args={})=>{
+    GestLokSupabase:{functions:{invoke:async(name,{body})=>{calls.push({name,args:body});return {data:body.action==='status'?{ready:providerReady,manualReady:false,automation:false}:{onboardingUrl:'https://connect.ycloud.com/open/whatsapp/onboard#token=fake-test',expiresAt:Date.now()+60000}};}},rpc:async(name,args={})=>{
       calls.push({name,args:JSON.parse(JSON.stringify(args))});
       if(name==='gestlok_creator_dashboard')return {data:{scope:'creator_dashboard',generated_at:'2026-11-26T12:00:00Z',totals:{companies:2,locals:3},series:[],recent_companies:[]}};
       if(name==='gestlok_creator_microapps')return {data:[]};
       if(name==='gestlok_chat_admin_empresas')return {data:companies.map(c=>({tenant_id:c.tenant_id,nombre:c.name,habilitada:true,sucursales:[]}))};
       if(name==='gestlok_chat_admin_habilitar'){locales.find(l=>l.tenant_id===args.p_tenant&&l.local_id===args.p_sucursales[0].local_id).sucursal_id='created';return {data:{ok:true}};}
+      if(name==='gestlok_chat_admin_whatsapp_conexiones')return {data:connections};
       if(name==='gestlok_chat_admin_whatsapp_premium'){
-        if(args.p_accion==='agregar')numeros.push({id:'added',tenant_id:args.p_tenant,local_id:args.p_local,habilitada:true,local_existe:true});
+        if(args.p_accion==='agregar')numeros.push({id:'added',tenant_id:args.p_tenant,local_id:args.p_local,numero:args.p_numeros[0],nombre:'Local A',habilitada:true,local_existe:true});
         if(args.p_accion==='estado')numeros.find(n=>n.id===args.p_id).habilitada=args.p_habilitada;
         return {data:{locales,numeros}};
       }
       return {error:{message:'not mocked'}};
     }}};
   const document={addEventListener(n,fn){(handlers[n]??=[]).push(fn);},visibilityState:'visible'};
-  vm.runInNewContext(src,{window:win,document,Date,queueMicrotask,setInterval:()=>0,clearInterval(){}});
+  vm.runInNewContext(src,{window:win,document,Date,URL,URLSearchParams,queueMicrotask,setInterval:()=>0,clearInterval(){}});
   const h=win.GestLokCreatorHome;
   h.attach({S:{me:{email,tenant_id:'a'}},isCreadora:()=>role,render(){},toast:m=>messages.push(m)});
   const emit=(name,event)=>handlers[name]?.forEach(fn=>fn(event));
   const submit=(tenant,local,plan,numbers='')=>emit('submit',{preventDefault(){},target:{
     matches:s=>s==='[data-ch-local-plan]',dataset:{tenant,local},elements:{plan:{value:plan},numeros:{value:numbers}}}});
-  return {h,submit,calls,numeros,messages,locales};
+  const waSubmit=(tenant,local,numbers)=>emit('submit',{preventDefault(){},target:{matches:s=>s==='[data-ch-wa-form]',elements:{local:{value:JSON.stringify([tenant,local])},numeros:{value:numbers}}}});
+  const click=(attr,dataset)=>emit('click',{preventDefault(){},target:{closest:s=>s==='['+attr+']'?{dataset}:null}});
+  const select=(tenant,local)=>emit('change',{target:{id:'gl-wa-local',value:JSON.stringify([tenant,local])}});
+  return {h,submit,calls,numeros,messages,locales,waSubmit,click,select,setProvider:v=>providerReady=v,connections};
 }
 const writes=f=>f.calls.filter(c=>c.name==='gestlok_chat_admin_habilitar'||(c.name==='gestlok_chat_admin_whatsapp_premium'&&c.args.p_accion!=='listar'));
 test('cada sucursal tiene selector y el estado Premium se obtiene por tenant y local',async()=>{
@@ -43,7 +48,7 @@ test('cada sucursal tiene selector y el estado Premium se obtiene por tenant y l
   assert.equal((html.match(/data-ch-local-plan data-tenant=/g)||[]).length,3);
   assert.match(html,/data-tenant="a" data-local="uno"[\s\S]*?<option value="chat" selected>/);
   assert.match(html,/data-tenant="b" data-local="uno"[\s\S]*?<option value="premium" selected>/);
-  assert.equal((html.match(/data-ch-local-wa=/g)||[]).length,1);
+  assert.equal((html.match(/data-ch-local-wa=/g)||[]).length,3);
   assert.match(html,/GESTLOK WAI se habilita al guardar el primer número/);
   assert.match(html,/GESTLOK Chat \(web\) \$ 70\.000/);
   assert.match(html,/GESTLOK WAI \$ 150\.000/);
@@ -73,3 +78,38 @@ test('una cuenta distinta o una sucursal inexistente no puede cambiar el plan',a
   assert.equal(writes(g).length,0);
 });
 
+
+test('WAI autoservicio: local seleccionado, validación internacional, alta, pausa, reactivación y exclusiones',async()=>{
+  const f=fixture();f.h.mode();await tick();f.h.setTab('locales');await tick();
+  f.click('data-ch-local-wa',{chLocalWa:JSON.stringify(['a','uno'])});f.h.view({parts:{}});await tick();await tick();
+  let html=f.h.view({parts:{}});
+  assert.match(html,/Números del local · 0 activos/);
+  assert.match(html,/configurar=chat-a&amp;seccion=excluidos/);
+  assert.doesNotMatch(html,/data-ch-wa-state="num-b"/);
+  for(const n of ['1100000000','+54911','+541234567']){f.waSubmit('a','uno',n);await tick();}
+  assert.equal(writes(f).length,0);
+  f.waSubmit('a','uno','+5491100000001');await tick();await tick();
+  html=f.h.view({parts:{}});
+  assert.match(html,/\+5491100000001/);
+  assert.match(html,/Activo en GESTLOK/);
+  assert.match(html,/data-ch-wa-link="added" disabled/);
+  assert.match(html,/Vinculación oficial aún no habilitada/);
+  f.click('data-ch-wa-link',{chWaLink:'added'});await tick();
+  assert.equal(f.calls.filter(c=>c.name==='gestlok-ycloud-partner'&&c.args.action==='link').length,0);
+  f.click('data-ch-wa-state',{chWaState:'added',v:'no'});await tick();await tick();
+  assert.match(f.h.view({parts:{}}),/Activar número/);
+  assert.equal(f.numeros.find(n=>n.id==='added').habilitada,false);
+  f.click('data-ch-wa-state',{chWaState:'added',v:'si'});await tick();await tick();
+  assert.equal(f.numeros.find(n=>n.id==='added').habilitada,true);
+  assert.equal(f.numeros.find(n=>n.id==='num-b').habilitada,true);
+  f.select('b','uno');
+  html=f.h.view({parts:{}});
+  assert.doesNotMatch(html,/data-ch-wa-state="added"/);
+  assert.match(html,/data-ch-wa-state="num-b"/);
+  f.setProvider(true);f.click('data-ch-wa-refresh',{});await tick();await tick();
+  html=f.h.view({parts:{}});
+  assert.match(html,/data-ch-wa-link="num-b">Vincular WhatsApp/);
+  f.click('data-ch-wa-link',{chWaLink:'num-b'});await tick();await tick();
+  assert.match(f.h.view({parts:{}}),/Abrir autorización oficial/);
+  assert.equal(f.calls.filter(c=>c.name==='gestlok-ycloud-partner'&&c.args.action==='link').length,1);
+});
