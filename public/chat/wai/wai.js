@@ -236,7 +236,7 @@ function orderReady(c){return c?.puede_responder===true&&rows.some(r=>r.id===c.l
 function orderMessage(text){if(orderStatus){orderStatus.hidden=!text;orderStatus.textContent=text;}}
 async function orderAction(c,accion,pedido=null,extra={}){
  if(orderBusy||selected!==c.id||!sessionLocal)return;
- if(accion!=='resolver'&&!orderReady(c)){orderMessage('Esperá una conexión activa y un mensaje autorizado.');return;}
+ if(accion!=='resolver'&&!orderReady(['transferencia','listo'].includes(accion)?{...c,puede_responder:c.puede_operar_pedido??c.puede_responder}:c)){orderMessage('Esperá una conexión activa y un mensaje autorizado.');return;}
  const mine=generation,chat=c.id;orderBusy=true;orderSignature='';renderOrder(c);orderMessage('Guardando…');
  try{
   const ok=await rpc('wai_pedido',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:accion,p_pedido:pedido?.id||null,p_evento:crypto.randomUUID(),...extra});
@@ -274,56 +274,55 @@ function privateOrderSheet(c,f){
 
  const detail=node('details',{class:'wai-order-menu wai-sheet-menu'});
  detail.append(node('summary',{class:'btn order-btn wai-sheet-summary','aria-label':'Ver ficha privada del pedido'},'Ver pedido'),node('div',{class:'wai-order-popover wai-sheet'},
-  node('strong',{class:'wai-sheet-title'},'Ficha privada del pedido'),
+  node('strong',{class:'wai-sheet-title'},'Detalle del pedido'),
   node('small',{class:'hint'},'Solo el equipo autorizado del local puede verla.'),
-  row('Cliente',f.nombre),row('WhatsApp',c.cliente),row('Pedido',items.length?items.length+' producto(s)':'Pendiente'),...itemLines,
+  node('h3',{class:'wai-sheet-heading'},'Cliente'),row('Nombre',f.nombre),row('WhatsApp',c.cliente),node('h3',{class:'wai-sheet-heading'},'Pedido'),...itemLines,node('h3',{class:'wai-sheet-heading'},'Entrega y pago'),
   row('Modalidad',f.modalidad==='delivery'?'Delivery':f.modalidad==='retiro'?'Retiro en el local':'Pendiente'),
-  f.modalidad==='delivery'?row('Dirección',f.direccion):null,row('Forma de pago',f.pago?.replaceAll('_',' ')),
+  f.modalidad==='delivery'?row('Dirección',f.direccion):null,f.modalidad==='delivery'?row('Entre calles',f.entrecalles||'No indicadas'):null,row('Forma de pago',f.pago?.replaceAll('_',' ')),
   row('Subtotal',orderMoney(f.subtotal)),row('Envío',orderMoney(f.envio)),row('Demora',f.demora),
-  row('Total',orderMoney(f.total)),node('span',{class:'order-state'},f.estado==='pendiente'?'Esperando confirmación':f.estado==='confirmado'||f===c.pedidos?.[0]?.ficha?'Confirmado':'Completando datos')));
+  node('div',{class:'wai-sheet-total'},node('span',{},'TOTAL'),node('strong',{},orderMoney(f.total))),node('span',{class:'order-state'},f.estado==='pendiente'?'Esperando confirmación':f.estado==='confirmado'||f===c.pedidos?.[0]?.ficha?'Confirmado':'Completando datos')));
  return detail;
 }
 function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
- const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
+ const ready=orderReady(c),orderTransport=orderReady({...c,puede_responder:c.puede_operar_pedido??c.puede_responder}),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
+ const sig=JSON.stringify([c.id,ready,orderTransport,!!last&&Date.parse(last.creado_at)>Date.now()-14400000,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready||!!c.cerrado_at;
- const activeOrder=last&&last.estado!=='entregado',ficha=activeOrder?last.ficha:c.ficha||last?.ficha,collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),modeKey=activeOrder?last.modalidad:c.modalidad_detectada;
+ const recent=!!last&&Date.parse(last.creado_at)>Date.now()-14400000, activeOrder=recent&&last.estado!=='entregado'&&!last.atencion_finalizada_at, collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),newRequest=!!c.pedido_pendiente||collecting,ficha=newRequest?c.ficha:last?.ficha||c.ficha,modeKey=newRequest?c.modalidad_detectada:recent?last.modalidad:c.modalidad_detectada;
+ const orderDisabled=orderBusy||!orderTransport;
  const mode=modeKey==='retiro'?'Retiro':modeKey==='delivery'?'Delivery':null;
  const status=c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente apagado';
- const closeDisabled=orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'||o.valoracion==='problema'&&!o.resuelto);
+ const closeDisabled=orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'&&!o.atencion_finalizada_at&&Date.parse(o.creado_at)>Date.now()-14400000||o.valoracion==='problema'&&!o.resuelto);
  const menu=node('details',{class:'wai-order-menu',open:orderMenuOpen,ontoggle:e=>{if(e.currentTarget.isConnected)orderMenuOpen=e.currentTarget.open;}});
  const options=node('div',{class:'wai-order-popover'},node('strong',{},'Gestionar conversación'),
    node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},status),
    button('Enviar opciones',()=>{menu.open=false;void attentionAction(c,'enviar');},'btn order-btn',{disabled:disabled||!c.opciones_activas}),
-   button('Enviar datos de transferencia',()=>{menu.open=false;void orderAction(c,'transferencia');},'btn order-btn',{disabled:disabled||!c.transferencia_configurada}),
+   button('Enviar datos de transferencia',()=>{menu.open=false;void orderAction(c,'transferencia');},'btn order-btn',{disabled:(c.cerrado_at?orderDisabled||!recent||last?.ficha?.pago!=='transferencia':disabled)||!c.transferencia_configurada}),
    button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>{menu.open=false;void attentionAction(c,c.atencion_manual?'asistido':'manual');},'btn order-btn',{disabled:orderBusy||!!c.cerrado_at||!c.agente_activo}),
    c.atencion_pendiente?button('Marcar atendido',()=>{menu.open=false;void attentionAction(c,'atendido');},'btn order-btn',{disabled:orderBusy}):null,
    (c.pedido_pendiente||collecting)?button('Descartar pedido pendiente',()=>{if(confirm('¿Descartar esta solicitud sin borrar sus mensajes?')){menu.open=false;void attentionAction(c,'descartar_pedido');}},'btn order-btn danger',{disabled:orderBusy}):null,
    button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? Un mensaje nuevo reabrirá el chat con su historial.')){menu.open=false;void attentionAction(c,'finalizar');}},'btn order-btn',{disabled:closeDisabled}),
    c.aviso_cierre?node('small',{class:'hint'},c.aviso_cierre==='sin_autorizacion'?'Cierre guardado; no se pudo avisar al cliente (ensayo no autorizado).':c.aviso_cierre==='limite'?'Cierre guardado; no se pudo enviar el aviso por el límite de prueba.':'Aviso de cierre: '+({entregado:'Entregado',aceptado:'Enviado',pendiente:'En cola',reservado:'Enviando',incierto:'No confirmado'}[c.aviso_cierre_estado]||'En cola')):null,
-   node('small',{class:'hint'},'Consulta de satisfacción: '+(c.seguimiento_min||2)+' min · Ajustes WAI.'),
+   node('small',{class:'hint'},'Al enviar la invitación a reseñar, la atención se cierra. El cliente puede volver a escribir.'),
    !c.transferencia_configurada?node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'):null,
    ready&&!c.imagenes_activas?node('small',{class:'hint'},'Fotos de carta: actualizá el conector privado para enviarlas como imagen.'):null,
    c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
-   last?.consulta_at?node('small',{class:'hint'},last.valoracion?'Respuesta: '+(last.valoracion==='bien'?'Recibió bien su pedido':'Tuvo un problema con el pedido'):last.consulta_cancelada?'Consulta anterior omitida por nueva atención.':last.consulta_vencida?'Consulta fuera del ensayo.':last.consulta_encolada?'Consulta registrada en el chat.':'Consulta de satisfacción desde '+time(last.consulta_at)):null);
+   last?.valoracion==='problema'?node('small',{class:'hint'},last.resuelto?'Reclamo atendido':'Reclamo pendiente'):null);
  menu.append(node('summary',{class:'wai-manage','aria-label':'Más opciones de la conversación',title:'Gestionar conversación'},'⋯'),options);
- const info=node('div',{class:'wai-order-info'},node('strong',{},activeOrder?orderLabels[last.estado]||last.estado:c.pedido_pendiente?'Pedido para confirmar':collecting?'Completando pedido':last?.estado==='entregado'?'Pedido entregado':'Atención al cliente'),
+ const info=node('div',{class:'wai-order-info'},node('strong',{},c.pedido_pendiente?'Pedido para confirmar':collecting?'Completando pedido':recent?orderLabels[last.estado]||last.estado:'Atención al cliente'),
    mode?node('span',{class:'order-detected confirmed'},mode):null,
    !mode&&c.pedido_pendiente?node('small',{class:'hint'},'Esperando modalidad'):null,
    c.pedido_pendiente&&c.pedido_texto?node('small',{class:'wai-order-draft',title:c.pedido_texto},c.pedido_texto):null);
  let next=null;
- if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)&&c.pedido_pendiente===true&&mode&&!c.cerrado_at&&!collecting&&(!c.ficha||c.ficha.estado==='pendiente')){
+ if(c.pedidos_habilitados!==false&&(!activeOrder&&!issues.length)&&c.pedido_pendiente===true&&mode&&!c.cerrado_at&&!collecting&&(!c.ficha||c.ficha.estado==='pendiente')){
    next=button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn order-main',{disabled});
- }else if(last?.estado==='preparacion'){
-   next=button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn order-main',{disabled});
- }else if(['listo','en_camino'].includes(last?.estado)){
-   next=button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn order-main',{disabled});
+ }else if(!newRequest&&recent&&last?.estado==='preparacion'){
+   next=button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn order-btn order-main',{disabled:orderDisabled});
  }
- const transferSelected=(ficha?.pago==='transferencia')&&!c.cerrado_at&&(c.pedido_pendiente||activeOrder||ficha?.estado==='cotizacion');
- const transfer=transferSelected?button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn wai-transfer-direct',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Enviar el alias y titular de este local':'Completá los datos en Ajustes'}):null;
+ const transferSelected=ficha?.pago==='transferencia'&&(newRequest||recent);
+ const transfer=transferSelected?button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn wai-transfer-direct',{disabled:orderDisabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Enviar el alias y titular de este local':'Completá los datos en Ajustes'}):null;
  const panel=node('div',{class:'wai-order-strip'+(c.pedido_pendiente&&!activeOrder?' wai-order-alert':'')},info,ficha?privateOrderSheet(c,ficha):null,transfer,next,menu);
  const content=[panel];
  if(c.alerta_sync&&c.alerta_sync_at)content.unshift(node('div',{class:'order-complaint compact'},node('strong',{},'⚠ Incidencia de sincronización · '+time(c.alerta_sync_at)),node('small',{},c.alerta_sync.startsWith('voto_')?'Una selección no se confirmó. Pedile al cliente que escriba su respuesta.':'Revisá la conexión y los mensajes recibidos.'),button('Marcar revisado',()=>void attentionAction(c,'sync_revisado'),'btn order-btn',{disabled:orderBusy})));
@@ -432,7 +431,7 @@ async function renderAttentionSettings(host){
     const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
-  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('label',{},'Minutos hasta consultar si recibió bien el pedido (1–20 en prueba)',follow),node('h3',{},'Finalización de chats'),node('label',{class:'wai-check'},closeAuto,'Finalizar automáticamente por inactividad'),node('label',{},'Minutos de inactividad',closeMinutes),node('p',{class:'hint'},'Se conserva el historial. Un mensaje nuevo inicia otra atención; no se cierran pedidos, reclamos o solicitudes pendientes.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar y se cierra la atención. Durante 4 horas el cliente puede elegir otro pedido, atención o reportar un problema. No se envían encuestas automáticas de entrega. El historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
   host.replaceChildren(form);
  }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }

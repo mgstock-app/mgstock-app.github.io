@@ -186,3 +186,5 @@ a{color:#087a98}
 
 .wai-transfer-direct{flex:none;border-color:#16879b;color:#126f80;white-space:normal;font-size:12px;min-height:36px;max-width:170px;text-align:center}.wai-transfer-direct:disabled{opacity:.56}@media(max-width:680px){.wai-order-strip:has(.wai-transfer-direct){flex-wrap:wrap}.wai-transfer-direct{max-width:none;flex:1;min-width:130px;font-size:11px}}
 .wai-order-strip:has(.wai-transfer-direct){flex-wrap:wrap}.wai-order-strip:has(.wai-transfer-direct) .wai-order-info{flex-basis:120px}
+
+.wai-sheet-heading{margin:7px 0 0;padding:5px 0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#537389;border-bottom:1px solid #d9e7ed}.wai-sheet-total{background:#e5f4f3;display:flex;justify-content:space-between;gap:8px;align-items:center;border-radius:9px;padding:12px;color:#105e65;font-weight:700}.wai-sheet-total strong{font-size:19px}
