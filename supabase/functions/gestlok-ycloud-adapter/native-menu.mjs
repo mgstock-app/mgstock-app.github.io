@@ -1,6 +1,7 @@
 // Native WhatsApp interaction preview. Opaque, per-turn IDs are persisted in
 // the isolated conversation state, never interpreted as catalogue IDs.
 // No provider requests, dispatch or credentials.
+import {readCommerceOrder} from './commerce.mjs';
 const chars=s=>Array.from(String(s??''));
 const cut=(s,max)=>chars(s).slice(0,max).join('');
 const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
@@ -42,6 +43,7 @@ export function resolveNativeReply(state,id){
 // YCloud uses the same button_reply / list_reply object shape as Meta.
 // Do not accept provider-supplied titles as instructions or product IDs.
 export function readYCloudInput(message){
+ if(message?.type==='order'){const cart=readCommerceOrder(message);return cart?{text:'',cart}:null;}
  if(message?.type==='text'&&typeof message.text?.body==='string'&&message.text.body.length<=600)return {text:message.text.body};
  if(message?.type!=='interactive')return null;
  const i=message.interactive;

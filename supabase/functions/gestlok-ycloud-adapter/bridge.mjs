@@ -1,6 +1,7 @@
 // Internal offline bridge between a *verified* signed YCloud inbound event and
 // the private test-only RPC. No network client and no WhatsApp response sender.
 // Never mount this module as an unauthenticated public endpoint.
+import {assertDistinctCommerceCatalogs} from './commerce.mjs';
 import {processVerifiedPilotText} from './verified-pilot.mjs';
 import {readYCloudInput} from './native-menu.mjs';
 import {prepareExclusions} from './exclusions.mjs';
@@ -34,6 +35,7 @@ export function createSupabasePilotStore(rpc){
 }
 export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
  if(!Array.isArray(routes)||!store||typeof store.isExcluded!=='function'||typeof store.load!=='function'||typeof store.commit!=='function')throw Error('Configuración incompleta');
+ assertDistinctCommerceCatalogs(routes);
  const used=new Set(),registry=[];
  for(const r of routes){
   if(!good(r.waba)||!e164.test(r.to)||!good(r.empresa)||!good(r.sucursal)||!good(r.slug)||!good(r.sucursalId)
@@ -56,7 +58,7 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   // wins over allowlist, before loading data, invoking AI, committing orders,
   // or preparing an outbound response. The native WhatsApp chat is untouched.
   if(!route)return drop('not_allowlisted');
-  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:input.text,interactiveId:input.interactiveId,now});
+  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:input.text,interactiveId:input.interactiveId,cart:input.cart,now});
  };
 }
 

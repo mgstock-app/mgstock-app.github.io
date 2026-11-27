@@ -1,7 +1,8 @@
 // Offline pilot: a deterministic, serializable conversation. No calls to YCloud,
 // Supabase or paid providers. State and event identity must be provided by a
 // verified, tenant-bound transport; this module is not an HTTP endpoint.
-import {previewWhatsApp,completePreviewProduct,checkoutPreview} from './preview.mjs';
+import {previewWhatsApp,completePreviewProduct,checkoutPreview,projectWhatsApp} from './preview.mjs';
+import {commerceProductList,validateCommerceOrder} from './commerce.mjs';
 import {buildNativeMenu,resolveNativeReply,isNativeReplyId} from './native-menu.mjs';
 import {parseQuantities,parseNamedQuantities,parseCheckoutData,normalizeCash,isCourtesy} from './compact.mjs';
 import {carteleraDelDia,describirLinea,importeLinea,pesos,totalCarrito,pagosDe,soloEfectivo,descuentoEfectivoAplica,PAGOS,clasificarSoporte,normalizar,botonesCarrito,estadoInicial} from '../gestlok-chat/motor.js';
@@ -21,9 +22,9 @@ function snapshot(c,s,now,st,d){
  return JSON.stringify(canonical({cart:st.carrito,prices:st.carrito.map(l=>({total:importeLinea(a.catalogo,l),description:describirLinea(a.catalogo,l)})),
   datos:d,minimum:a.sucursal.pedido_minimo??0,delivery:a.sucursal.envio_costo??null,discount:a.sucursal.descuento_efectivo_pct??0,discountApplies:descuentoEfectivoAplica(a.sucursal,d.entrega),cashOnly:soloEfectivo(a.catalogo,st.carrito),payments:pagosDe(a.sucursal,d.entrega),scheduled:st.programado,at:a.sucursal.atencion?.abierto??null,opens:a.sucursal.atencion?.proxima_apertura??null,board:a.clave}));
 }
-export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,publicSlug,ahora=new Date()}){
+export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,publicSlug,commerceRoute,ahora=new Date()}){
  if(!identity||!['empresa','sucursal','phone'].every(k=>typeof identity[k]==='string'&&identity[k].length>0)||!/^\+[1-9]\d{7,14}$/.test(identity.phone))throw Error('Identidad de piloto inválida');
- if(!event||typeof event.id!=='string'||!event.id||event.id.length>200||typeof event.text!=='string'||event.text.length>600||event.interactiveId!==undefined&&!isNativeReplyId(event.interactiveId))throw Error('Evento inválido');
+ if(!event||event.cart!==undefined&&(event.interactiveId!==undefined||event.text!=='')||typeof event.id!=='string'||!event.id||event.id.length>200||typeof event.text!=='string'||event.text.length>600||event.interactiveId!==undefined&&!isNativeReplyId(event.interactiveId))throw Error('Evento inválido');
  const scope=JSON.stringify([identity.empresa,identity.sucursal,identity.phone]);
  if(session&&session.scope!==scope)throw Error('Sesión de otra conversación');
  const st=session?clone(session):{scope,engine:estadoInicial(),stage:'menu',seen:[],menu:[],page:0};
@@ -38,6 +39,23 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
  delete st.nativeMenu;delete st.nativePreview;
  const input=clean(clicked?selectedInput:event.text), word=normalizar(input);
  const a=carteleraDelDia(sucursal,catalogo,ahora), c=a.catalogo;
+ const commerceArgs={route:commerceRoute?.empresa===identity.empresa&&commerceRoute?.sucursal===identity.sucursal?commerceRoute:undefined,sucursal,catalogo,ahora};
+ // Only the verified service route may supply the provider catalog binding.
+ function abandonNative(message){
+  delete st.nativeCart;delete st.product;delete st.engine.promo_reemplazo;st.stage='menu';
+  return show([message],[choice('carta','Ver carta'),choice('carrito','Ver mi pedido')]);
+ }
+ function nextNativeItem(){
+  const pending=st.nativeCart, live=validateCommerceOrder(commerceArgs,pending.order);
+  if(!live)return abandonNative('El catálogo cambió. No se agregó ningún producto. Volvé a elegir.');
+  if(pending.index===live.length){
+   const lines=pending.lines;delete st.nativeCart;
+   return run({agregar_varios:lines,lote_id:crypto.randomUUID()});
+  }
+  const item=live[pending.index];
+  const offer=projectWhatsApp({mensajes:[{tipo:'producto',productos:[item.id],cantidad:item.quantity}]},c).selectors[0];
+  return offer?startProduct(offer,item.quantity):abandonNative('Un producto ya no está disponible. No se agregó el carrito.');
+ }
  function show(messages,options=[],page=0){
   st.menu=options;st.page=Math.min(Math.max(0,page),Math.max(0,Math.ceil(options.length/PAGE)-1));st.prompt=messages;
   return redraw();
@@ -97,7 +115,14 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
    for(const b of botonesCarrito(st.engine.carrito))if(!opts.some(o=>o.id===b.id))opts.push(choice(b.id,b.texto));
    if(!opts.some(o=>o.id==='edit_cart'))opts.push(choice('edit_cart','Quitar un producto'));
   }
-  return show(p.messages.length?p.messages:['Elija cómo continuar.'],opts);
+  const rendered=show(p.messages.length?p.messages:['Elija cómo continuar.'],opts);
+  // Keep the guided menu as fallback. Only an explicit selection (not MENU)
+  // opens the native product list, and only for verified, current catalog data.
+  if(!st.nativeCart&&!st.engine.carrito.length&&clicked&&typeof entrada.boton==='string'&&(entrada.boton==='carta'||entrada.boton.startsWith('carta:'))){
+   const native=commerceProductList(commerceArgs,entrada.boton.split(':')[1]);
+   if(native){delete st.nativeMenu;delete st.nativePreview;return {...rendered,native};}
+  }
+  return rendered;
  }
  function startProduct(p,explicitQuantity){
   st.product={offered:p,qty:p.quantity,choices:clone(p.preset||{}),group:0,flavor:null,lot:globalThis.crypto.randomUUID()};
@@ -112,11 +137,12 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
    st.stage='product_review';
    const line={producto_id:p.offered.id,cantidad:p.qty,opciones:p.choices};
    const validation=completePreviewProduct({projection:{selectors:[p.offered]},catalogo:c,selection:{productId:p.offered.id,quantity:p.qty,options:p.choices},lotId:p.lot});
-   if(!validation.ok){st.stage='menu';delete st.product;delete st.engine.promo_reemplazo;return show([validation.error,'Vuelva a elegir el producto.'],[choice('carta','Ver carta')]);}
+   if(!validation.ok){if(st.nativeCart)return abandonNative(validation.error+' No se agregó el carrito.');st.stage='menu';delete st.product;delete st.engine.promo_reemplazo;return show([validation.error,'Vuelva a elegir el producto.'],[choice('carta','Ver carta')]);}
    return show(['Revisar: '+describirLinea(c,line),'Subtotal estimado: '+pesos(validation.estimatedTotal)], [choice('add','Agregar al pedido'),choice('restart','Volver a elegir'),choice('back','Cancelar selección')]);
   }
   const current=p.choices[g.id];
   if(!g.values.length&&(g.required||g.type==='cantidad'&&Number(g.total)>0)){
+   if(st.nativeCart)return abandonNative('Faltan variedades disponibles. No se agregó el carrito.');
    st.stage='menu';delete st.product;delete st.engine.promo_reemplazo;
    return show(['Ese producto no tiene disponibles las variedades necesarias. Puede elegir otro.'],[choice('carta','Ver carta'),choice('carrito','Ver mi pedido')]);
   }
@@ -161,6 +187,21 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   }
   if(isCourtesy(input))return result();
   return show(['La solicitud de prueba ya fue registrada. No se creó un pedido real. Para empezar otro, escriba NUEVO PEDIDO.'],[choice('new_order','Nuevo pedido')]);
+ }
+ if(event.cart!==undefined){
+  if(st.stage!=='menu'||st.engine.carrito.length||st.nativeCart||st.product)return redraw(['Ya hay un pedido en revisión. No se reemplazó. Terminá o cancelá ese pedido primero.']);
+  const items=validateCommerceOrder(commerceArgs,event.cart);
+  if(!items)return abandonNative('Ese carrito ya no coincide con la carta vigente de este local. No se agregó ningún producto. Volvé a elegir.');
+  st.nativeCart={order:clone(event.cart),index:0,lines:[]};st.stage='native_cart_review';
+  return show(['Recibimos tu carrito de WhatsApp:',...items.map(i=>'• '+i.quantity+' × '+i.label+' · '+pesos(i.price*i.quantity/100)),
+   'Subtotal base: '+pesos(items.reduce((n,i)=>n+i.price*i.quantity,0)/100)+'. Revisaremos las variantes y adicionales antes de finalizar.'],
+   [choice('review_native','Revisar carrito'),choice('cancel_native','Cancelar carrito')]);
+ }
+ if(st.nativeCart&&(word==='cancelar carrito'||word==='menu'||word==='volver al menu'||word==='hablar con el gerente'))return abandonNative('No se agregó el carrito de WhatsApp. Podés volver a la carta o contactar al local.');
+ if(st.stage==='native_cart_review'){
+  if(selected==='review_native')return nextNativeItem();
+  if(selected==='cancel_native')return abandonNative('Carrito cancelado. No se agregó ningún producto.');
+  return redraw();
  }
  if(st.stage==='handoff'&&word!=='menu'&&word!=='volver al menu')return isCourtesy(input)?result():show(['La consulta requiere atención del gerente. No se ha enviado al local en esta simulación. Escriba MENU para volver a la carta.'],[]);
  if(word==='hablar con el gerente'||word==='ayuda con mi pedido'||clasificarSoporte({texto:input})&&st.stage==='menu')return run({texto:input});
@@ -220,12 +261,16 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   p.choices[g.id]=[...(p.choices[g.id]||[]),id];return productStep();
  }
  if(st.stage==='product_review'){
-  if(selected==='restart')return startProduct(st.product.offered);
-  if(selected==='back'){delete st.product;delete st.engine.promo_reemplazo;return run({boton:'carrito'});}
+  if(selected==='restart')return startProduct(st.product.offered,st.nativeCart?st.product.qty:undefined);
+  if(selected==='back'){if(st.nativeCart)return abandonNative('Carrito cancelado. No se agregó ningún producto.');delete st.product;delete st.engine.promo_reemplazo;return run({boton:'carrito'});}
   if(selected!=='add')return redraw();
   const p=st.product,validation=completePreviewProduct({projection:{selectors:[p.offered]},catalogo:c,selection:{productId:p.offered.id,quantity:p.qty,options:p.choices},lotId:p.lot});
   delete st.product;
   if(!validation.ok){st.stage='menu';delete st.engine.promo_reemplazo;return show([validation.error],[choice('carta','Ver carta'),choice('carrito','Ver mi pedido')]);}
+  if(st.nativeCart){
+   st.nativeCart.lines.push(validation.entry.agregar_varios[0]);st.nativeCart.index++;
+   return nextNativeItem();
+  }
   return run(validation.entry);
  }
  if(st.stage==='remove'){

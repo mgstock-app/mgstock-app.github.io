@@ -6,6 +6,7 @@ import {createServer} from 'node:http';
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {prepareExclusions} from '../../supabase/functions/gestlok-ycloud-adapter/exclusions.mjs';
 import {readYCloudInput} from '../../supabase/functions/gestlok-ycloud-adapter/native-menu.mjs';
+import {assertDistinctCommerceCatalogs} from '../../supabase/functions/gestlok-ycloud-adapter/commerce.mjs';
 import {processVerifiedPilotText} from '../../supabase/functions/gestlok-ycloud-adapter/verified-pilot.mjs';
 const TEST_PROJECT='irqeitzbfyerxcrogkyh';
 const e164=/^\+[1-9]\d{7,14}$/;
@@ -25,6 +26,7 @@ export function createMetaDirectHandler({projectRef,appSecret,verifyToken,routes
  if(typeof appSecret!=='string'||appSecret.length<24||typeof verifyToken!=='string'||verifyToken.length<24||
   !store||typeof store.isExcluded!=='function'||typeof store.load!=='function'||typeof store.commit!=='function'||
   !Array.isArray(routes)||!routes.length)throw Error('Configuración incompleta de prueba');
+ assertDistinctCommerceCatalogs(routes);
  const registry=new Map(),businessNumbers=new Set();
  for(const r of routes){
   if(typeof r.waba!=='string'||typeof r.phoneId!=='string'||!metaId.test(r.waba)||!metaId.test(r.phoneId)||!e164.test(r.to)||!good(r.empresa)||!good(r.sucursal)||!good(r.slug)||!good(r.sucursalId)||
@@ -61,7 +63,7 @@ export function createMetaDirectHandler({projectRef,appSecret,verifyToken,routes
     for(const m of list(v.messages)){
      const input=readYCloudInput(m);
      if(!input||m.group_id||m.groupId||m.context?.group_id||typeof m.from!=='string'||!/^\d{8,15}$/.test(m.from)||
-       typeof m.id!=='string'||!wamid.test(m.id)||(!input.interactiveId&&!input.text.trim())||
+       typeof m.id!=='string'||!wamid.test(m.id)||(!input.cart&&!input.interactiveId&&!input.text.trim())||
        typeof m.timestamp!=='string'||!/^\d{10}$/.test(m.timestamp))continue;
      // Only recent, individually signed test messages. A delayed retry must
      // not turn historical messages into a new order or billable response.
@@ -74,7 +76,7 @@ export function createMetaDirectHandler({projectRef,appSecret,verifyToken,routes
   // No partial work on an oversized test batch; Meta can retry.
   if(eligible.length>50)return response(503,'Retry');
   try{for(const {route,m,input,from} of eligible){
-   const r=await processVerifiedPilotText({route,store,from,eventId:m.id,messageId:m.id,wamid:m.id,customer:input.text,interactiveId:input.interactiveId,now:t});
+   const r=await processVerifiedPilotText({route,store,from,eventId:m.id,messageId:m.id,wamid:m.id,customer:input.text,interactiveId:input.interactiveId,cart:input.cart,now:t});
    if(r.status==='conflict_retry_later')return response(503,'Retry');
   }}catch{return response(503,'Retry');}
   return response(200,'OK');
