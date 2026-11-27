@@ -100,7 +100,7 @@ writeFileSync(join(salida, 'ingresar/index.html'), pagina('Ingresar · ' + ent.n
   '<h1>Ingresar</h1><p class="nota">Usuario de la base de pruebas (no es tu clave de gestlok.com.ar).</p>' +
   '<form id="f"><input id="e" type="email" autocomplete="email" placeholder="Email" required>' +
   '<input id="c" type="password" autocomplete="current-password" placeholder="Contraseña (mínimo 8)" minlength="8" required>' +
-  '<button class="p" type="submit">Entrar</button><button type="button" id="n">Crear usuario de prueba</button></form><p id="m" class="nota" role="status"></p>' +
+  '<button class="p" type="submit">Entrar</button><button type="button" id="n">Crear usuario de prueba</button></form><a class="b" href="/chat/recuperar/">Olvidé mi contraseña / confirmar correo</a><p id="m" class="nota" role="status"></p>' +
   '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script>' +
   '<script>(function(){var m=document.getElementById("m"),C=window.GESTLOK_CHAT_CONFIG;' +
   'if(!window.supabase||typeof window.supabase.createClient!=="function"||!C||!C.url||!C.key){m.textContent="No se pudo iniciar el acceso de pruebas. Revisá la conexión y recargá.";document.getElementById("n").disabled=true;document.getElementById("f").onsubmit=function(e){e.preventDefault();};return;}' +
@@ -110,6 +110,21 @@ writeFileSync(join(salida, 'ingresar/index.html'), pagina('Ingresar · ' + ent.n
   'if(r.error){m.textContent="No se pudo entrar: "+r.error.message;return}location.href="/chat/panel/"}catch(e){m.textContent="No se pudo conectar con la base de pruebas. Reintentá."}};' +
   'document.getElementById("n").onclick=async function(){var x=d();if(!x.email||x.password.length<8){m.textContent="Completá email y una contraseña de 8 o más.";return}' +
   'try{var r=await sb.auth.signUp(x);m.textContent=r.error?"No se pudo crear: "+r.error.message:"Listo. Confirmá el email que te llegó y después tocá Entrar."}catch(e){m.textContent="No se pudo conectar con la base de pruebas. Reintentá."}}})();</script>'));
+
+// Recuperación de contraseña solo en entornos aislados.
+mkdirSync(join(salida, 'chat/recuperar'), {recursive: true});
+cpSync(join(raiz, 'entornos/recuperar.js'), join(salida, 'chat/recuperar/recuperar.js'));
+writeFileSync(join(salida, 'chat/recuperar/index.html'), pagina('Recuperar acceso · ' + ent.nombre,
+  '<h1>Recuperar acceso</h1><p class="nota">Solo para tu cuenta de pruebas. Si aún no confirmaste el correo, solicitá primero la confirmación.</p>' +
+  '<form id="solicitar"><label for="correo">Correo electrónico</label><input id="correo" type="email" autocomplete="email" required>' +
+  '<button id="confirmar" type="button">Reenviar confirmación de correo</button>' +
+  '<button id="enviar" class="p" type="submit">Enviar enlace para cambiar mi contraseña</button></form>' +
+  '<form id="cambiar" hidden><label for="clave">Nueva contraseña</label><input id="clave" type="password" autocomplete="new-password" minlength="8" required>' +
+  '<label for="repetir">Repetir contraseña</label><input id="repetir" type="password" autocomplete="new-password" minlength="8" required>' +
+  '<button id="guardar" class="p" type="submit">Guardar nueva contraseña</button></form>' +
+  '<p id="m" class="nota" role="status" aria-live="polite"></p><a class="b" href="/ingresar/">Volver a Ingresar</a>' +
+  '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script><script src="/chat/recuperar/recuperar.js?v=1"></script>',
+  '<meta name="referrer" content="no-referrer">'));
 
 writeFileSync(join(salida, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: SAMEORIGIN\n');
 writeFileSync(join(salida, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
