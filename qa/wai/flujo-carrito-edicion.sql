@@ -24,7 +24,7 @@ begin
    values(h,s.id,phone,u,now()+interval '25 minutes') returning * into p;
    insert into gestlok_chat_private.wai_ciclos(hilo_id) values(p.id) returning id into ci;
    insert into gestlok_chat_private.wai_atencion_hilos(hilo_id,ciclo_id,ultima_carta) values(p.id,ci,'carta_empanadas_promos');
-   foreach paso in array array['Pack 6','6 Jamón y Queso','2 Cheddar','Agregar otro producto','Promociones de empanadas','Pack 8','8 Carne Suave','2 Criolla','No gracias','Quitar un producto','2','Continuar con el pedido','Cliente ficticio','Delivery','Calle Ejemplo 123, Localidad','transferencia'] loop
+   foreach paso in array array['Pack 6','6 Jamón y Queso','2 Cheddar','Agregar otro producto','Promociones de empanadas','Pack 8','8 Carne Suave','2 Criolla','No gracias','Cliente ficticio','Delivery','Calle Ejemplo 123','Calle A y Calle B','transferencia','Modificar pedido','Quitar un producto','2','Continuar con el pedido'] loop
     e=e+1;
     insert into gestlok_chat_private.wai_mensajes(piloto_id,direccion,texto,estado,evento,jid,ciclo_id)
     values(p.id,'entrada',paso,'recibido','qa:'||e,tester_jid,ci) returning * into m;
