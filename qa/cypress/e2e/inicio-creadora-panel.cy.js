@@ -11,7 +11,7 @@ describe('Inicio independiente de la creadora',()=>{
  it('la creadora ve el resumen con datos reales y sin planes ni suscripciones inventados',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch h1',{timeout:12000}).should('contain.text','Panel de administración');
-  cy.get('.gl-ch-admin-more summary').click();
+  cy.get('.gl-ch-admin-more > summary').click();
   cy.get('.gl-ch').should('contain.text','Empresas activas').and('contain.text','Administración y herramientas').and('contain.text','Accesos protegidos')
    .and('contain.text','Mis microapps').and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-company-card').should($cards=>expect($cards.length).to.be.greaterThan(0));
@@ -28,7 +28,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').contains('Plan Scanner').should('be.visible').click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  cy.get('.gl-ch-admin-more summary').click();
+  cy.get('.gl-ch-admin-more > summary').click();
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
@@ -118,7 +118,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.viewport(390,844);cy.on('window:confirm',()=>true);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:15000}).click();
   const empresa='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
-  cy.get('details[data-creator-company="'+empresa+'"] summary').click();
+  cy.get('details[data-creator-company="'+empresa+'"] > summary').click();
   const form='[data-ch-local-plan][data-tenant="'+empresa+'"][data-local="munro"]';
   const otro='[data-ch-local-plan][data-tenant="'+empresa+'"][data-local="torcuato"]';
   cy.get(form+' select',{timeout:15000}).should('be.visible').and('not.be.disabled').and('have.value','chat').select('premium');
