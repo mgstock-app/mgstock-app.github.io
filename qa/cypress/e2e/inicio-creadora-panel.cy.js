@@ -10,7 +10,8 @@ describe('Inicio independiente de la creadora',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  it('la creadora ve el resumen con datos reales y sin planes ni suscripciones inventados',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch h1',{timeout:12000}).should('contain.text','¡Hola!');
+  cy.get('.gl-ch h1',{timeout:12000}).should('contain.text','Panel de administración');
+  cy.get('.gl-ch-admin-more > summary').click();
   cy.get('.gl-ch').should('contain.text','Empresas activas').and('contain.text','Administración y herramientas').and('contain.text','Accesos protegidos')
    .and('contain.text','Mis microapps').and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-company-card').should($cards=>expect($cards.length).to.be.greaterThan(0));
@@ -27,11 +28,12 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').contains('Plan Scanner').should('be.visible').click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
+  cy.get('.gl-ch-admin-more > summary').click();
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  // Doce pestañas: las once existentes más GESTLOK HQ, exclusivo de la creadora.
-  cy.get('.gl-ch-nav button').should('have.length',12);
+  // Cinco grupos, con las funciones originales en sus submenús.
+  cy.get('.gl-ch-nav button').should('have.length',5);
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
   cy.get('[data-ch-hq-agent]').should('have.length',9);
@@ -65,9 +67,11 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
-  cy.get('.gl-ch-nav [data-ch-tab="chat-prueba"]').should('exist');
-  cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
-  cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="chat-prueba"]').should('be.visible');
+  cy.get('.gl-ch-nav [data-ch-tab="hq"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="resenas"]').should('be.visible');
+  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="nfc"]').should('be.visible');
   cy.get('.gl-ch .gl-ch-logout').should('not.exist');
   cy.get('#gl-profile-switch-trigger').click();
   cy.get('.gl-profile-switch-logout').should('be.visible').and('contain.text','Cerrar sesión');
@@ -75,7 +79,8 @@ describe('Inicio independiente de la creadora',()=>{
  });
  it('la creadora abre dos perfiles ficticios de Chat sin afectar tiendas',()=>{
   cy.viewport(390,844);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch-nav [data-ch-tab="chat-prueba"]',{timeout:12000}).click();
+  cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]',{timeout:12000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="chat-prueba"]').click();
   cy.get('.gl-ch-showroom').should('be.visible').and('contain.text','Datos ficticios');
   cy.get('.gl-ch-showroom-tabs [role=tab]').should('have.length',2);
   cy.get('.gl-ch-showroom-pane iframe').should('have.length',2);
@@ -96,17 +101,34 @@ describe('Inicio independiente de la creadora',()=>{
  });
  it('las pestañas conservan todas las funciones anteriores (acceso a otras empresas incluido)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
-  cy.get('.gl-ch-nav [data-ch-tab="empresas"]',{timeout:12000}).click();
+  cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:12000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="empresas"]').click();
   cy.get('[aria-label="Empresas registradas"]').should('contain.text','Empresa ficticia');
   // Mismo texto que validan empleados-modulo.cy.js e inicio-dueno-modulos.cy.js.
   cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('contain.text','Abrir empresa');
   cy.get('[aria-label="Vista previa por rol"]').should('not.exist');
-  cy.get('.gl-ch-nav [data-ch-tab="usuarios"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="usuarios"]').click();
   cy.get('.gl-ch').should('contain.text','Usuarios aprobados');
-  cy.get('.gl-ch-nav [data-ch-tab="empleados"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="empleados"]').click();
   cy.get('.gl-ch a[href="empleados/"]').should('contain.text','Abrir Administración de empleados');
   cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').click();
   cy.get('.gl-ch').should('contain.text','Explorar gestión de tienda online');
+ });
+ it('Locales: elige Premium para una sola sucursal y guarda el número sin activar otra',()=>{
+  cy.viewport(390,844);cy.on('window:confirm',()=>true);start('kmu15lopez@gmail.com');
+  cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:15000}).click();
+  const empresa='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+  cy.get('details[data-creator-company="'+empresa+'"] > summary').click();
+  const form='[data-ch-local-plan][data-tenant="'+empresa+'"][data-local="munro"]';
+  const otro='[data-ch-local-plan][data-tenant="'+empresa+'"][data-local="torcuato"]';
+  cy.get(form+' select',{timeout:15000}).should('be.visible').and('not.be.disabled').and('have.value','chat').select('premium');
+  cy.get(form+' textarea').should('be.visible').type('+54 9 11 0000 0001');
+  cy.get(form+' button[type="submit"]').click();
+  cy.get(form).should('contain.text','1 número(s) habilitado(s) internamente');
+  cy.get(otro+' select').should('have.value','chat');
+  cy.get(otro+' textarea').should('not.be.visible');
+  cy.window().its('__chat.premium').should(rows=>{expect(rows).to.have.length(1);expect(rows[0]).to.include({tenant_id:empresa,local_id:'munro'});});
+  cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(392));
  });
  it('en celular el menú queda arriba y el contenido sin desbordes',()=>{
   cy.viewport(390,844);start('kmu15lopez@gmail.com');

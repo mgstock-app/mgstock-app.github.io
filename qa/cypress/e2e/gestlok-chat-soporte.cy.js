@@ -43,7 +43,7 @@ describe('GESTLOK Chat · soporte y seguimiento humano',()=>{
   it('la Central interna recibe un reclamo y el gerente lo contesta',()=>{
     cy.viewport(390,844);
     cy.visit('/chat/panel/?demo=1');
-    cy.get('[data-p=soporte]').click();
+    cy.get('[data-grupo=soporte]').should('be.visible').click();
     cy.contains('.soporte-reclamo','Mi pedido está tardando mucho').should('be.visible');
     cy.contains('.soporte-reclamo','Demora').contains('button','Responder reclamo').click();
     cy.get('dialog.dialogo textarea.soporte-texto').type('Ya lo revisamos. Tu pedido está en preparación.');

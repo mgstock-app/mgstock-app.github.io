@@ -678,9 +678,115 @@
       '<details class="gl-ch-admin-more"><summary>Ver todas las empresas y otros accesos <span aria-hidden="true">⌄</span></summary>'+content+'</details></div>':content;
   }
 
+  // Plan por sucursal. La autorización de números en el servidor es la fuente real de Premium;
+  // seleccionar el plan no conecta WhatsApp ni habilita envíos. No hay datos comerciales en localStorage.
+  let localPlans=null,localPlansBusy=false,localPlansTried=false,localPlansError='',localPlanSaving=false,localPlansIndex='';
+  function localPlanIndex(){
+    const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
+    return JSON.stringify(companies.flatMap(c=>(Array.isArray(c.locals)?c.locals:[]).map(l=>[l.tenant_id||c.tenant_id,l.id])).sort());
+  }
+  const localPlanOpen=new Set(),localPlanDraft=new Map();
+  const localPlanKey=(tenant,id)=>JSON.stringify([tenant,id]);
+  function localPlanData(tenant,id){
+    const empresa=localPlans?.empresas.find(e=>e.tenant_id===tenant);
+    const local=localPlans?.locales.find(l=>l.tenant_id===tenant&&l.local_id===id);
+    const numbers=(localPlans?.numeros||[]).filter(n=>n.tenant_id===tenant&&n.local_id===id&&n.local_existe);
+    const enabled=numbers.filter(n=>n.habilitada);
+    return {empresa,local,numbers,enabled,plan:enabled.length?'premium':local?.sucursal_id?'chat':''};
+  }
+  async function loadLocalPlans(){
+    if(!premiumAdmin()||localPlansBusy||!window.GestLokSupabase?.rpc)return;
+    localPlansBusy=true;localPlansTried=true;localPlansIndex=localPlanIndex();localPlansError='';
+    try{
+      const sb=window.GestLokSupabase;
+      const [a,b]=await Promise.all([sb.rpc('gestlok_chat_admin_empresas'),sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'listar'})]);
+      if(!premiumAdmin())return;
+      if(a.error||b.error||!Array.isArray(a.data)||!Array.isArray(b.data?.locales)||!Array.isArray(b.data?.numeros))throw Error('No se pudieron consultar los planes.');
+      localPlans={empresas:a.data,locales:b.data.locales,numeros:b.data.numeros};
+    }catch{localPlans=null;localPlansError='No se pudieron consultar los planes de Chat. Reintentá.';}
+    finally{localPlansBusy=false;if(premiumAdmin()&&tab==='locales')api?.render?.();}
+  }
+  function localChatPlanView(c,l){
+    const tenant=l.tenant_id||c.tenant_id,id=l.id,key=localPlanKey(tenant,id);
+    const info=localPlanData(tenant,id),draft=localPlanDraft.get(key);
+    const chosen=draft?.plan||info.plan;
+    const pending=localPlansBusy||!localPlans||!info.local||localPlanSaving;
+    const paused=info.empresa?.habilitada===false;
+    const disabled=pending||paused?' disabled':'';
+    const label=info.plan==='premium'?'GESTLOK Chat Premium · '+info.enabled.length+' número(s) habilitado(s) internamente':info.plan==='chat'?'GESTLOK Chat · web':'Sin Chat asignado';
+    return '<form class="gl-ch-local-chat-plan" data-ch-local-plan data-tenant="'+esc(tenant)+'" data-local="'+esc(id)+'">'+
+      '<label>Plan de '+esc(l.name||id)+'<select name="plan" aria-label="Plan GESTLOK Chat de '+esc(l.name||id)+'"'+disabled+'>'+
+      '<option value="" disabled'+(!chosen?' selected':'')+'>Elegir plan</option>'+
+      '<option value="chat"'+(chosen==='chat'?' selected':'')+'>GESTLOK Chat</option>'+
+      '<option value="premium"'+(chosen==='premium'?' selected':'')+'>GESTLOK Chat Premium</option></select></label>'+
+      '<small role="status">'+esc(!localPlans?'Consultando plan…':!info.local?'Local pendiente de registro':paused?'Empresa pausada · gestioná su estado desde Habilitación':label)+'</small>'+
+      '<div data-ch-local-premium'+(chosen==='premium'?'':' hidden')+'>'+
+      '<label>Número(s) de WhatsApp del comercio<textarea name="numeros" rows="2" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+disabled+'>'+esc(draft?.numbers||'')+'</textarea></label>'+
+      '<small>Premium se habilita al guardar el primer número. No lo vincula ni activa la IA. Los números existentes se conservan.</small></div>'+
+      '<button type="submit" class="btn primary"'+disabled+'>Guardar plan</button>'+
+      (info.numbers.length?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WhatsApp</button>':'')+
+      (info.local?.sucursal_id?'<a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(info.local.sucursal_id)+'" target="_blank" rel="noopener">Configurar Chat</a>':'')+
+      '</form>';
+  }
+  function localPlanDraftSave(form){
+    const key=localPlanKey(form.dataset.tenant,form.dataset.local);
+    localPlanDraft.set(key,{plan:form.elements.plan.value,numbers:form.elements.numeros.value});
+  }
+  function openLocalWhatsApp(key){
+    if(!premiumAdmin()||tab!=='locales'||!localPlans?.locales.some(l=>premiumWAKey(l)===key))return;
+    premiumWALocal=key;premiumWADraft='';goTab('habilitacion');
+  }
+  async function saveLocalChatPlan(form){
+    if(!premiumAdmin()||tab!=='locales'||!localPlans||localPlansBusy||localPlanSaving)return;
+    const tenant=form.dataset.tenant,id=form.dataset.local,key=localPlanKey(tenant,id);
+    const info=localPlanData(tenant,id),plan=form.elements.plan.value;
+    if(!info.local||info.empresa?.habilitada===false||!['chat','premium'].includes(plan))return;
+    localPlanDraftSave(form);
+    const phones=plan==='premium'?String(form.elements.numeros.value||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean):[];
+    const normalized=phones.map(p=>p.replace(/[ ()-]/g,''));
+    if(phones.length>50||phones.some((p,i)=>!/^\+[0-9 ()-]+$/.test(p)||!/^\+[1-9][0-9]{7,14}$/.test(normalized[i])||(normalized[i].startsWith('+54')&&!/^\+54(9)?[0-9]{10}$/.test(normalized[i])))){
+      api?.toast?.('Ingresá hasta 50 números válidos con + y código de país.',true);return;
+    }
+    if(plan==='premium'&&!info.enabled.length&&!phones.length){
+      api?.toast?.('Ingresá el número de WhatsApp para habilitar Premium.',true);return;
+    }
+    if(plan==='chat'&&info.enabled.length&&!window.confirm('¿Volver a GESTLOK Chat web y pausar los '+info.enabled.length+' número(s) de WhatsApp de este local? Los números y su información se conservan.'))return;
+    if(!info.local.sucursal_id&&!window.confirm('¿Asignar GESTLOK Chat solo a '+info.local.nombre+'? Su chat web queda cerrado hasta que lo configuren.'))return;
+    if(phones.length&&!window.confirm('¿Autorizar '+phones.length+' número(s) internos para '+info.local.nombre+'? No se vincularán ni se enviarán mensajes.'))return;
+    localPlanSaving=true;
+    let baseSaved=false;
+    try{
+      const sb=window.GestLokSupabase;
+      if(!info.local.sucursal_id){
+        const company=(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===tenant);
+        const r=await sb.rpc('gestlok_chat_admin_habilitar',{p_tenant:tenant,p_nombre:info.empresa?.nombre||company?.name||info.local.empresa,p_sucursales:[{local_id:id}]});
+        if(r.error)throw r.error;baseSaved=true;
+      }
+      if(plan==='premium'&&phones.length){
+        const r=await sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'agregar',p_tenant:tenant,p_local:id,p_numeros:phones});
+        if(r.error)throw r.error;
+      }
+      if(plan==='chat')for(const n of info.enabled){
+        const r=await sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'estado',p_id:n.id,p_habilitada:false});
+        if(r.error)throw r.error;
+      }
+      localPlanDraft.delete(key);chatTried=false;premiumWATried=false;microappsLoaded=false;
+      api?.toast?.(plan==='premium'?'Premium habilitado internamente. Vinculá y comprobá el número antes de usar WhatsApp.':'Plan GESTLOK Chat guardado para este local.');
+    }catch(e){api?.toast?.((baseSaved?'Chat web asignado; no se pudo completar Premium. ':'No se pudo completar el cambio de plan. ')+String(e?.message||'Revisá los números y la conexión.'),true);}
+    finally{localPlanSaving=false;await loadLocalPlans();if(premiumAdmin()&&tab==='locales')void loadMicroapps(true);}
+  }
+  document.addEventListener('toggle',ev=>{
+    const el=ev.target;
+    if(tab==='locales'&&el?.matches?.('details[data-creator-company]')){
+      if(el.open)localPlanOpen.add(el.dataset.creatorCompany);else localPlanOpen.delete(el.dataset.creatorCompany);
+    }
+  },true);
+
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
   // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
   function premiumLocales(p) {
+    if((!localPlansTried||localPlansIndex!==localPlanIndex())&&!localPlansBusy)queueMicrotask(()=>loadLocalPlans());
     const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
     const currentTenant=api.S?.me?.tenant_id;
@@ -704,11 +810,11 @@
         :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id||c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
       const appTenantIds=Array.isArray(c.tenant_ids)&&c.tenant_ids.length?c.tenant_ids:[c.tenant_id];
       const appsHTML=appTenantIds.map(t=>microappsEmpresa(t,c.name)).join('');
-      const localCards=locals.map(l=>'<button type="button" class="gl-ch-premium-local" '+attrs(l)+
+      const localCards=locals.map(l=>'<div class="gl-ch-premium-local-entry"><button type="button" class="gl-ch-premium-local" '+attrs(l)+
         ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
-        '<span aria-hidden="true">→</span></button>').join('');
-      return '<details class="gl-ch-premium-company gl-company-folder" data-creator-company="'+esc(c.tenant_id)+'">'+
+        '<span aria-hidden="true">→</span></button>'+localChatPlanView(c,l)+'</div>').join('');
+      return '<details class="gl-ch-premium-company gl-company-folder" data-creator-company="'+esc(c.tenant_id)+'"'+(localPlanOpen.has(c.tenant_id)?' open':'')+'>'+
         '<summary aria-label="Seleccionar empresa '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-company-icon">'+svg(businessIcon,27)+'</span>'+
         '<span class="gl-ch-premium-company-title"><b>'+esc(c.name)+'</b><small>Empresa · Sucursales</small></span>'+
@@ -721,7 +827,8 @@
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
       '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
-      '<header><div><h2>Locales</h2><p>Elegí una empresa y después un local.</p></div></header>'+crearEmpresaForm()+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y asigná el plan de Chat de cada sucursal.</p></div></header>'+crearEmpresaForm()+
+      (localPlansError?'<p role="alert">'+esc(localPlansError)+' <button type="button" class="btn" data-ch-local-plans-refresh>Reintentar</button></p>':'')+
       (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
         (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
       '</section></div>';
@@ -1369,8 +1476,9 @@
     if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
     if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';}
     if(v !== 'hq') hqReset();
-    if(v !== 'chat-prueba') showroomExpandido = false;
-    if(v==='locales')void loadMicroapps(true);
+    if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
+    else if(v !== 'chat-prueba') showroomExpandido = false;
+    if(v==='locales'){void loadMicroapps(true);void loadLocalPlans();}
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
     if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;}
     tab = v; store.set(v);
@@ -1378,8 +1486,20 @@
     if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest().then(()=>hqReadSupport());
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
+  document.addEventListener('change',ev=>{
+    if(!premiumAdmin()||tab!=='locales')return;
+    const f=ev.target?.closest?.('[data-ch-local-plan]');
+    if(!f||ev.target.name!=='plan')return;
+    localPlanDraftSave(f);
+    const fields=f.querySelector('[data-ch-local-premium]');if(fields)fields.hidden=f.elements.plan.value!=='premium';
+  });
+  document.addEventListener('input',ev=>{
+    if(!premiumAdmin()||tab!=='locales')return;
+    const f=ev.target?.closest?.('[data-ch-local-plan]');if(f&&ev.target.name==='numeros')localPlanDraftSave(f);
+  });
   document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-ch-local-plan]')){ev.preventDefault();void saveLocalChatPlan(ev.target);return;}
     if(ev.target?.matches?.('[data-ch-hq-form]')){
       ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
       const input=ev.target.querySelector('textarea');const feedback=ev.target.querySelector('[data-ch-hq-feedback]');
@@ -1409,6 +1529,8 @@
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
     if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
       if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
+    const localWA=ev.target.closest?.('[data-ch-local-wa]');if(localWA){ev.preventDefault();openLocalWhatsApp(localWA.dataset.chLocalWa);return;}
+    const localRefresh=ev.target.closest?.('[data-ch-local-plans-refresh]');if(localRefresh){ev.preventDefault();if(tab==='locales')void loadLocalPlans();return;}
     const refreshApps=ev.target.closest?.('[data-ch-app-refresh]');
     if(refreshApps&&premiumAdmin()){ev.preventDefault();void loadMicroapps(true);return;}
     const appAdd=ev.target.closest?.('[data-ch-app-add]');
@@ -1496,7 +1618,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });

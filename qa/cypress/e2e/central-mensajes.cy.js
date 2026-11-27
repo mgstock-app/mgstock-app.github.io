@@ -27,7 +27,9 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.get('.gcc-cab').should('contain.text','Munro');
   central().find('.tarjeta.pendiente').should('contain.text','MM-0001').and('contain.text','Cliente Ficticio');
   central().find('#sucursal').should('not.be.visible');
+  central().find('[data-grupo="ajustes"]').click();
   central().find('[data-p="mensajes"]').should('be.visible');
+  central().find('[data-grupo="pedidos"]').click();
   central().contains('button','Confirmar y pasar a preparación').click();
   central().contains('No hay pedidos pendientes de confirmación');
   central().contains('button','En preparación').click();
@@ -54,17 +56,19 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
   central().find('.tarjeta').should('exist');
-  central().find('[data-p="carta"]').click();
+  central().find('[data-grupo="ajustes"]').click();
+  central().find('[data-p="carta"]').should('be.visible').click();
   cy.get('.gcc-panel').then($h=>{$h[0].__marca='misma';});
   cy.get('#snav button[data-go="pedidos-clientes"]').click();
   cy.get('.gcc-panel').should($h=>{expect($h[0].__marca).to.eq('misma');});
-  central().find('[data-p="carta"]').should('have.attr','aria-selected','true');
+  central().find('[data-p="carta"]').should('have.attr','aria-pressed','true');
  });
 
  it('gerente de Munro administra carta, mensajes y ajustes de su sucursal',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
-  central().find('[data-p="carta"]').click();
+  central().find('[data-grupo="ajustes"]').click();
+  central().find('[data-p="carta"]').should('be.visible').click();
   central().contains('button','+ Categoría').click();
   central().find('dialog.dialogo input[type="text"]').first().type('Empanadas');
   central().find('dialog.dialogo').contains('button','Guardar').click();
@@ -98,8 +102,9 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
  it('micro app general: la administradora la activa por empresa desde su panel',()=>{
   cy.on('window:confirm',()=>true);
   setup('kmu15lopez@gmail.com',1280,{panel:true});
-  cy.get('.gl-ch-microapp',{timeout:15000}).contains('GESTLOK Chat').click();
-  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').should('have.attr','aria-current','page');
+  cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]',{timeout:15000}).click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="habilitacion"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="habilitacion"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-chat-admin',{timeout:15000}).should('contain.text','un chat por local');
   cy.get('[data-ch-chat-company="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"]').should('contain.text','Activa · 2 chats').and('contain.text','Munro').and('contain.text','Don Torcuato');
   cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]').should('contain.text','No activa')

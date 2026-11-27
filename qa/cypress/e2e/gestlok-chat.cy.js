@@ -189,7 +189,8 @@ describe('GESTLOK Chat · panel', () => {
     cy.contains('.stock-cabecera', 'Empanadas').find('button.stock-desplegar').click();
     cy.contains('.stock-item', 'Empanada de carne').find('input[type="checkbox"]').uncheck({force:true});
     cy.get('#aviso').should('contain.text', 'Empanada de carne agotado');
-    cy.get('[data-p=mensajes]').click();
+    cy.get('[data-grupo=ajustes]').click();
+    cy.get('[data-p=mensajes]').should('be.visible').click();
     cy.contains('label', 'Listo para retirar').find('textarea').clear().type('Listo {codigo}, pasá cuando quieras', {parseSpecialCharSequences: false});
     cy.get('.vista-previa').eq(0).should('contain.text', 'Listo MM-0012, pasá cuando quieras');
     cy.contains('label', 'Link de reseñas de Google').find('input').type('https://estafa.example/review');
