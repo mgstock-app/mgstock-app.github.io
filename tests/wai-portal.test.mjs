@@ -15,7 +15,9 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  create table gestlok_tenancy.tenants(id uuid primary key,code text);
  create table public.docs(tenant_id uuid,col text,id text,data jsonb,primary key(tenant_id,col,id));
  create table gestlok_chat_private.empresas(tenant_id uuid primary key,nombre_publico text,habilitada boolean);
- create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text,datos_transferencia text default '',mensajes jsonb default '{}'::jsonb);
+ create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text,datos_transferencia text default '',horario text default '10 a 20',direccion text default 'Calle 123',acepta_retiro boolean default true,acepta_envio boolean default true,envio_zona text default 'Barrio',envio_costo numeric default 100,mensajes jsonb default '{}'::jsonb);
+ create table gestlok_chat_private.categorias(id uuid primary key,activa boolean default true);
+ create table gestlok_chat_private.productos(id uuid default gen_random_uuid(),sucursal_id uuid,categoria_id uuid,nombre text,precio numeric,activo boolean default true,disponible boolean default true,orden int default 0);
  create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('test.uid',true),''),'${U}')::uuid$$;
  create function public.mi_rol() returns text language sql stable as $$select current_setting('test.role',true)$$;
  create function gestlok_platform.require_admin() returns uuid language plpgsql as $$begin if current_setting('test.role',true) is distinct from 'creadora' then raise exception 'Sin permiso';end if;return '${U}';end$$;
@@ -287,6 +289,46 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  assert.ok((await native('voto',p7,jid,'WA-SURVEY','problema')).ok);
  await native('control',null);assert.match((await sendNative('WA-SORRY')).texto,/Lamentamos mucho/);
  await role('gerente');assert.equal((await inbox(S)).chats[0].reclamo_pendiente,true);
+ // Configurable global timers, assistant native selection and durable cycles.
+ await order('resolver',o3.id);
+ await db.exec(`reset role;update gestlok_chat_private.wai_pedidos set estado='entregado' where id='${o3.id}';insert into gestlok_chat_private.productos(sucursal_id,nombre,precio) values ('${S}','Producto A',500),('${T}','Producto secreto B',999);`);
+ await db.exec(read('entornos/sql/wai-asistente-y-cierre.sql'));
+ assert.equal((await db.query("select gestlok_chat_private.wai_modalidad('¿Tienen delivery?') as x")).rows[0].x,null);
+ assert.equal((await db.query("select gestlok_chat_private.wai_modalidad('Retiro o delivery') as x")).rows[0].x,null);
+ assert.equal((await db.query("select gestlok_chat_private.wai_modalidad('Paso a buscar el pedido') as x")).rows[0].x,'retiro');
+ await role('gerente');
+ assert.equal((await cfg(S)).agente_activo,false);
+ await assert.rejects(cfg(S,{...settings,seguimiento_min:21}),/rango/);
+ assert.equal((await cfg(S,{...settings,pedidos:true,bienvenida_auto:false,agente_activo:true,seguimiento_min:3,cierre_auto:true,cierre_min:5})).seguimiento_min,3);
+ await role('gerente',T);assert.equal((await cfg(T)).agente_activo,false);await assert.rejects(att('finalizar',S),/Sin permiso/);
+ await role('creadora');await authorize(S,H,null,'cancelar');const p8=await authorize(S,H,contact);
+ const v8=(action,pid=p8,j=null,event=null,txt=null,msg=null,state='opciones_v1')=>motor(H,keyA,action,pid,j,event,txt,msg,state,cmd.revision);
+ const job8=async id=>{const j=await v8('tomar');assert.ok(j);await v8('resultado',p8,jid,id,null,j.id,'aceptado');return j;};
+ await anon();await v8('control',null);assert.equal(await v8('tomar'),null);
+ await v8('recibir',p8,jid,'CYCLE-HI','Hola');await v8('control',null);await v8('control',null);
+ const greet=await job8('WA-CYCLE-GREET');assert.equal(greet.interaccion.opciones[2].id,'pedido');
+ await v8('voto',p8,jid,'WA-CYCLE-GREET','pedido');await v8('control',null);
+ const modePoll=await job8('WA-MODE');assert.equal(modePoll.interaccion.opciones[1].id,'delivery');
+ await role('gerente');let cc=(await inbox(S)).chats[0];const cycle1=cc.ciclo_activo;assert.ok(cycle1);assert.equal(cc.modalidad_detectada,null);
+ await assert.rejects(order('aceptar',null,'retiro',1,E),/confirme/);
+ await anon();await v8('voto',p8,jid,'WA-MODE','delivery');await v8('control',null);assert.match((await job8('WA-MODE-ANSWER')).texto,/delivery/);
+ await role('gerente');cc=(await inbox(S)).chats[0];assert.equal(cc.modalidad_detectada,'delivery');assert.equal(cc.seguimiento_min,3);
+ // Ignore caller-supplied modality and delay, using detected and configured values.
+ await order('aceptar',null,'retiro',1,'10000000-0000-4000-8000-000000000088');
+ const o4=(await inbox(S)).chats[0].pedidos[0];assert.equal(o4.modalidad,'delivery');assert.equal(o4.demora_min,3);
+ await assert.rejects(att('finalizar'),/pendientes/);
+ await order('listo',o4.id);await order('entregado',o4.id);
+ await anon();await job8('WA-PREP');await job8('WA-ONWAY');await job8('WA-DONE');
+ await role('gerente');const histCount=(await inbox(S)).chats[0].mensajes.length;assert.equal(await att('finalizar'),true);cc=(await inbox(S)).chats[0];assert.ok(cc.cerrado_at);assert.equal(cc.puede_responder,false);assert.equal(cc.mensajes.length,histCount);
+ await assert.rejects(inbox(S,'responder',p,'viejo',E),/finalizada/);
+ await anon();assert.equal(await v8('voto',p8,jid,'WA-MODE','retiro'),null);
+ await v8('recibir',p8,jid,'CYCLE-AGAIN','Hola');await v8('control',null);const again=await job8('WA-AGAIN');assert.equal(again.interaccion.opciones[2].id,'pedido');
+ await role('gerente');cc=(await inbox(S)).chats[0];assert.notEqual(cc.ciclo_activo,cycle1);assert.equal(cc.cerrado_at,null);assert.equal(cc.modalidad_detectada,null);assert.ok(cc.mensajes.length>histCount);const cycle2=cc.ciclo_activo;
+ await anon();await v8('recibir',p8,jid,'CYCLE-TEXT','Voy a retirar');await v8('control',null);assert.match((await job8('WA-RETIRO')).texto,/retiro/);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].modalidad_detectada,'retiro');
+ await db.exec(`reset role;update gestlok_chat_private.wai_mensajes set creado_at=now()-interval '6 minutes' where ciclo_id=(select ciclo_id from gestlok_chat_private.wai_atencion_hilos where hilo_id='${p}');update gestlok_chat_private.wai_ciclos set inicio_at=now()-interval '6 minutes' where hilo_id='${p}' and cerrado_at is null;update gestlok_chat_private.wai_atencion_hilos set actualizado_at=now()-interval '6 minutes' where hilo_id='${p}';`);
+ await anon();await v8('control',null);
+ await role('gerente');cc=(await inbox(S)).chats[0];assert.ok(cc.cerrado_at);assert.equal(cc.ciclos.find(x=>x.id===cycle2).motivo,'inactividad');
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{
