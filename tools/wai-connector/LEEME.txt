@@ -1,0 +1,30 @@
+GESTLOK WAI · CONECTOR DE ENSAYO
+================================
+Este paquete es solo para Gestlok Prueba. No se conecta a producción
+ni autoriza respuestas comerciales. Usa Node.js y el transporte
+no oficial Baileys: WhatsApp puede limitar o revocar una sesión.
+
+1. WINDOWS: instalá Node.js LTS desde https://nodejs.org/en/download
+   (versión 22 o superior). Extraé TODO el ZIP a una carpeta.
+   Doble clic en INSTALAR-WAI.cmd. Si aún no tenés la configuración
+   del portal, elegí N al final. No hace falta instalar Python.
+2. En https://gestlok-prueba.vercel.app/chat/wai/ iniciá sesión con
+   tu cuenta de prueba, una vez habilitada por la administración.
+   Solo la administradora puede registrar un número autorizado de
+   ensayo y descargar su configuración privada (Vincular >
+   Preparar y descargar configuración).
+3. Abrí CONFIGURAR-WAI.cmd y arrastrá el JSON descargado a la
+   ventana, luego Enter. Guardará la configuración en tu carpeta
+   privada. No lo envíes por chat ni lo publiques.
+4. Abrí INICIAR-WAI.cmd y dejá abierta esa ventana y la PC encendida.
+   En el portal, Vincular mostrará el QR de WhatsApp si Node tiene
+   conexión. Escanealo con el teléfono de ensayo.
+   No usés los números comerciales de Mi Gusto en esta etapa.
+5. En macOS/Linux: ejecutá desde la carpeta npm ci --ignore-scripts
+   --no-audit --no-fund; node --test *.test.mjs; node setup.mjs;
+   node connector.mjs. El proceso guarda credenciales privadas en
+   la carpeta .gestlok-wai-pilot de tu usuario.
+
+No se incluyen claves ni sesiones de WhatsApp en el ZIP. El primer
+ensayo de mensajes exige autorización de un contacto y tiene límites.
+Cerrar el conector o suspender la PC interrumpe la conexión.

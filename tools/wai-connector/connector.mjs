@@ -1,31 +1,17 @@
 import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers} from '@whiskeysockets/baileys';
 import pino from 'pino';
-import {readFile,writeFile,mkdir,stat} from 'node:fs/promises';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {createSession,phoneKey} from './session.mjs';
 import {pilotTransport} from './pilot.mjs';
+import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
 
 process.umask(0o077);
-const configFile=resolve(process.argv[2]||'config.private.json');
-const configMeta=await stat(configFile);
-if(configMeta.mode&0o077)throw Error('El archivo de configuración debe ser privado (chmod 600).');
-const config=JSON.parse(await readFile(configFile,'utf8'));
+const root=await protectDirectory(privateRoot());
+const configFile=resolve(process.argv[2]||defaultConfig());
+const config=await loadConfig(configFile);
 const url=new URL(config.url);
-if(url.protocol!=='https:'||!/^([a-z0-9]+)\.supabase\.co$/.test(url.hostname)||url.pathname!=='/'||url.search||url.hash)throw Error('URL Supabase inválida.');
-if(url.origin!=='https://irqeitzbfyerxcrogkyh.supabase.co')throw Error('Piloto restringido al proyecto de Prueba; no se conecta a producción.');
-if(typeof config.anonKey!=='string'||config.anonKey.length<30)throw Error('Usá la clave pública del proyecto.');
-const claims=JSON.parse(Buffer.from(config.anonKey.split('.')[1]||'','base64url').toString());
-if(claims.role!=='anon'||claims.ref!==url.hostname.split('.')[0])throw Error('Solo se admite la clave anon del proyecto; nunca service_role.');
-if(!Array.isArray(config.sessions)||config.sessions.length<1||config.sessions.length>10)throw Error('Configurá de 1 a 10 sesiones de ensayo.');
-const ids=new Set(),numbers=new Set();
-for(const s of config.sessions){
- if(!/^[a-f0-9-]{36}$/i.test(s.id)||!/^[a-f0-9]{64}$/.test(s.key)||!phoneKey(s.number)||ids.has(s.id)||numbers.has(phoneKey(s.number)))throw Error('Sesión inválida o repetida.');
- ids.add(s.id);numbers.add(phoneKey(s.number));
-}
-if(config.testOnly!==true)throw Error('Este conector es de prueba: no autoriza números comerciales ni envíos automáticos.');
-const root=resolve(process.env.HOME||'.','.gestlok-wai-pilot');
-await mkdir(root,{recursive:true,mode:0o700});
 async function rpc(s,name,args){
  const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_id:s.id,p_clave:s.key,...args}),signal:AbortSignal.timeout(7000),redirect:'error'});
  if(!r.ok)throw Error('Control remoto no disponible');
@@ -44,7 +30,7 @@ function transportFor(s){
   }
   if(!/^[a-f0-9-]{36}$/.test(sub))throw Error('Directorio de sesión inválido');
   const privateDir=join(path,sub);
-  await mkdir(privateDir,{recursive:true,mode:0o700});
+  await protectDirectory(privateDir);
   const {state,saveCreds}=await useMultiFileAuthState(privateDir);
   const sock=makeWASocket({auth:state,logger:pino({level:'silent'}),browser:Browsers.appropriate('Chrome'),
     markOnlineOnConnect:false,syncFullHistory:false,shouldSyncHistoryMessage:()=>false,

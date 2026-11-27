@@ -24,14 +24,19 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 let shell,notice,list,search,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
+const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
 const portalHref=s=>location.hostname.endsWith('.vercel.app')?'/chat/wai/?local='+encodeURIComponent(s):'/gestlok-wai-'+encodeURIComponent(s)+'/';
 function login(){
  const email=node('input',{type:'email',autocomplete:'email',required:true}),password=node('input',{type:'password',autocomplete:'current-password',required:true}),status=node('p',{role:'status',class:'hint'});
- const form=node('form',{onsubmit:async e=>{e.preventDefault();status.textContent='Ingresando…';submit.disabled=true;try{const r=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});password.value='';if(r.error)throw Error('Revisá el email y la contraseña.');await init();}catch(x){status.textContent=x.message;}finally{submit.disabled=false;}}});
+ const form=node('form',{onsubmit:async e=>{e.preventDefault();status.textContent='Ingresando…';submit.disabled=true;try{const r=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});password.value='';if(r.error)throw Error(r.error.code==='email_not_confirmed'?'Confirmá tu correo o solicitá un nuevo enlace.':'Revisá el email y la contraseña.');await init();}catch(x){status.textContent=x.message;}finally{submit.disabled=false;}}});
  const submit=node('button',{class:'btn primary',type:'submit'},'Ingresar');
  form.append(node('label',{},'Email',email),node('label',{},'Contraseña',password),submit);
  const google=button('Ingresar con Google',async()=>{try{const r=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/chat/wai/'+(slug?'?local='+encodeURIComponent(slug):'')}});if(r.error)throw r.error;}catch{status.textContent='No se pudo iniciar con Google. Ingresá desde GESTLOK.';}});
- access('Ingresá al espacio del local','Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,status,node('a',{href:'/'},'Volver a GESTLOK'));
+ const resend=button('Reenviar confirmación de correo',async()=>{
+  if(!email.value.trim()||!email.checkValidity()){status.textContent='Escribí el email de tu cuenta.';return;}
+  resend.disabled=true;try{await sb.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:location.origin+'/chat/wai/'}});status.textContent='Si la confirmación está pendiente, revisá tu correo y spam. No compartas el enlace.';}catch{status.textContent='No se pudo solicitar. Reintentá más tarde.';}finally{setTimeout(()=>resend.disabled=false,60000);}
+ });
+ access('Ingresá al espacio del local',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':'Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,resend,status,node('a',{href:'/'},'Volver a GESTLOK'));
 }
 async function init(){
  const mine=++generation;destroyed=false;
@@ -44,7 +49,8 @@ async function init(){
   portal=result;const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
-   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,node('a',{href:'/'},'Volver a GESTLOK'));return;
+   const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Configurar línea de ensayo'),node('p',{class:'hint'},'Solo números de prueba, nunca los números comerciales.'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn primary')):null;
+   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));return;
   }
   sessionLocal=locals.find(s=>s.slug===slug&&['gestionar','configurar'].includes(s.nivel));
   if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:'/chat/wai/'},'Mis locales'));return;}
@@ -52,6 +58,29 @@ async function init(){
   renderShell();await refresh();
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
  }catch{if(mine===generation)access('No pudimos abrir WAI','Revisá la conexión o volvé a ingresar. Este espacio puede estar pendiente de publicación.',button('Reintentar',()=>void init()));}
+}
+async function registerTrial(box){
+ if(!trialEnvironment()||portal?.administradora!==true)return;
+ const generationAtStart=generation;
+ box.replaceChildren(node('p',{class:'hint'},'Consultando tus sucursales de prueba…'));
+ try{
+  const info=await rpc('admin_whatsapp_premium',{p_accion:'listar'});
+  if(generationAtStart!==generation||!box.isConnected)return;
+  const locals=(info?.locales||[]).filter(l=>typeof l.empresa==='string'&&/\(prueba\)/i.test(l.empresa));
+  const select=node('select',{'aria-label':'Local de ensayo',required:true},...locals.map((l,i)=>node('option',{value:i},l.empresa+' · '+l.nombre)));
+  const tel=node('input',{type:'tel',placeholder:'+54911…',required:true,autocomplete:'off'});
+  const status=node('p',{role:'status',class:'hint'});
+  const submit=node('button',{type:'submit',class:'btn primary',disabled:!locals.length},'Registrar y abrir local');
+  const form=node('form',{onsubmit:async e=>{
+   e.preventDefault();const local=locals[Number(select.value)],number=tel.value.trim();
+   if(!local||!/^\+[1-9]\d{7,14}$/.test(number)){status.textContent='Ingresá el número de ensayo en formato internacional.';return;}
+   if(!confirm('¿Registrar una línea de ensayo autorizada? No uses el número comercial de ningún local.'))return;
+   submit.disabled=true;
+   try{await rpc('admin_whatsapp_premium',{p_accion:'agregar',p_tenant:local.tenant_id,p_local:local.local_id,p_numeros:[number]});await init();}
+   catch(e){status.textContent=e.message;submit.disabled=false;}
+  }},node('label',{},'Sucursal de prueba',select),node('label',{},'Número personal de ensayo',tel),submit,status);
+  box.replaceChildren(node('h2',{},'Registrar línea de ensayo'),form);
+ }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
 function clearPrivate(){
  generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
@@ -142,6 +171,22 @@ async function connectionAction(action,id){
  catch(e){drawerStatus.textContent=e.message;}
  finally{connectionBusy=false;if(drawerKind==='conexion')renderConnection();}
 }
+async function prepareTrial(row,rotate=false){
+ if(!trialEnvironment()||!portal?.administradora||connectionBusy||!row.habilitada)return;
+ if(!confirm(rotate?'¿Rotar la clave? El dispositivo anterior dejará de funcionar y deberás importar la nueva configuración.':'¿Preparar esta línea de ensayo? El archivo privado se descarga una sola vez. No se envían mensajes automáticos.'))return;
+ connectionBusy=true;const current=generation;
+ try{
+  const r=await rpc('wai_conexiones',{p_sucursal:sessionLocal.id,p_accion:rotate?'rotar_clave':'preparar',p_id:row.id});
+  if(current!==generation||r?.id!==row.id||typeof r?.clave!=='string'||!/^[a-f0-9]{64}$/.test(r.clave||''))throw Error('No se recibió una configuración válida.');
+  const C=window.GESTLOK_CHAT_CONFIG;
+  const config={url:C.url,anonKey:C.key,testOnly:true,enableTestMessages:true,sessions:[{id:row.id,number:row.numero,key:r.clave}]};
+  const href=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'}));
+  const a=node('a',{href,download:'gestlok-wai-config.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),1000);
+  drawerStatus.textContent='Configuración privada descargada. Importala en la computadora que ejecutará Node.js. No la compartas.';
+  await refresh();
+ }catch(e){if(current===generation)drawerStatus.textContent=e.message;}
+ finally{connectionBusy=false;if(drawerKind==='conexion')renderConnection();}
+}
 function renderConnection(){
  if(drawerKind!=='conexion')return;
  const cards=rows.map(r=>{
@@ -151,6 +196,8 @@ function renderConnection(){
   }
   if(r.habilitada&&r.preparada&&['qr','qr_vencido','desconectado'].includes(r.estado))box.append(node('div',{class:'actions'},button('Restablecer señal',()=>void connectionAction('reconectar',r.id),'btn',{disabled:connectionBusy}),button('Generar nuevo QR',()=>void connectionAction('qr',r.id),'btn primary',{disabled:connectionBusy})));
   if(['sin_senal','sin_conector'].includes(r.estado))box.append(node('p',{class:'hint'},'El servicio de conexión debe estar en línea. Contactá a soporte GESTLOK; no hace falta que el cliente te entregue su teléfono.'));
+  if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
+  if(trialEnvironment()&&portal.administradora&&r.habilitada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
   if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado')box.append(button('Autorizar contacto de ensayo',()=>void authorize(r.id),'btn'),button('Cancelar ensayo',()=>void authorize(r.id,true),'btn danger'));
   return box;
  });

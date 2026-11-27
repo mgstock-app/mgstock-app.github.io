@@ -20,7 +20,7 @@ const ACCIONES = 'https://github.com/' + cfg.repo + '/actions/workflows/entornos
 const MICROAPPS = [{
   nombre: 'GESTLOK Chat', carpetas: ['chat'],
   enlaces: [['Chat de clientes · Munro', '/chat/?s=mi-gusto-munro'], ['Chat de clientes · Torcuato', '/chat/?s=mi-gusto-torcuato'],
-    ['Panel del local (gerente y dueño)', '/chat/panel/']],
+    ['Panel del local (gerente y dueño)', '/chat/panel/'], ['GESTLOK WAI · conexión de ensayo', '/chat/wai/']],
 }];
 const COMPARTIDAS = ['vendor', 'icons', 'img'];
 
