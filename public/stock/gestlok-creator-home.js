@@ -286,14 +286,19 @@
   const premiumAdmin=()=>api?.isCreadora?.() &&
     String(api?.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
   // Habilitación comercial: no solicita credenciales ni llama al proveedor WhatsApp.
-  let premiumWAManualReady=false,premiumWAReady=false,premiumWAConnections={},premiumWALink=null;
+  let premiumWAManualReady=false,premiumWAReady=false,premiumWAConnections={},premiumWALink=null,premiumWAProvider='sin_consultar';
   let premiumWhatsApp=null,premiumWABusy=false,premiumWAError='',premiumWATried=false,premiumWALocal='',premiumWADraft='';
   const premiumWAAllowed=()=>premiumAdmin();
   const premiumWAKey=l=>JSON.stringify([l.tenant_id,l.local_id]);
+  const premiumWAValidPhone=p=>{
+    const n=String(p||'').trim().replace(/[ ()-]/g,'');
+    return /^\+[0-9 ()-]+$/.test(String(p||'').trim())&&/^\+[1-9][0-9]{7,14}$/.test(n)&&(!n.startsWith('+54')||/^\+54(9)?[0-9]{10}$/.test(n));
+  };
+  const premiumWAConfigLink=(l,section='ajustes')=>l?.sucursal_id?'/chat/panel/?configurar='+encodeURIComponent(l.sucursal_id)+'&seccion='+section:'';
   const premiumWACompany=l=>(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===l.tenant_id)?.name||l.empresa;
   async function premiumWARequest(params={p_accion:'listar'}){
     if(!premiumWAAllowed()||premiumWABusy||!window.GestLokSupabase?.rpc)return;
-    premiumWABusy=true;premiumWATried=true;premiumWAError='';premiumWAReady=false;premiumWAManualReady=false;premiumWALink=null;
+    premiumWABusy=true;premiumWATried=true;premiumWAError='';premiumWAReady=false;premiumWAManualReady=false;premiumWAProvider='consultando';premiumWALink=null;
     if(params.p_accion!=='listar')api?.render?.();
     try{
       const {data:result,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_premium',params);
@@ -302,48 +307,67 @@
       if(!Array.isArray(result?.locales)||!Array.isArray(result?.numeros))throw new Error('Respuesta inválida.');
       premiumWhatsApp=result;
       premiumWAReady=false;premiumWAConnections={};premiumWALink=null;
-      const connections=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_conexiones');
-      if(!connections.error&&connections.data&&typeof connections.data==='object')premiumWAConnections=connections.data;
-      if(window.GestLokSupabase.functions?.invoke){
-        const readiness=await window.GestLokSupabase.functions.invoke('gestlok-ycloud-partner',{body:{action:'status'}});
-        premiumWAReady=!readiness.error&&readiness.data?.ready===true&&!connections.error;premiumWAManualReady=premiumWAReady&&readiness.data?.manualReady===true;
-      }
+      // Fallar cerrado en la conexión oficial, sin impedir administrar el registro interno.
+      try{
+        const connections=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_conexiones');
+        const connectionsOK=!connections.error&&connections.data&&typeof connections.data==='object'&&!Array.isArray(connections.data);
+        if(connectionsOK)premiumWAConnections=connections.data;
+        const readiness=window.GestLokSupabase.functions?.invoke?await window.GestLokSupabase.functions.invoke('gestlok-ycloud-partner',{body:{action:'status'}}):null;
+        premiumWAReady=!!(connectionsOK&&!readiness?.error&&readiness?.data?.ready===true);
+        premiumWAManualReady=premiumWAReady&&readiness.data?.manualReady===true;
+        premiumWAProvider=premiumWAReady?'listo':connectionsOK&&!readiness?.error&&readiness?.data?.ready===false?'pendiente':'error';
+      }catch{premiumWAProvider='error';}
       if(params.p_accion==='agregar'){premiumWADraft='';api?.toast?.('Números habilitados internamente. La conexión con WhatsApp sigue pendiente.');}
       if(params.p_accion==='estado')api?.toast?.(params.p_habilitada?'Habilitación interna reactivada.':'Número pausado.');
-    }catch(e){premiumWAError=['22023','23505','P0002'].includes(String(e?.code))?String(e.message):'No se pudo consultar o guardar. Revisá la conexión y los permisos.';}
+    }catch(e){premiumWAProvider='error';premiumWAError=['22023','23505','P0002'].includes(String(e?.code))?String(e.message):'No se pudo consultar o guardar. Revisá la conexión y los permisos.';}
     finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
   }
   function premiumWAView(){
     if(!premiumWAAllowed())return '';
     if(!premiumWATried&&!premiumWABusy)queueMicrotask(()=>premiumWARequest());
     const locales=premiumWhatsApp?.locales||[],numeros=premiumWhatsApp?.numeros||[];
-    const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(premiumWALocal===premiumWAKey(l)?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
-    const configLocales=locales.filter(l=>l.sucursal_id).map(l=>'<li><b>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</b> <a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(l.sucursal_id)+'" target="_blank" rel="noopener">Configurar local</a></li>').join('');
-    const active=numeros.filter(n=>n.habilitada&&n.local_existe).length;
-    const statusNames={enlace_emitido:'Esperando autorización del comercio',enlace_vencido:'Enlace vencido',cuenta_autorizada:'Cuenta autorizada · falta comprobar número',numero_verificado:'Número comprobado anteriormente · automatización apagada',pausado:'Pausado'};
-    const rows=numeros.map(n=>{
-      const c=premiumWAConnections[n.id],state=n.habilitada&&n.local_existe?(c?.estado||'pendiente'):'pausado';
-      const canUse=premiumWAReady&&n.habilitada&&n.local_existe&&!premiumWABusy;
+    const selected=locales.find(l=>premiumWAKey(l)===premiumWALocal);
+    const visible=selected?numeros.filter(n=>premiumWAKey(n)===premiumWAKey(selected)):numeros;
+    const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(selected===l?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
+    const configActions=l=>l?.sucursal_id?'<a class="btn" href="'+esc(premiumWAConfigLink(l))+'" target="_blank" rel="noopener">Configurar local</a> <a class="btn" href="'+esc(premiumWAConfigLink(l,'excluidos'))+'" target="_blank" rel="noopener">Números excluidos del bot</a>':'<small>Primero asigná GESTLOK Chat al local desde Locales para configurar el bot.</small>';
+    const active=visible.filter(n=>n.habilitada&&n.local_existe).length;
+    const statusNames={enlace_emitido:'Esperando autorización del comercio',enlace_vencido:'Enlace vencido',cuenta_autorizada:'Cuenta autorizada · falta comprobar número',numero_verificado:'Número comprobado · automatización apagada'};
+    const providerStatus={
+      listo:'Conexión oficial disponible: podés vincular los números.',
+      pendiente:'Vinculación oficial aún no habilitada por el proveedor. Podés cargar, activar o desactivar números y administrar exclusiones.',
+      error:'No se pudo comprobar la conexión oficial. Actualizá el estado y volvé a intentar. Los envíos permanecen bloqueados.',
+      consultando:'Comprobando conexión oficial…',
+      sin_consultar:'Comprobando conexión oficial…'
+    }[premiumWAProvider];
+    const rows=visible.map(n=>{
+      const l=locales.find(l=>premiumWAKey(l)===premiumWAKey(n)),c=premiumWAConnections[n.id];
+      const enabled=n.habilitada&&n.local_existe;
+      const state=c?.estado||'pendiente';
+      const canUse=premiumWAReady&&enabled&&!premiumWABusy;
       const needsVerify=['cuenta_autorizada','numero_verificado'].includes(state);
       const link=premiumWALink?.id===n.id&&premiumWALink.expiresAt>Date.now()&&canUse;
-      return '<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(n.habilitada&&n.local_existe?'gl-wa-on':'gl-wa-off')+'">'+(n.habilitada&&n.local_existe?'Habilitado internamente':'Pausado / inactivo')+'</strong><span>'+esc(statusNames[state]||'WhatsApp: pendiente de vinculación')+'</span></p>'+
+      const connectionLabel=!enabled?'WhatsApp desactivado en GESTLOK':premiumWAProvider==='error'?'Estado de conexión no comprobado':statusNames[state]||'WhatsApp: pendiente de vinculación';
+      return '<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(enabled?'gl-wa-on':'gl-wa-off')+'">'+(enabled?'Activo en GESTLOK':'Desactivado')+'</strong><span>'+esc(connectionLabel)+'</span></p>'+
         (state==='numero_verificado'&&c?.verificado_at?'<small>Última comprobación: '+esc(new Date(c.verificado_at).toLocaleString('es-AR'))+'</small>':'')+
-        (link?'<p><a class="btn" href="'+esc(premiumWALink.url)+'" target="_blank" rel="noopener noreferrer">Abrir autorización oficial</a><small> Vence: '+esc(new Date(premiumWALink.expiresAt).toLocaleTimeString('es-AR'))+'</small></p>':'')+
-        '</div><div class="gl-ch-chat-actions">'+(needsVerify?'<button type="button" class="btn" data-ch-wa-verify="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>Comprobar número</button>':'<button type="button" class="btn" data-ch-wa-link="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>Vincular WhatsApp</button>')+
+        (link?'<p><a class="btn primary" href="'+esc(premiumWALink.url)+'" target="_blank" rel="noopener noreferrer">Abrir autorización oficial</a><small> Vence: '+esc(new Date(premiumWALink.expiresAt).toLocaleTimeString('es-AR'))+'</small></p>':'')+
+        (!selected&&l?.sucursal_id?'<p>'+configActions(l)+'</p>':'')+
+        '</div><div class="gl-ch-chat-actions">'+
+        '<button type="button" class="btn '+(enabled?'':'primary')+'" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Desactivar número':'Activar número')+'</button>'+
+        (needsVerify?'<button type="button" class="btn" data-ch-wa-verify="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>Comprobar número</button>':'<button type="button" class="btn" data-ch-wa-link="'+esc(n.id)+'"'+(!canUse?' disabled':'')+'>'+(state==='enlace_emitido'||state==='enlace_vencido'?'Generar nuevo enlace':'Vincular WhatsApp')+'</button>')+
         (needsVerify?'<button type="button" class="btn" data-ch-wa-pilot="'+esc(n.id)+'"'+(!canUse||!premiumWAManualReady||state!=='numero_verificado'?' disabled':'')+'>Autorizar prueba manual</button><button type="button" class="btn" data-ch-wa-cancel="'+esc(n.id)+'"'+(premiumWABusy?' disabled':'')+'>Cancelar prueba</button>':'')+
-        '<button type="button" class="btn" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Pausar':'Reactivar')+'</button></div></article>';
+        '</div></article>';
     }).join('');
     return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK WAI">'+
-      '<header><h2>GESTLOK WAI</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
-      '<p>Autorizá qué comercios y números de WhatsApp pueden usar GESTLOK WAI según su suscripción. Podés habilitar varios números por local. Solo la administradora autoriza números; cada negocio configura sus propios datos.</p>'+
-      (configLocales?'<h3>Configuración de cada local</h3><ul>'+configLocales+'</ul>':'')+
-      '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de vinculación</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
+      '<header><h2>GESTLOK WAI · Administrar WhatsApp</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar estado</button></header>'+
+      '<p>Elegí un local para registrar, activar o desactivar sus números comerciales, vincular WhatsApp y configurar el bot. Solo vos autorizás números comerciales; los gerentes pueden configurar su propio local.</p>'+
+      '<div class="gl-wa-notice" role="status"><strong>'+esc(providerStatus)+'</strong><p>Activar un número en GESTLOK no lo vincula a WhatsApp ni inicia envíos. La autorización oficial del titular es indispensable. La IA automática permanece apagada.</p></div>'+
       (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
       (premiumWABusy?'<p role="status">Consultando o guardando…</p>':'')+
-      (premiumWhatsApp?'<form data-ch-wa-form class="gl-wa-form"><h3>Nueva habilitación</h3><label for="gl-wa-local">Empresa y local</label><select id="gl-wa-local" name="local" required'+(premiumWABusy?' disabled':'')+'><option value="">Seleccioná el local</option>'+options+'</select>'+
-        '<label for="gl-wa-numeros">Número o números de WhatsApp del comercio</label><textarea id="gl-wa-numeros" name="numeros" required rows="3" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+(premiumWABusy?' disabled':'')+'>'+esc(premiumWADraft)+'</textarea><small>Incluí + y código de país. Uno por línea o separados por coma. No cargues números de clientes ni contactos excluidos.</small>'+
-        '<button type="submit" class="btn primary"'+(!locales.length||premiumWABusy?' disabled':'')+'>Habilitar números</button></form>'+
-        '<h3>Números autorizados · '+active+' habilitados / '+numeros.length+' registrados</h3><div class="gl-ch-chat-list">'+(rows||'<p>Todavía no hay números autorizados.</p>')+'</div>':'')+'</section>';
+      (premiumWhatsApp?'<form data-ch-wa-form class="gl-wa-form"><label for="gl-wa-local">Empresa y local</label><select id="gl-wa-local" name="local" required'+(premiumWABusy?' disabled':'')+'><option value="">Todos los locales · elegí uno para agregar números</option>'+options+'</select>'+
+        (selected?'<p>'+configActions(selected)+'</p>':'')+
+        '<h3>Agregar número comercial</h3><label for="gl-wa-numeros">Número o números de WhatsApp del comercio</label><textarea id="gl-wa-numeros" name="numeros" required rows="3" maxlength="3050" placeholder="+5491100000000 (uno por línea)"'+(!selected||premiumWABusy?' disabled':'')+'>'+esc(premiumWADraft)+'</textarea><small>Siempre con + y código de país. Argentina: +549 para celulares o +54 para líneas fijas, seguido de 10 dígitos. Otros países: formato internacional. Uno por línea o separados por coma. Para dueños y otros contactos que no deben recibir respuestas, usá Números excluidos del bot.</small>'+
+        '<button type="submit" class="btn primary"'+(!selected||premiumWABusy?' disabled':'')+'>Agregar y activar número(s)</button></form>'+
+        '<h3>Números '+(selected?'del local':'registrados')+' · '+active+' activos / '+visible.length+' registrados</h3><div class="gl-ch-chat-list">'+(rows||'<p>Todavía no hay números registrados'+(selected?' en este local':'')+'.</p>')+'</div>':'')+'</section>';
   }
   async function premiumWAConnect(id,action){
     if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy||!premiumWAReady)return;
@@ -381,7 +405,7 @@
     else {
       const raw=window.prompt('Número personal de prueba, con + y código de país. No ingreses el de un cliente real.');
       if(raw===null)return;tester=raw.replace(/[ ()-]/g,'');
-      if(!/^\+[1-9][0-9]{7,14}$/.test(tester)){premiumWAError='Ingresá el número internacional válido.';api?.render?.();return;}
+      if(!premiumWAValidPhone(raw)){premiumWAError='Ingresá el número internacional válido.';api?.render?.();return;}
       if(!window.confirm('¿Autorizar una única respuesta manual a ese teléfono desde '+row.nombre+' durante 2 horas? No se habilitarán otros clientes ni IA automática.'))return;
     }
     premiumWABusy=true;premiumWAError='';api?.render?.();
@@ -393,7 +417,7 @@
     finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
   }
   document.addEventListener('input',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-numeros')premiumWADraft=ev.target.value;});
-  document.addEventListener('change',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local')premiumWALocal=ev.target.value;});
+  document.addEventListener('change',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local'&&!premiumWABusy){if(premiumWALocal!==ev.target.value)premiumWADraft='';premiumWALocal=ev.target.value;premiumWAError='';api?.render?.();}});
   document.addEventListener('submit',ev=>{
     if(!ev.target?.matches?.('[data-ch-wa-form]'))return;
     ev.preventDefault();if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy)return;
@@ -401,7 +425,7 @@
     if(!premiumLocal)return;
     const phones=String(f.elements.numeros.value||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
     premiumWALocal=f.elements.local.value;premiumWADraft=f.elements.numeros.value;
-    if(!phones.length){premiumWAError='Ingresá al menos un número.';api?.render?.();return;}
+    if(!phones.length||phones.length>50||phones.some(p=>!premiumWAValidPhone(p))){premiumWAError='Ingresá de 1 a 50 números internacionales válidos. Ejemplo argentino: +5491100000000.';api?.render?.();return;}
     if(!window.confirm('¿Habilitar '+phones.length+' número(s) de '+premiumLocal.nombre+' para GESTLOK WAI? No se conectará WhatsApp todavía.'))return;
     void premiumWARequest({p_accion:'agregar',p_tenant:premiumLocal.tenant_id,p_local:premiumLocal.local_id,p_numeros:phones});
   });
@@ -725,7 +749,8 @@
       '<label>Número(s) de WhatsApp del comercio<textarea name="numeros" rows="2" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+disabled+'>'+esc(draft?.numbers||'')+'</textarea></label>'+
       '<small>GESTLOK WAI se habilita al guardar el primer número. No lo vincula ni activa la IA. Los números existentes se conservan.</small></div>'+
       '<button type="submit" class="btn primary"'+disabled+'>Guardar plan</button>'+
-      (info.numbers.length?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WAI (WhatsApp)</button>':'')+
+      (info.local?'<button type="button" class="btn" data-ch-local-wa="'+esc(key)+'"'+(pending?' disabled':'')+'>Administrar WAI (WhatsApp)</button>':'')+
+      (info.local?.sucursal_id?'<a class="btn" href="'+esc(premiumWAConfigLink(info.local,'excluidos'))+'" target="_blank" rel="noopener">Números excluidos del bot</a>':'')+
       (info.local?.sucursal_id?'<a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(info.local.sucursal_id)+'" target="_blank" rel="noopener">Configurar Chat</a>':'')+
       '</form>';
   }
@@ -744,8 +769,7 @@
     if(!info.local||info.empresa?.habilitada===false||!['chat','premium'].includes(plan))return;
     localPlanDraftSave(form);
     const phones=plan==='premium'?String(form.elements.numeros.value||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean):[];
-    const normalized=phones.map(p=>p.replace(/[ ()-]/g,''));
-    if(phones.length>50||phones.some((p,i)=>!/^\+[0-9 ()-]+$/.test(p)||!/^\+[1-9][0-9]{7,14}$/.test(normalized[i])||(normalized[i].startsWith('+54')&&!/^\+54(9)?[0-9]{10}$/.test(normalized[i])))){
+    if(phones.length>50||phones.some(p=>!premiumWAValidPhone(p))){
       api?.toast?.('Ingresá hasta 50 números válidos con + y código de país.',true);return;
     }
     if(plan==='premium'&&!info.enabled.length&&!phones.length){
@@ -1437,7 +1461,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+'</div>';
-    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+chatAdminView()+premiumWAView()+'</div>';
+    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+chatAdminView()+'</div>';
     else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
@@ -1474,13 +1498,13 @@
   }
   function goTab(v) {
     if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
-    if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';}
+    if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';premiumWAProvider='sin_consultar';}
     if(v !== 'hq') hqReset();
     if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
     else if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales'){void loadMicroapps(true);void loadLocalPlans();}
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
-    if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;}
+    if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;premiumWAProvider='sin_consultar';}
     tab = v; store.set(v);
     api?.render();
     if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest().then(()=>hqReadSupport());
@@ -1566,7 +1590,7 @@
     const waRefresh=ev.target.closest?.('[data-ch-wa-refresh]');
     if(waRefresh&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWARequest();return;}
     const waState=ev.target.closest?.('[data-ch-wa-state]');
-    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en GESTLOK WAI? WhatsApp seguirá pendiente de vinculación.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
+    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Activar este número en GESTLOK WAI? No se inicia la automatización.':'¿Desactivar este número en GESTLOK WAI? Se conservan su vinculación y sus datos; no se permiten respuestas desde GESTLOK.'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
@@ -1618,7 +1642,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
