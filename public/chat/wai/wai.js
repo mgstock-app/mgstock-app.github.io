@@ -55,7 +55,7 @@ async function init(){
   portal=result;const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
-   const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Configurar línea de ensayo'),node('p',{class:'hint'},'Solo números de prueba, nunca los números comerciales.'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn primary')):null;
+   const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Solo gastronomía · habilitación exclusiva de la administración. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
    access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));
    if(health){startAdminHealth(health,mine);}
@@ -97,14 +97,32 @@ function startAdminHealth(host,mine){
  host.replaceChildren(title,label,list,actionStatus,button('Actualizar estados',()=>{last='';void refreshNow();},'btn'));
  void refreshNow();navigatorTimer=setInterval(()=>{if(!document.hidden)void refreshNow();},10000);
 }
+async function configureCommerce(box){
+ if(!trialEnvironment()||portal?.administradora!==true)return;
+ const mine=generation;
+ box.replaceChildren(node('p',{class:'hint'},'Consultando comercios…'));
+ try{
+  const data=await rpc('wai_comercios');if(mine!==generation||!box.isConnected)return;
+  const locals=Array.isArray(data)?data:[];
+  const select=node('select',{'aria-label':'Empresa y local'},...locals.map((l,i)=>node('option',{value:i},l.empresa+' · '+l.nombre)));
+  const apply=node('button',{type:'submit',class:'btn primary',disabled:!locals.length},'Guardar rubro y habilitación'),enabled=node('input',{type:'checkbox'}),status=node('p',{class:'hint',role:'status'});
+  const sync=()=>{const l=locals[Number(select.value)];enabled.checked=!!l?.activo;status.textContent=l?(l.lineas+' línea(s) habilitadas · '+(l.activo?'WAI activo':'WAI no activo')):'No hay sucursales de prueba.';};
+  select.onchange=sync;sync();
+  box.replaceChildren(node('h2',{},'Habilitación de comercios gastronómicos'),node('form',{onsubmit:async e=>{
+   e.preventDefault();const l=locals[Number(select.value)];if(!l)return;
+   if(!enabled.checked&&!confirm('¿Pausar WAI en este local? Se cancelará su ensayo activo, pero se conservarán el historial y la configuración.'))return;
+   apply.disabled=true;try{await rpc('wai_comercios',{p_accion:'configurar',p_sucursal:l.id,p_rubro:'gastronomia',p_activo:enabled.checked});await init();}catch(e){status.textContent=e.message;apply.disabled=false;}
+  }},node('label',{},'Empresa y local',select),node('label',{},'Rubro',node('select',{disabled:true},node('option',{},'Gastronomía'))),node('label',{class:'consent-line'},enabled,node('span',{},'Habilitar GESTLOK WAI para este local')),status,apply,button('Volver',()=>void init(),'btn')));
+ }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Volver',()=>void init(),'btn'));}
+}
 async function registerTrial(box){
  if(!trialEnvironment()||portal?.administradora!==true)return;
  const generationAtStart=generation;
  box.replaceChildren(node('p',{class:'hint'},'Consultando tus sucursales de prueba…'));
  try{
-  const info=await rpc('admin_whatsapp_premium',{p_accion:'listar'});
+  const info=await rpc('wai_comercios');
   if(generationAtStart!==generation||!box.isConnected)return;
-  const locals=(info?.locales||[]).filter(l=>typeof l.empresa==='string'&&/\(prueba\)/i.test(l.empresa));
+  const locals=Array.isArray(info)?info:[];
   const select=node('select',{'aria-label':'Local de ensayo',required:true},...locals.map((l,i)=>node('option',{value:i},l.empresa+' · '+l.nombre)));
   const tel=node('input',{type:'tel',placeholder:'+54911…',required:true,autocomplete:'off'});
   const status=node('p',{role:'status',class:'hint'});
@@ -114,9 +132,9 @@ async function registerTrial(box){
    if(!local||!/^\+[1-9]\d{7,14}$/.test(number)){status.textContent='Ingresá el número de ensayo en formato internacional.';return;}
    if(!confirm('¿Registrar una línea de ensayo autorizada? No uses el número comercial de ningún local.'))return;
    submit.disabled=true;
-   try{await rpc('admin_whatsapp_premium',{p_accion:'agregar',p_tenant:local.tenant_id,p_local:local.local_id,p_numeros:[number]});await init();}
+   try{await rpc('wai_comercios',{p_accion:'registrar',p_sucursal:local.id,p_rubro:'gastronomia',p_activo:true,p_numero:number});await init();}
    catch(e){status.textContent=e.message;submit.disabled=false;}
-  }},node('label',{},'Sucursal de prueba',select),node('label',{},'Número personal de ensayo',tel),submit,status);
+  }},node('label',{},'Empresa y sucursal de prueba',select),node('label',{},'Rubro',node('select',{disabled:true},node('option',{},'Gastronomía'))),node('label',{},'Número personal de ensayo',tel),submit,status);
   box.replaceChildren(node('h2',{},'Registrar línea de ensayo'),form);
  }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
@@ -206,6 +224,7 @@ function historyLabel(c){
  if(c.archivado)return 'Historial guardado · ensayo finalizado. Autorizá nuevamente el contacto para responder.';
  if(c.cerrado_at)return 'Conversación finalizada · el próximo mensaje abrirá una atención nueva. Historial conservado.';
  if(c.conexion_activa===false)return 'Historial guardado · WhatsApp sin conexión verificada. Podés leer los mensajes.';
+ if(Date.parse(c.postventa_hasta||'')>Date.now())return 'Postventa abierta hasta '+scheduledLabel(c.postventa_hasta)+' · reclamos y nuevos pedidos habilitados.';
  return '';
 }
 // WAI options are read-only: only the customer's first valid WhatsApp selection can resolve them.
@@ -361,14 +380,15 @@ function renderOrder(c){
  orderHost.hidden=false;
  const ready=orderReady(c),orderTransport=orderReady({...c,puede_responder:c.puede_operar_pedido??c.puede_responder}),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
  const scheduledFuture=!!c.ficha?.programado_para&&Date.parse(c.ficha.programado_para)>Date.now();
- const sig=JSON.stringify([c.id,ready,orderTransport,scheduledFuture,!!last&&Date.parse(last.creado_at)>Date.now()-14400000,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
+ const postventaActiva=Date.parse(c.postventa_hasta||'')>Date.now();
+ const sig=JSON.stringify([c.id,ready,orderTransport,scheduledFuture,postventaActiva,c.postventa_hasta,!!last&&Date.parse(last.atencion_finalizada_at||last.creado_at)>Date.now()-14400000,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready||!!c.cerrado_at;
- const recent=!!last&&Date.parse(last.creado_at)>Date.now()-14400000, activeOrder=recent&&last.estado!=='entregado'&&!last.atencion_finalizada_at, collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),newRequest=!!c.pedido_pendiente||collecting,ficha=newRequest?c.ficha:last?.ficha||c.ficha,modeKey=newRequest?c.modalidad_detectada:recent?last.modalidad:c.modalidad_detectada;
+ const recent=!!last&&Date.parse(last.atencion_finalizada_at||last.creado_at)>Date.now()-14400000, activeOrder=recent&&last.estado!=='entregado'&&!last.atencion_finalizada_at, collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),newRequest=!!c.pedido_pendiente||collecting,ficha=newRequest?c.ficha:last?.ficha||c.ficha,modeKey=newRequest?c.modalidad_detectada:recent?last.modalidad:c.modalidad_detectada;
  const orderDisabled=orderBusy||!orderTransport;
  const mode=modeKey==='retiro'?'Retiro':modeKey==='delivery'?'Delivery':null;
  const status=c.cerrado_at?'Finalizada':c.atencion_manual?'Manual':c.agente_activo?'Asistente activo':'Asistente apagado';
- const closeDisabled=orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'&&!o.atencion_finalizada_at&&Date.parse(o.creado_at)>Date.now()-14400000||o.valoracion==='problema'&&!o.resuelto);
+ const closeDisabled=postventaActiva||orderBusy||!c.ciclo_activo||!!c.cerrado_at||!!c.atencion_pendiente||!!c.pedido_pendiente||orders.some(o=>o.estado!=='entregado'&&!o.atencion_finalizada_at&&Date.parse(o.creado_at)>Date.now()-14400000||o.valoracion==='problema'&&!o.resuelto);
  const menu=node('details',{class:'wai-order-menu',open:orderMenuOpen,ontoggle:e=>{if(e.currentTarget.isConnected)orderMenuOpen=e.currentTarget.open;}});
  const options=node('div',{class:'wai-order-popover'},node('strong',{},'Gestionar conversación'),
    node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},status),
@@ -379,7 +399,7 @@ function renderOrder(c){
    (c.pedido_pendiente||collecting)?button('Descartar pedido pendiente',()=>{if(confirm('¿Descartar esta solicitud sin borrar sus mensajes?')){menu.open=false;void attentionAction(c,'descartar_pedido');}},'btn order-btn danger',{disabled:orderBusy}):null,
    button('Finalizar chat',()=>{if(confirm('¿Finalizar esta atención? Un mensaje nuevo reabrirá el chat con su historial.')){menu.open=false;void attentionAction(c,'finalizar');}},'btn order-btn',{disabled:closeDisabled}),
    c.aviso_cierre?node('small',{class:'hint'},c.aviso_cierre==='sin_autorizacion'?'Cierre guardado; no se pudo avisar al cliente (ensayo no autorizado).':c.aviso_cierre==='limite'?'Cierre guardado; no se pudo enviar el aviso por el límite de prueba.':'Aviso de cierre: '+({entregado:'Entregado',aceptado:'Enviado',pendiente:'En cola',reservado:'Enviando',incierto:'No confirmado'}[c.aviso_cierre_estado]||'En cola')):null,
-   node('small',{class:'hint'},'Al enviar la invitación a reseñar, la atención se cierra. El cliente puede volver a escribir.'),
+   node('small',{class:'hint'},postventaActiva?'Postventa abierta hasta '+scheduledLabel(c.postventa_hasta)+'.':'La invitación a reseñar abre cuatro horas de postventa. Los reclamos pendientes nunca se cierran automáticamente.'),
    !c.transferencia_configurada?node('small',{class:'hint'},'Transferencia: completá los datos en Ajustes.'):null,
    ready&&!c.imagenes_activas?node('small',{class:'hint'},'Fotos de carta: actualizá el conector privado para enviarlas como imagen.'):null,
    c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
@@ -412,7 +432,7 @@ function renderThread(force=false){
  if(!c){cancelMessageAction();if(orderHost)orderHost.hidden=true;if(orderStatus)orderStatus.hidden=true;if(historyNotice)historyNotice.hidden=true;selected=null;shell.classList.remove('selected');head.replaceChildren(node('strong',{},'Atención por WhatsApp'));thread.replaceChildren(empty('Tu espacio de atención','Seleccioná una conversación o vinculá el WhatsApp del local. Los clientes siguen escribiendo desde su WhatsApp.'));compose.hidden=true;return;}
  renderOrder(c);
  const saved=historyLabel(c);if(historyNotice){historyNotice.hidden=!saved;historyNotice.textContent=saved;}
- const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at,c.ciclos,c.cerrado_at]);
+ const sig=JSON.stringify([c.mensajes,c.alias,c.nombre_agenda,c.cliente,c.archivado,c.conexion_activa,c.vence_at,c.ciclos,c.cerrado_at,c.postventa_hasta,Date.parse(c.postventa_hasta||'')>Date.now()]);
  if(force||sig!==lastThreadSignature){
    const nearBottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<100;lastThreadSignature=sig;
    head.replaceChildren(button('‹',()=>selection(null),'icon-btn back-mobile',{'aria-label':'Volver a chats'}),node('span',{class:'avatar'},'WA'),node('div',{class:'contact-heading'},node('strong',{},displayName(c)),node('small',{},(displayName(c)!==c.cliente?c.cliente+' · ':'')+(c.alias?'Alias de WAI'+(c.nombre_agenda?' · Agenda: '+c.nombre_agenda:''):c.nombre_agenda?'Nombre sincronizado de WhatsApp':'Contacto de ensayo')+(c.vence_at?' · ensayo hasta '+time(c.vence_at):' · historial'))),button(c.alias?'Editar alias':'Asignar alias',()=>openAlias(c),'btn alias-btn',{'aria-label':c.alias?'Editar alias del contacto':'Asignar alias al contacto'}));
@@ -506,7 +526,7 @@ async function renderAttentionSettings(host){
     const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
-  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar y se cierra la atención. Durante 4 horas el cliente puede elegir otro pedido, atención o reportar un problema. No se envían encuestas automáticas de entrega. El historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Entrega · rubro gastronomía'),node('p',{class:'hint'},'Delivery es opcional. Configuralo en Datos del local → Ajustes → Entrega y pago. Si desactivás Envío a domicilio, dejá Retiro en el local activo: el asistente no pedirá dirección ni cobrará envío.'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar. La conversación queda abierta durante 4 horas desde la invitación. El cliente puede hacer otro pedido o reportar un problema. Los reclamos pendientes no se cierran automáticamente. No se envían encuestas de entrega y el historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
   host.replaceChildren(form);
  }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }
@@ -589,7 +609,7 @@ function openAuthorization(id){
    if(!/^\+[1-9]\d{7,14}$/.test(tester)){formStatus.textContent='Ingresá un número en formato internacional, incluyendo + y código de país.';return;}
    if(!consent.checked){formStatus.textContent='Confirmá que el contacto aceptó participar.';return;}
    await authorize(id,false,tester);
- }},node('h3',{},'Autorizar contacto de ensayo'),node('p',{class:'hint'},'Ingresá el número de OTRO teléfono autorizado. La prueba dura 25 minutos; solo al contacto que aceptó participar. Los estados del pedido y la encuesta pueden enviar avisos automáticos.'),node('label',{},'Número del contacto',input),node('label',{class:'consent-line'},consent,node('span',{},'Este contacto aceptó participar en la prueba.')),signal,formStatus,node('div',{class:'actions'},submit,button('Volver',()=>{if(!connectionBusy){authorizationDraft=null;authorizationHost.replaceChildren();}},'btn')));
+ }},node('h3',{},'Autorizar contacto de ensayo'),node('p',{class:'hint'},'Ingresá el número de OTRO teléfono autorizado. Las nuevas pruebas duran 6 horas; solo al contacto que aceptó participar. La atención y postventa pueden enviar avisos automáticos; no se contacta a otros números.'),node('label',{},'Número del contacto',input),node('label',{class:'consent-line'},consent,node('span',{},'Este contacto aceptó participar en la prueba.')),signal,formStatus,node('div',{class:'actions'},submit,button('Volver',()=>{if(!connectionBusy){authorizationDraft=null;authorizationHost.replaceChildren();}},'btn')));
  authorizationDraft={id,input,submit,signal,status:formStatus};
  authorizationHost.replaceChildren(form);
  input.focus();
