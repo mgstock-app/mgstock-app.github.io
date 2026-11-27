@@ -103,3 +103,17 @@ test('envío, recibo de entrega real y edición/eliminación requieren la clave 
  assert.deepEqual(sent[2],[jid,{delete:{remoteJid:jid,id:'WA1',fromMe:true}}]);
  action={id:'not-own',wa_id:'BAD',ruta:other,tipo:'eliminar'};await engine.tick('rev');assert.equal(sent.length,3);assert.equal(calls.at(-1).p_estado,'incierto');
 });
+
+test('agenda de WhatsApp solo sincroniza nombre guardado del contacto autorizado, no perfil ni libreta ajena',async()=>{
+ const t=Date.now(),calls=[],targetLid='123456@lid';
+ const socket={signalRepository:{lidMapping:{getLIDForPN:async n=>n===jid?targetLid:null}},resyncAppState:async(collections,initial)=>{assert.deepEqual(collections,['critical_unblock_low']);assert.equal(initial,false);}};
+ const engine=pilotTransport({now:()=>t,active:()=>true,socket,rpc:async(_name,a)=>{
+   if(a.p_accion==='control')return {id:'p6',tester:'+5491100000003',vence_at:new Date(t+60000).toISOString()};
+   if(a.p_accion==='agenda'){calls.push(a);return {ok:true};}
+ }});
+ await engine.contacts([{id:jid,name:'Antes de consentir'}]);await engine.tick('rev');assert.equal(calls.length,0);
+ await engine.contacts([{id:other,name:'No autorizado'},{id:jid,notify:'Nombre de perfil'},{id:jid,name:'Usuario',username:'Usuario'},{id:'999@g.us',phoneNumber:jid,name:'Grupo'},{id:other,phoneNumber:jid,name:'Contradictorio'},{id:targetLid,name:'Guardado en agenda'}]);
+ await engine.tick('rev');assert.equal(calls.length,1);assert.equal(calls[0].p_jid,jid);assert.equal(calls[0].p_texto,'Guardado en agenda');
+ await engine.contacts([{id:jid,name:'Guardado en agenda'}]);await engine.tick('rev');assert.equal(calls.length,1);
+ await engine.contacts([{id:jid,name:'Nuevo nombre'}]);await engine.tick('rev');assert.equal(calls.length,2);assert.equal(calls[1].p_texto,'Nuevo nombre');
+});

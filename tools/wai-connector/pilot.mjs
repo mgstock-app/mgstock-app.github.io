@@ -12,7 +12,7 @@ const lidJid=jid=>{
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
 export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null}){
- let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map();
+ let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map(),pendingName=null,lastName=null;
  const known=new Map(),delivered=new Set();
  const keyId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id)?id:null;
  const routeOf=j=>pnJid(j)||lidJid(j);
@@ -20,7 +20,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
  function valid(){return !!pilot&&Date.parse(pilot.vence_at)>serverNow();}
  function note(code,message){const t=now();if(!lastLog.has(code)||t-lastLog.get(code)>=15000){lastLog.set(code,t);logger(message);}}
  function matches(jid){return valid()&&phone(jid)!==null&&phone(jid)===phoneKey(pilot.tester);}
- function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();epoch++;}
+ function reset(){pilot=null;inbox=[];replyRoute=null;lookup=null;lookupAt=0;known.clear();delivered.clear();pendingName=null;lastName=null;epoch++;}
  async function expectedLid(tester){
   const mapping=socket.signalRepository?.lidMapping;
   if(typeof mapping?.getLIDForPN!=='function')return null;
@@ -47,6 +47,26 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
   const expected=await expectedLid(tester);
   if(expected&&expected===lid)return {pn:tester.slice(1)+'@s.whatsapp.net',route:lid};
   return null;
+ }
+ // The linked session may share saved contact names in authenticated app-state changes.
+ // Never import the phone's entire contact book, profile names, or unrelated contacts.
+ async function contacts(entries){
+  if(!active()||!valid()||!Array.isArray(entries))return;
+  const mine=epoch,p=pilot,wanted=phoneKey(p.tester);
+  for(const c of entries){
+   if(!active()||mine!==epoch||!valid())return;
+   if(typeof c?.name!=='string'||!c.name.trim()||c.name.trim().length>100||/[\x00-\x1f\x7f]/.test(c.name)||c.name.trim()===c.username)continue;
+   const id=routeOf(c.id);if(!id)continue;
+   const direct=[phone(c.id),phone(c.phoneNumber)].filter(Boolean);
+   if(direct.some(n=>n!==wanted))continue;
+   let verified=direct.includes(wanted);
+   if(!verified&&lidJid(id)){
+    const expected=await expectedLid(p.tester).catch(()=>null);
+    verified=expected===lidJid(id)||(replyRoute?.phone===wanted&&lidJid(replyRoute.jid)===lidJid(id));
+   }
+   if(!active()||mine!==epoch||pilot?.id!==p.id||!valid())return;
+   if(verified&&c.name.trim()!==lastName)pendingName={pilot:p.id,name:c.name.trim(),jid:p.tester.slice(1)+'@s.whatsapp.net'};
+  }
  }
  async function receive(event){
   if(!active()||!['notify','append'].includes(event?.type))return;
@@ -110,8 +130,17 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    if(!active())return;
    const remoteTime=Date.parse(next?.hora_servidor);if(Number.isFinite(remoteTime))serverOffset=remoteTime-now();
    if(!next||!phoneKey(next.tester)||Date.parse(next.vence_at)<=serverNow()){if(pilot)logger('Ensayo finalizado.');reset();return;}
-   if(pilot?.id!==next.id){reset();logger('Ensayo autorizado. Listo para recibir mensajes del contacto.');}
+   const changed=pilot?.id!==next.id;
+   if(changed){reset();logger('Ensayo autorizado. Listo para recibir mensajes del contacto.');}
    pilot=next;
+   // Request incremental app-state contact changes only; no history or full reset.
+   // A previously synced/suppressed name may not be exposed by WhatsApp again.
+   if(changed&&typeof socket.resyncAppState==='function')void Promise.resolve().then(()=>socket.resyncAppState(['critical_unblock_low'],false)).catch(()=>{});
+   if(pendingName?.pilot===pilot.id){
+    const current=pendingName,result=await call('agenda',{p_piloto:pilot.id,p_jid:current.jid,p_texto:current.name});
+    if(result?.ok){lastName=current.name;if(pendingName===current)pendingName=null;}
+    else if(pendingName===current)pendingName=null;
+   }
    for(const item of Array.isArray(next.salientes)?next.salientes:[]){
     const route=routeOf(item?.ruta);
     if(!route)continue;
@@ -150,5 +179,5 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
    logger(id?'Respuesta enviada al transporte de WhatsApp.':'Resultado de envío incierto. No se reintenta.');
   }catch{note('error','No se pudo consultar o entregar el ensayo al servidor. Se volverá a comprobar.');reset();}finally{working=false;}
  }
- return {receive,receipt,tick,reset};
+ return {receive,receipt,contacts,tick,reset};
 }

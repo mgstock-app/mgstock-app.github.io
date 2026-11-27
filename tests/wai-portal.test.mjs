@@ -106,6 +106,22 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.accion_entregada,true);await action(S,p2,out.id,'eliminar');
  await anon();const del=await motor(H,keyA,'tomar_accion',p2);assert.equal(del.tipo,'eliminar');await motor(H,keyA,'resultado_accion',p2,null,'WA-DELETE',null,out.id,'aceptado');
  await role('gerente');row=(await inbox(S)).chats[0].mensajes.find(m=>m.id===out.id);assert.equal(row.eliminado,true);assert.equal(row.texto,'Mensaje eliminado');assert.equal(row.puede_editar,false);assert.equal(row.puede_eliminar,false);
+
+ // Alias survives a new pilot and belongs to the local; phone agenda belongs to the line.
+ await db.exec('reset role;'+read('entornos/sql/wai-contactos-alias-agenda.sql'));
+ const alias=(s,p,a)=>call('wai_contacto_alias',[s,p,a]);
+ await role('gerente');assert.equal(await alias(S,p2,'Cliente frecuente'),true);
+ await role('gerente',T);await assert.rejects(alias(S,p2,'Otro local'),/Sin permiso/);
+ await anon();await assert.rejects(alias(S,p2,'Cambio sin permiso'),/permission denied/);
+ assert.equal(await motor(H,keyA,'agenda',p2,'5491100009999@s.whatsapp.net',null,'Nombre ajeno'),null);
+ assert.equal((await motor(H,keyA,'agenda',p2,jid,null,'Nombre agendado')).ok,true);
+ await role('gerente');let contactRow=(await inbox(S)).chats[0];assert.equal(contactRow.alias,'Cliente frecuente');assert.equal(contactRow.nombre_agenda,'Nombre agendado');
+ await alias(S,p2,null);assert.equal((await inbox(S)).chats[0].alias,null);
+ await alias(S,p2,'Cliente frecuente');
+ await db.exec('reset role');const revOther=(await db.query('select revision from gestlok_chat_private.wai_sesiones where habilitacion_id=$1',[I])).rows[0].revision;
+ await anon();await signal('wai_senal_v2',I,keyB,revOther,'conectado','+5491100000002');
+ await role('creadora');const otherPilot=await authorize(T,I,contact);assert.equal((await inbox(T)).chats[0].alias,null);assert.equal((await inbox(T)).chats[0].nombre_agenda,null);
+ await authorize(T,I,null,'cancelar');await anon();await signal('wai_senal',I,keyB,revOther,'conectado','+5491100000002');
  await role('gerente',T);await assert.rejects(connections(T,'revalidar',H),/Número no habilitado/);
  await role('gerente');assert.equal((await connections(S,'revalidar',H))[0].estado,'reconectando');
  await anon();const cmd=await signal('wai_senal',H,keyA,rev,'conectado','+5491100000001');assert.equal(cmd.orden,'qr_forzado');
@@ -114,6 +130,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'qr',null,'test-qr-no-real-code');await role('creadora');assert.equal((await connections(S))[0].estado,'qr');
  await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');await role('creadora');assert.equal((await connections(S))[0].estado,'conectado');
  assert.equal((await inbox(S)).chats.length,0);
+ const p3=await authorize(S,H,contact);assert.ok(p3);const renamed=(await inbox(S)).chats[0];assert.equal(renamed.alias,'Cliente frecuente');assert.equal(renamed.nombre_agenda,'Nombre agendado');
  await anon();await signal('wai_senal',H,keyA,cmd.revision,'conectado','+5491100000001');await role('creadora');assert.equal((await connections(S))[0].estado,'verificando');
  }finally{await db.close();}
 });

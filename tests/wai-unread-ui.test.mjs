@@ -9,7 +9,7 @@ test('WAI muestra nuevos mensajes sin marcar por polling; solo marca IDs visible
  const chats=[{id:'c1',cliente:'+5491100000000',mensajes:messages}];
  const calls=[];
  const context={node:element,selected:null,document:{hidden:false},drawerKind:'',sessionLocal:{id:'local'},destroyed:false,thread:{isConnected:true,scrollHeight:200,scrollTop:100,clientHeight:100},readBusy:new Set(),chats,generation:1,list:element('div'),search:{value:''},unreadSummary:element('span'),selection(){},rpc:async(name,args)=>{calls.push({name,args});return args.p_mensajes.length;}};
- vm.createContext(context);vm.runInContext(source.slice(source.indexOf('function unreadIds('),source.indexOf('function empty(')),context);
+ vm.createContext(context);vm.runInContext(source.slice(source.indexOf('function displayName('),source.indexOf('function empty(')),context);
  context.renderList();assert.match(context.list.children[0].class,/unread/);assert.equal(context.unreadSummary.textContent,'1 sin leer');
  await context.markVisibleRead();assert.equal(calls.length,0);
  context.selected='c1';context.drawerKind='conexion';await context.markVisibleRead();assert.equal(calls.length,0);
@@ -19,4 +19,14 @@ test('WAI muestra nuevos mensajes sin marcar por polling; solo marca IDs visible
  assert.equal(messages[0].leido,true);assert.equal(context.unreadSummary.hidden,true);assert.doesNotMatch(context.list.children[0].class,/unread/);
  messages.push({id:'m3',direccion:'entrada',leido:false,texto:'Nuevo'});context.renderList();assert.equal(context.unreadSummary.textContent,'1 sin leer');
  context.rpc=async()=>{throw Error('sin señal')};await context.markVisibleRead();assert.equal(messages[2].leido,false);
+});
+
+test('nombre de agenda y alias se distinguen: alias prioritario y búsqueda por teléfono o ambos nombres',()=>{
+ const element=(tag,attrs={},...children)=>({tag,...attrs,children,replaceChildren(...c){this.children=c;}});
+ const c={id:'c1',cliente:'+5491100000000',nombre_agenda:'María Agenda',alias:'Cliente frecuente',mensajes:[]};
+ const ctx={node:element,chats:[c],selected:null,list:element('div'),search:{value:''},unreadSummary:element('span'),selection(){}};
+ vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function displayName('),source.indexOf('async function markVisibleRead(')),ctx);
+ assert.equal(ctx.displayName(c),'Cliente frecuente');assert.equal(ctx.displayName({...c,alias:null}),'María Agenda');assert.equal(ctx.displayName({...c,alias:null,nombre_agenda:null}),c.cliente);
+ for(const value of ['frecuente','maría','00000000']){ctx.search.value=value;ctx.renderList();assert.equal(ctx.list.children[0].tag,'button');}
+ ctx.search.value='inexistente';ctx.renderList();assert.equal(ctx.list.children[0].tag,'p');
 });
