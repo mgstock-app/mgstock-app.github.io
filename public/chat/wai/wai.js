@@ -24,6 +24,7 @@ catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la págin
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
 let shell,notice,list,search,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
+let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
 const portalHref=s=>location.hostname.endsWith('.vercel.app')?'/chat/wai/?local='+encodeURIComponent(s):'/gestlok-wai-'+encodeURIComponent(s)+'/';
 function login(){
@@ -158,12 +159,12 @@ async function refresh(){
  finally{running=false;}
 }
 function openDrawer(kind){
- settingsPanel?.destruir();settingsPanel=null;drawerBody.replaceChildren();drawerKind=kind;overlay.hidden=false;
+ settingsPanel?.destruir();settingsPanel=null;drawerBody.replaceChildren();connectionList=null;authorizationHost=null;authorizationDraft=null;drawerKind=kind;overlay.hidden=false;
  drawerTitle.textContent=kind==='config'?'Configuración del local':'Vinculación de WhatsApp';
  if(kind==='config'){const host=node('div');drawerBody.append(host);settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});}
  else{renderConnection();void refresh();}
 }
-function closeDrawer(){settingsPanel?.destruir();settingsPanel=null;drawerKind='';drawerBody.replaceChildren();overlay.hidden=true;}
+function closeDrawer(){settingsPanel?.destruir();settingsPanel=null;drawerKind='';authorizationDraft=null;authorizationHost=null;connectionList=null;drawerBody.replaceChildren();overlay.hidden=true;}
 let connectionBusy=false;
 async function connectionAction(action,id){
  if(connectionBusy)return;connectionBusy=true;
@@ -189,6 +190,12 @@ async function prepareTrial(row,rotate=false){
 }
 function renderConnection(){
  if(drawerKind!=='conexion')return;
+ // Keep the contact form mounted while the status polls every five seconds.
+ if(!connectionList||!connectionList.isConnected){
+   authorizationHost=node('div',{class:'authorization-host'});
+   connectionList=node('div',{class:'connection-cards'});
+   drawerBody.replaceChildren(node('div',{class:'connection-grid'},node('p',{class:'hint'},'Cada comercio vincula su propio número. Un corte de internet se intenta recuperar automáticamente. Si WhatsApp revoca la sesión, el titular deberá escanear un QR nuevo.'),drawerStatus,authorizationHost,connectionList,button('Actualizar señal',()=>void refresh())));
+ }
  const cards=rows.map(r=>{
   const box=node('article',{class:'connection-card'},node('h3',{},r.numero),node('strong',{},labels[r.estado]||'Sin estado comprobado'),node('p',{class:'hint'},'Última señal: '+(r.senal_at?time(r.senal_at):'Nunca')));
   if(r.estado==='qr'&&typeof r.qr==='string'&&r.qr.length<=2048&&Date.parse(r.qr_vence)>Date.now()){
@@ -198,20 +205,54 @@ function renderConnection(){
   if(['sin_senal','sin_conector'].includes(r.estado))box.append(node('p',{class:'hint'},'El servicio de conexión debe estar en línea. Contactá a soporte GESTLOK; no hace falta que el cliente te entregue su teléfono.'));
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&!r.preparada)box.append(button('Preparar y descargar configuración',()=>void prepareTrial(r),'btn primary',{disabled:connectionBusy}));
   if(trialEnvironment()&&portal.administradora&&r.habilitada&&r.preparada&&r.estado==='sin_senal')box.append(button('Reemplazar configuración privada',()=>void prepareTrial(r,true),'btn',{disabled:connectionBusy}));
-  if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado')box.append(button('Autorizar contacto de ensayo',()=>void authorize(r.id),'btn'),button('Cancelar ensayo',()=>void authorize(r.id,true),'btn danger'));
+  if(portal.administradora&&portal.piloto_disponible&&r.estado==='conectado'){
+    const active=chats.some(c=>c.linea===r.id);
+    box.append(active?node('p',{class:'hint'},'Ensayo autorizado. Pedile al contacto que envíe un mensaje desde su WhatsApp.'):button('Autorizar contacto de ensayo',()=>openAuthorization(r.id),'btn primary',{disabled:connectionBusy}));
+    if(active)box.append(button('Cancelar ensayo',()=>void authorize(r.id,true),'btn danger',{disabled:connectionBusy}));
+  }
   return box;
  });
- drawerBody.replaceChildren(node('div',{class:'connection-grid'},node('p',{class:'hint'},'Cada comercio vincula su propio número. Un corte de internet se intenta recuperar automáticamente. Si WhatsApp revoca la sesión, el titular deberá escanear un QR nuevo.'),drawerStatus,...(cards.length?cards:[node('p',{},'No hay números disponibles.')]),button('Actualizar señal',()=>void refresh())));
+ connectionList.replaceChildren(...(cards.length?cards:[node('p',{},'No hay números disponibles.')]));
+ if(authorizationDraft){
+   const online=rows.some(r=>r.id===authorizationDraft.id&&r.estado==='conectado'&&r.habilitada);
+   authorizationDraft.submit.disabled=connectionBusy||!online;
+   authorizationDraft.signal.textContent=online?'':'Esperando que vuelva la señal de WhatsApp.';
+ }
 }
-async function authorize(id,cancel=false){
- if(!portal.administradora||!portal.piloto_disponible||connectionBusy)return;
- const tester=cancel?null:prompt('Número PERSONAL de ensayo, con código de país. Usá solo un contacto que haya aceptado participar. No uses números comerciales.');
- if(!cancel&&!/^\+[1-9]\d{7,14}$/.test(tester||''))return;
- if(!confirm(cancel?'¿Cancelar la prueba de este número?':'¿Autorizar 25 minutos de mensajes manuales con este contacto de prueba? No se activa la IA.'))return;
+function openAuthorization(id){
+ if(!portal?.administradora||!portal.piloto_disponible||connectionBusy||!authorizationHost)return;
+ if(authorizationDraft?.id===id){authorizationDraft.input.focus();return;}
+ const row=rows.find(r=>r.id===id&&r.estado==='conectado'&&r.habilitada);
+ if(!row)return;
+ const input=node('input',{type:'tel',placeholder:'+54911…',autocomplete:'off',required:true,'aria-label':'Número del contacto de ensayo'});
+ const consent=node('input',{type:'checkbox',required:true});
+ const signal=node('p',{class:'hint',role:'status'});
+ const formStatus=node('p',{class:'hint',role:'status'});
+ const submit=node('button',{type:'submit',class:'btn primary'},'Iniciar ensayo');
+ const form=node('form',{class:'authorization-form connection-card',onsubmit:async ev=>{
+   ev.preventDefault();
+   const tester=input.value.trim();
+   if(!/^\+[1-9]\d{7,14}$/.test(tester)){formStatus.textContent='Ingresá un número en formato internacional, incluyendo + y código de país.';return;}
+   if(!consent.checked){formStatus.textContent='Confirmá que el contacto aceptó participar.';return;}
+   await authorize(id,false,tester);
+ }},node('h3',{},'Autorizar contacto de ensayo'),node('p',{class:'hint'},'Ingresá el número de OTRO teléfono autorizado. La prueba dura 25 minutos; solo se permiten mensajes manuales.'),node('label',{},'Número del contacto',input),node('label',{class:'consent-line'},consent,node('span',{},'Este contacto aceptó participar en la prueba.')),signal,formStatus,node('div',{class:'actions'},submit,button('Volver',()=>{if(!connectionBusy){authorizationDraft=null;authorizationHost.replaceChildren();}},'btn')));
+ authorizationDraft={id,input,submit,signal,status:formStatus};
+ authorizationHost.replaceChildren(form);
+ input.focus();
+}
+async function authorize(id,cancel=false,tester=null){
+ if(!portal?.administradora||!portal.piloto_disponible||connectionBusy)return;
+ if(!cancel&&(!authorizationDraft||authorizationDraft.id!==id||!/^\+[1-9]\d{7,14}$/.test(tester||'')||!rows.some(r=>r.id===id&&r.estado==='conectado'&&r.habilitada)))return;
+ const mine=generation;
  connectionBusy=true;
- try{await rpc('wai_piloto_autorizar',{p_sucursal:sessionLocal.id,p_id:id,p_tester:tester,p_accion:cancel?'cancelar':'autorizar'});drawerStatus.textContent=cancel?'Ensayo cancelado.':'Ensayo autorizado. Esperá un mensaje del contacto de prueba.';await refresh();}
- catch(e){drawerStatus.textContent=e.message;}
- finally{connectionBusy=false;if(drawerKind==='conexion')renderConnection();}
+ if(authorizationDraft)authorizationDraft.submit.disabled=true;
+ try{
+   await rpc('wai_piloto_autorizar',{p_sucursal:sessionLocal.id,p_id:id,p_tester:tester,p_accion:cancel?'cancelar':'autorizar'});
+   if(mine!==generation)return;
+   drawerStatus.textContent=cancel?'Ensayo cancelado.':'Ensayo autorizado. Pedile al contacto que envíe un Hola al WhatsApp vinculado.';
+   authorizationDraft=null;authorizationHost?.replaceChildren();await refresh();
+ }catch(e){if(mine===generation){if(authorizationDraft)authorizationDraft.status.textContent=e.message;else drawerStatus.textContent=e.message;}}
+ finally{connectionBusy=false;if(mine===generation&&drawerKind==='conexion')renderConnection();}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawerKind)closeDrawer();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});
