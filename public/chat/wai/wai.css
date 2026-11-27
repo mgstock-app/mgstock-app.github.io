@@ -181,3 +181,5 @@ a{color:#087a98}
 @media(max-width:680px){.wai-sheet-summary{padding:6px;font-size:10px}.wai-sheet-menu{position:static}.wai-sheet{right:9px;max-width:calc(100vw - 22px)}}
 
 .wai-close-status{padding:5px 12px;background:#eef5f8;color:#2b5269;font-size:12px;border-top:1px solid #c9dce6}.notice.bad{font-weight:600}
+
+.wai-sheet-item{display:grid;gap:6px;border:1px solid var(--line,#d7e4eb);border-radius:9px;padding:10px;margin:4px 0;background:#f7fafb}.wai-sheet-extra{color:#526a7a;padding-left:8px}
