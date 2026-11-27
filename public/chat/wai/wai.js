@@ -15,7 +15,7 @@ const node=(tag,attrs={},...children)=>{
 const button=(text,fn,cls='btn',attrs={})=>node('button',{type:'button',class:cls,onclick:fn,...attrs},text);
 const brand=subtitle=>node('div',{class:'brand'},node('img',{src:'/chat/gestlok-monograma.svg',alt:''}),node('div',{},node('strong',{},'GESTLOK ',node('span',{},'WAI')),node('small',{},subtitle||'Espacio de atención')));
 const time=t=>new Date(t).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-const labels={sin_conector:'Conector pendiente',sin_senal:'Sin señal',conectado:'WhatsApp vinculado',reconectando:'Reconectando',qr:'Esperando escaneo del QR',qr_vencido:'QR vencido',desconectado:'Desconectado',pausado:'Pausado'};
+const labels={sin_conector:'Conector pendiente',sin_senal:'Sin señal',conectado:'WhatsApp · señal comprobada',verificando:'Vinculación sin verificar',reconectando:'Reconectando',qr:'Esperando escaneo del QR',qr_vencido:'QR vencido',desconectado:'Desconectado',pausado:'Pausado'};
 const access=(title,msg,...extra)=>root.replaceChildren(node('section',{class:'access'},brand(),node('h1',{},title),node('p',{},msg),...extra));
 if(slug&&!valid(slug)){access('Enlace inválido','Revisá el enlace del local.');return;}
 let sb;
@@ -144,7 +144,7 @@ function showNotice(error){
  if(selected&&pendingUnknown.has(selected)){notice.className='notice bad';notice.textContent='Verificando una respuesta incierta. No la repitas hasta comprobar el estado.';return;}
  const live=rows.filter(r=>r.estado==='conectado').length;
  notice.className='notice'+(live?' good':'');
- notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) vinculado(s)':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba, sin IA automática':'Mensajería comercial todavía no habilitada')));
+ notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) con señal de WhatsApp comprobada':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba, sin IA automática':'Mensajería comercial todavía no habilitada')));
 }
 async function refresh(){
  if(running||destroyed||!sessionLocal)return;running=true;const mine=generation,id=sessionLocal.id;
@@ -197,7 +197,10 @@ function renderConnection(){
    drawerBody.replaceChildren(node('div',{class:'connection-grid'},node('p',{class:'hint'},'Cada comercio vincula su propio número. Un corte de internet se intenta recuperar automáticamente. Si WhatsApp revoca la sesión, el titular deberá escanear un QR nuevo.'),drawerStatus,authorizationHost,connectionList,button('Actualizar señal',()=>void refresh())));
  }
  const cards=rows.map(r=>{
-  const box=node('article',{class:'connection-card'},node('h3',{},r.numero),node('strong',{},labels[r.estado]||'Sin estado comprobado'),node('p',{class:'hint'},'Última señal: '+(r.senal_at?time(r.senal_at):'Nunca')));
+  const box=node('article',{class:'connection-card'},node('h3',{},r.numero),node('strong',{},labels[r.estado]||'Sin estado comprobado'),node('p',{class:'hint'},'Última señal de Node.js: '+(r.senal_at?time(r.senal_at):'Nunca')));
+  if(r.estado==='conectado'&&r.wa_verificada_at)box.append(node('p',{class:'hint'},'Última respuesta de WhatsApp: '+time(r.wa_verificada_at)));
+  if(r.estado==='verificando')box.append(node('p',{class:'hint'},'El servicio informa conexión, pero WhatsApp todavía no la confirmó. Actualizá el conector y escaneá un QR nuevo.'));
+  if(trialEnvironment()&&r.habilitada&&r.preparada&&['conectado','verificando','desconectado','qr_vencido'].includes(r.estado))box.append(button('Volver a vincular (nuevo QR)',()=>openRelink(r.id),'btn primary',{disabled:connectionBusy}));
   if(r.estado==='qr'&&typeof r.qr==='string'&&r.qr.length<=2048&&Date.parse(r.qr_vence)>Date.now()){
    try{const q=window.qrcode(0,'M');q.addData(r.qr);q.make();box.append(node('img',{src:q.createDataURL(5,4),alt:'QR privado de WhatsApp', 'data-expira':r.qr_vence}),node('p',{},'Desde el WhatsApp del local: Dispositivos vinculados → Vincular un dispositivo. Escaneá este código, válido hasta '+time(r.qr_vence)+'.'));}catch{/* No QR simulado */}
   }
@@ -218,6 +221,11 @@ function renderConnection(){
    authorizationDraft.submit.disabled=connectionBusy||!online;
    authorizationDraft.signal.textContent=online?'':'Esperando que vuelva la señal de WhatsApp.';
  }
+}
+function openRelink(id){
+ if(connectionBusy||!authorizationHost||!rows.some(r=>r.id===id&&r.habilitada&&r.preparada))return;
+ authorizationDraft=null;
+ authorizationHost.replaceChildren(node('article',{class:'connection-card'},node('h3',{},'Volver a vincular este número'),node('p',{class:'hint'},'Se reemplaza únicamente la sesión de este número. Escaneá el QR desde su WhatsApp. El ensayo anterior se cierra; no se cambian otros locales ni sus ajustes.'),node('div',{class:'actions'},button('Confirmar nuevo QR',()=>{authorizationHost.replaceChildren();void connectionAction('revalidar',id);},'btn primary'),button('Volver',()=>authorizationHost.replaceChildren(),'btn'))));
 }
 function openAuthorization(id){
  if(!portal?.administradora||!portal.piloto_disponible||connectionBusy||!authorizationHost)return;
