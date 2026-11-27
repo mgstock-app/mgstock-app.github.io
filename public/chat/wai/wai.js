@@ -152,7 +152,7 @@ function composerKey(e){
 function messageStatus(m){
  if(m.direccion==='entrada')return 'Recibido';
  if(m.estado==='aceptado')return m.entregado?'✓✓ Entregado':'✓ Enviado';
- return {pendiente:'En cola',cancelado:'Cancelado por atención manual',reservado:'Enviando',incierto:'Envío incierto · no repetir'}[m.estado]||'Sin confirmar';
+ return {pendiente:'En cola',cancelado:'Cancelado',reservado:'Enviando',incierto:'Envío incierto · no repetir'}[m.estado]||'Sin confirmar';
 }
 function actionStatus(m){
  if(m.accion_estado==='pendiente'||m.accion_estado==='reservado')return m.accion_tipo==='editar'?'Editando…':'Eliminando…';
@@ -172,15 +172,31 @@ function historyLabel(c){
  if(c.conexion_activa===false)return 'Historial guardado · WhatsApp sin conexión verificada. Podés leer los mensajes.';
  return '';
 }
+// WAI options are read-only: only the customer's first valid WhatsApp selection can resolve them.
+function renderVote(m,c){
+ const v=m.interaccion,options=v.opciones||[],ids=new Set(String(v.seleccion||'').split(',').filter(Boolean));
+ const chosen=options.filter(o=>ids.has(o.id)),other=options.filter(o=>!ids.has(o.id));
+ const state=ids.size?'seleccionada':v.estado_votacion||((c?.archivado||c?.cerrado_at||['incierto','cancelado'].includes(m.estado))?'finalizada':m.estado==='aceptado'?'abierta':'pendiente');
+ const open=state==='abierta'||state==='pendiente';
+ const labels={seleccionada:'Votación finalizada',respondida:'Cerrada · respuesta por escrito',reemplazada:'Cerrada · paso anterior',finalizada:'Votación cerrada',cancelada:'Votación cancelada',vencida:'Votación vencida',sin_confirmar:'Envío no confirmado',pendiente:'Esperando envío',abierta:'Esperando selección'};
+ const previous=list=>list.length?node('details',{class:'wai-vote-history'},node('summary',{},'Ver opciones anteriores ('+list.length+')'),node('ul',{},...list.map(o=>node('li',{},o.label)))):null;
+ if(!open)return node('div',{class:'wai-option-list wai-vote-closed',role:'group','aria-label':labels[state]||'Votación cerrada'},
+  node('span',{class:'wai-vote-status'+(ids.size?' resolved':'')},(ids.size?'✓ ':'')+(labels[state]||'Votación cerrada')),
+  ...chosen.map(o=>node('span',{class:'wai-option chosen'},'✓ '+o.label)),
+  previous(other));
+ return node('div',{class:'wai-option-list wai-vote-open',role:'group','aria-label':'Opciones de WhatsApp, solo lectura'},
+  node('span',{class:'wai-vote-status'},labels[state],v.multiple&&Number(v.cantidad)>0?' · '+v.cantidad+' en total':''),
+  ...options.map(o=>node('span',{class:'wai-option'},'○ '+o.label)));
+}
 function renderMessage(c,m){
  const outgoing=m.direccion==='salida',status=messageStatus(m),change=actionStatus(m);
  const actions=[];
- if(m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
- if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
+ if(!m.interaccion&&m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
+ if(!m.interaccion&&m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
    !m.eliminado&&m.imagen_url?node('a',{href:m.imagen_url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar foto de la carta'},node('img',{class:'wai-menu-photo',src:m.imagen_url,alt:'Foto de la carta',loading:'lazy',referrerpolicy:'no-referrer'})):null,
    m.imagen_url&&!m.eliminado?null:node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
-   !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(String(m.interaccion.seleccion||'').split(',').includes(o.id)?' chosen':'')},(String(m.interaccion.seleccion||'').split(',').includes(o.id)?'✓ ':'○ ')+o.label))):null,
+   !m.eliminado&&m.interaccion?renderVote(m,c):null,
    node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
