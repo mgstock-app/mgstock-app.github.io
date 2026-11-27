@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261127wai1';
+  const VERSION_CSS = '20261127wai2';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -262,6 +262,41 @@
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
+  function waiLocalView(sucursal,active){
+    const box=el('section',{class:'bloque'},el('h2',{text:'Recuperar conexión de WhatsApp'}),el('p',{class:'nota',text:'Solo los números autorizados de esta sucursal. Intentá recuperar la sesión; si WhatsApp pide autorización, escaneá el QR desde el celular del local. No activa envíos.'}));
+    const list=el('div'),status=el('p',{role:'status',class:'nota',text:'Consultando conexión…'}),refresh=el('button',{class:'boton',type:'button',text:'Actualizar señal'});
+    box.append(status,refresh,list);
+    const labels={pausado:'⚪ Pausado',sin_conector:'⚪ Conector pendiente de instalación',sin_senal:'🔴 Sin señal del conector',conectado:'🟢 Sesión conectada',reconectando:'🟡 Recuperando sesión',qr:'🟡 Escanear QR',qr_vencido:'🟡 QR vencido',desconectado:'🔴 Sesión desconectada'};
+    let busy=false;
+    async function load(accion='listar',id=null){
+      if(!active()||busy)return;
+      busy=true;refresh.disabled=true;
+      list.querySelectorAll('button').forEach(b=>b.disabled=true);
+      try{
+        const rows=await rpc('wai_conexiones',{p_sucursal:sucursal,p_accion:accion,p_id:id});
+        if(!active())return;
+        if(!Array.isArray(rows))throw Error();
+        status.textContent='Última consulta: '+new Date().toLocaleTimeString('es-AR')+' · conexión no equivale a IA activa.';
+        poner(list,...(rows.length?rows.map(r=>{
+          const card=el('article',{class:'wa-bandeja-card'},el('h3',{text:r.numero}),el('p',{text:labels[r.estado]||'Sin estado comprobado'}),el('small',{text:'Última señal: '+(r.senal_at?hora(r.senal_at):'Nunca')}));
+          if(r.estado==='qr'&&typeof r.qr==='string'&&r.qr.length<=2048&&Date.parse(r.qr_vence)>Date.now()){
+            try{const q=window.qrcode(0,'M');q.addData(r.qr);q.make();card.append(el('img',{src:q.createDataURL(5,4),alt:'QR privado de vinculación del local',width:'220',style:'max-width:100%;height:auto'}),el('p',{class:'nota',text:'Vence: '+new Date(r.qr_vence).toLocaleTimeString('es-AR')}));}catch{/* No QR ficticio */}
+          }
+          if(r.habilitada&&r.preparada&&['desconectado','qr','qr_vencido'].includes(r.estado)){
+            for(const [a,label] of [['reconectar','Restablecer señal'],['qr','Generar nuevo QR']]){
+              card.append(el('button',{type:'button',class:'boton',text:label,onclick:()=>void load(a,r.id)}));
+            }
+          }
+          if(r.estado==='sin_senal'||r.estado==='sin_conector')card.append(el('p',{class:'nota',text:'Avisale a soporte GESTLOK. El conector necesita estar en línea.'}));
+          return card;
+        }):[el('p',{class:'nota',text:'No hay números WAI registrados en este local.'})]));
+      }catch(e){if(active()){status.textContent=e.message||'No se pudo comprobar la conexión.';poner(list);}}
+      finally{busy=false;if(active())refresh.disabled=false;}
+    }
+    refresh.onclick=()=>void load();
+    // Se comparte el sondeo de la bandeja; no hay un intervalo que quede activo al cambiar de local.
+    return {box,load:()=>{if(!document.hidden)void load();}};
+  }
   async function verWhatsApp(){
     if(DEMO||!puede('gestionar'))return;
     const id=S.suc.id, box=el('section',{class:'bloque wa-bandeja'});
@@ -271,6 +306,7 @@
     box.append(el('h2',{text:'GESTLOK WAI · Bandeja de WhatsApp'}),el('p',{class:'nota',text:'El cliente escribe desde WhatsApp y el gerente responde desde GESTLOK Chat. Prueba controlada: solo el teléfono autorizado por la administradora y una respuesta por prueba. No se crean pedidos ni responde la IA.'}),status,refresh,list);
     contenido.replaceChildren(box);
     const active=()=>marco.isConnected&&box.isConnected&&S.suc?.id===id&&S.pestana==='whatsapp';
+    const support=waiLocalView(id,active);box.prepend(support.box);
     let busy=false, sending=false, lastKey='', ready=false;
     const drafts=new Map(),locked=new Set();
     const labels={procesando:'Envío reservado · no repetir',aceptada:'Aceptado por WhatsApp · entrega aún no confirmada',bloqueada:'Envío bloqueado',error:'Proveedor rechazó el envío',incierta:'Resultado incierto · no repetir'};
@@ -301,7 +337,7 @@
     }
     async function load(){
       if(!active()||busy||sending)return;
-      busy=true;
+      busy=true;support.load();
       try{
         const r=await rpc('panel_whatsapp_bandeja',{p_sucursal:id});
         if(!active())return;

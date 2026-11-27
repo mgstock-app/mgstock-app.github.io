@@ -296,6 +296,72 @@
   };
   const premiumWAConfigLink=(l,section='ajustes')=>l?.sucursal_id?'/chat/panel/?configurar='+encodeURIComponent(l.sucursal_id)+'&seccion='+section:'';
   const premiumWACompany=l=>(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===l.tenant_id)?.name||l.empresa;
+  // Soporte de un conector externo; no depende de la autorización comercial de YCloud.
+  let waiRows=null,waiBusy=false,waiError='',waiPrepared=null,waiGeneration=0,waiChecked=0;
+  const waiLabels={pausado:'⚪ Pausado',sin_conector:'⚪ Sin conector configurado',sin_senal:'🔴 Conector sin señal',
+    conectado:'🟢 Sesión conectada',reconectando:'🟡 Recuperando sesión',qr:'🟡 Escanear QR',qr_vencido:'🟡 QR vencido',desconectado:'🔴 Sesión desconectada'};
+  function waiReset(){waiGeneration++;waiRows=null;waiBusy=false;waiError='';waiPrepared=null;waiChecked=0;}
+  async function waiSupport(accion='listar',id=null){
+    if(!premiumAdmin()||tab!=='usuarios'||waiBusy||!window.GestLokSupabase?.rpc)return;
+    if(accion!=='listar'&&!waiRows?.some(r=>r.id===id&&r.habilitada))return;
+    if(accion==='rotar_clave'&&!window.confirm('¿Reemplazar la clave del conector? El dispositivo anterior dejará de enviar señales y habrá que instalar la clave nueva en el dispositivo autorizado. No borra la sesión de WhatsApp.'))return;
+    if(accion==='preparar'&&!window.confirm('¿Preparar el conector de este número? Se genera una clave privada para instalarlo. No vincula WhatsApp ni autoriza envíos.'))return;
+    const generation=waiGeneration;
+    waiBusy=true;waiError='';
+    if(accion!=='listar')api?.render?.();
+    try{
+      const r=await window.GestLokSupabase.rpc('gestlok_chat_wai_conexiones',{p_accion:accion,p_id:id});
+      if(generation!==waiGeneration||!premiumAdmin()||tab!=='usuarios')return;
+      if(r.error)throw r.error;
+      if(['preparar','rotar_clave'].includes(accion)){
+        if(r.data?.id!==id||!/^[a-f0-9]{64}$/.test(r.data?.clave||''))throw Error();
+        waiPrepared={id,clave:r.data.clave};waiRows=waiRows.map(row=>row.id===id?{...row,preparada:true,estado:'sin_senal',senal_at:null,qr:null,qr_vence:null}:row);
+      }else{
+        if(!Array.isArray(r.data))throw Error();
+        waiRows=r.data;
+      }
+      waiChecked=Date.now();
+    }catch(e){
+      if(generation!==waiGeneration)return;
+      waiError=e?.code==='22023'?String(e.message):'No se pudo comprobar el estado. Reintentá; no se confirmará ninguna conexión.';
+      if(accion==='listar'){waiRows=null;waiChecked=0;}
+    }finally{
+      if(generation===waiGeneration){waiBusy=false;if(premiumAdmin()&&tab==='usuarios')api?.render?.();}
+    }
+  }
+  function waiQR(r){
+    if(r.estado!=='qr'||typeof r.qr!=='string'||r.qr.length>2048||!(Date.parse(r.qr_vence)>Date.now()))return '';
+    try{const q=window.qrcode(0,'M');q.addData(r.qr);q.make();
+      return '<div><p><b>Autorización de WhatsApp</b> · abrí Dispositivos vinculados en el teléfono del comercio y escaneá este QR privado.</p><img alt="QR de vinculación de WhatsApp" data-wai-qr-vence="'+esc(r.qr_vence)+'" style="max-width:100%;width:240px;height:auto" src="'+esc(q.createDataURL(5,4))+'"><small>Vence: '+esc(new Date(r.qr_vence).toLocaleTimeString('es-AR'))+'</small></div>';
+    }catch{return '<p>No se pudo dibujar el QR. Actualizá el estado.</p>';}
+  }
+  function waiSupportView(){
+    if(!premiumAdmin())return '';
+    if(!waiRows&&!waiBusy&&!waiError)queueMicrotask(()=>waiSupport());
+    const fresh=Date.now()-waiChecked<45000;
+    const rows=(waiRows||[]).slice().sort((a,b)=>Number(a.estado==='conectado')-Number(b.estado==='conectado'));
+    const online=rows.filter(r=>r.habilitada&&fresh&&r.estado==='conectado'&&Date.now()-Date.parse(r.senal_at)<90000).length;
+    const active=rows.filter(r=>r.habilitada).length;
+    const cards=rows.map(r=>{
+      const signal=fresh&&Date.now()-Date.parse(r.senal_at)<90000, state=!r.habilitada?'pausado':!r.preparada?'sin_conector':!signal?'sin_senal':r.estado;
+      const canRecover=r.habilitada&&signal&&['desconectado','qr','qr_vencido'].includes(state);
+      return '<article class="gl-ch-chat-row"><div><h3>'+esc(r.empresa||'Comercio')+' · '+esc(r.local)+'</h3><small>'+esc(r.numero)+'</small><p class="gl-wa-status"><strong>'+esc(waiLabels[state]||'Estado sin comprobar')+'</strong></p>'+
+       '<small>Última señal: '+esc(r.senal_at?new Date(r.senal_at).toLocaleString('es-AR'):'Nunca')+'</small>'+
+       (signal?waiQR(r):'')+
+       (waiPrepared?.id===r.id?'<p><b>Clave privada del conector (solo esta vez)</b></p><code style="overflow-wrap:anywhere;user-select:all">'+esc(waiPrepared.clave)+'</code><p><small>Guardala en el dispositivo autorizado. No la envíes por mensajes ni la publiques. ID: '+esc(r.id)+'</small></p><button type="button" class="btn" data-wai-hide-key>Ocultar clave</button>':'')+'</div><div class="gl-ch-chat-actions">'+
+       (!r.preparada&&r.habilitada?'<button type="button" class="btn" data-wai-support="preparar" data-id="'+esc(r.id)+'"'+(waiBusy?' disabled':'')+'>Preparar conector</button>':'')+
+       (r.preparada&&r.habilitada?'<button type="button" class="btn" data-wai-support="reconectar" data-id="'+esc(r.id)+'"'+(!canRecover||waiBusy?' disabled':'')+'>Restablecer señal</button><button type="button" class="btn" data-wai-support="qr" data-id="'+esc(r.id)+'"'+(!canRecover||waiBusy?' disabled':'')+'>Generar nuevo QR</button>':'')+
+       (r.preparada&&r.habilitada&&!signal?'<small>Revisá el dispositivo del conector. Sin internet no se puede recuperar a distancia.</small><button type="button" class="btn" data-wai-support="rotar_clave" data-id="'+esc(r.id)+'"'+(waiBusy?' disabled':'')+'>Reemplazar clave del conector</button>':'')+'</div></article>';
+    }).join('');
+    return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Centro de conexiones GESTLOK WAI"><header><h2>GESTLOK WAI · Conexiones por usuario y local</h2><button type="button" class="btn" data-wai-support="listar"'+(waiBusy?' disabled':'')+'>Actualizar estado</button></header>'+
+      '<p>Incidencias de todos los comercios y recuperación de sesiones. No requieren contratar YCloud. El estado de sesión no confirma que la IA esté respondiendo.</p>'+
+      (waiRows?'<p role="status"><b>'+online+' sesiones conectadas · '+(active-online)+' requieren revisión · '+(rows.length-active)+' pausadas</b></p>':'')+
+      (waiError?'<p role="alert" class="gl-wa-error">'+esc(waiError)+'</p>':'')+
+      (waiBusy?'<p role="status">Consultando conexiones…</p>':'')+
+      '<div class="gl-ch-chat-list">'+(cards||(waiRows?'<p>No hay números registrados.</p>':''))+'</div><small>Actualización cada 10 segundos mientras esta sección está abierta. No se generan QR ficticios ni se activan mensajes.</small></section>';
+  }
+  setInterval(()=>{if(premiumAdmin()&&tab==='usuarios'&&document.visibilityState==='visible')void waiSupport();},10000);
+  setInterval(()=>{if(tab==='usuarios')for(const img of document.querySelectorAll?.('[data-wai-qr-vence]')||[])if(Date.parse(img.dataset.waiQrVence)<=Date.now())img.remove();},1000);
   async function premiumWARequest(params={p_accion:'listar'}){
     if(!premiumWAAllowed()||premiumWABusy||!window.GestLokSupabase?.rpc)return;
     premiumWABusy=true;premiumWATried=true;premiumWAError='';premiumWAReady=false;premiumWAManualReady=false;premiumWAProvider='consultando';premiumWALink=null;
@@ -1541,7 +1607,7 @@
     let body;
     if (cur === 'inicio') body = home(p);
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
-    else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
+    else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (premium?waiSupportView():'') + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+'</div>';
     else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+chatAdminView()+'</div>';
@@ -1583,6 +1649,7 @@
     if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
     if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';premiumWAProvider='sin_consultar';}
     if(v !== 'hq') hqReset();
+    if(v!=='usuarios')waiReset();
     if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
     else if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales'){void loadMicroapps(true);void loadLocalPlans();}
@@ -1666,6 +1733,9 @@
     if(cobroBtn&&api?.isCreadora?.()){ev.preventDefault();void cobroAccion(cobroBtn);return;}
     const altaChat=ev.target.closest?.('[data-ch-chat-alta]');
     if(altaChat&&api?.isCreadora?.()){ev.preventDefault();void altaChatAction(altaChat.dataset.chChatAlta,altaChat.dataset.v==='si');return;}
+    const waiAction=ev.target.closest?.('[data-wai-support]');
+    if(waiAction&&premiumAdmin()&&tab==='usuarios'){ev.preventDefault();void waiSupport(waiAction.dataset.waiSupport,waiAction.dataset.id||null);return;}
+    if(ev.target.closest?.('[data-wai-hide-key]')&&premiumAdmin()){waiPrepared=null;api?.render?.();return;}
     const waLink=ev.target.closest?.('[data-ch-wa-link]');
     if(waLink&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWAConnect(waLink.dataset.chWaLink,'link');return;}
     const waVerify=ev.target.closest?.('[data-ch-wa-verify]');
@@ -1729,7 +1799,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){waiReset();hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
