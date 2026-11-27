@@ -680,7 +680,12 @@
 
   // Plan por sucursal. La autorización de números en el servidor es la fuente real de Premium;
   // seleccionar el plan no conecta WhatsApp ni habilita envíos. No hay datos comerciales en localStorage.
-  let localPlans=null,localPlansBusy=false,localPlansTried=false,localPlansError='',localPlanSaving=false;
+  let localPlans=null,localPlansBusy=false,localPlansTried=false,localPlansError='',localPlanSaving=false,localPlansIndex='';
+  function localPlanIndex(){
+    const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
+    return JSON.stringify(companies.flatMap(c=>(Array.isArray(c.locals)?c.locals:[]).map(l=>[l.tenant_id||c.tenant_id,l.id])).sort());
+  }
   const localPlanOpen=new Set(),localPlanDraft=new Map();
   const localPlanKey=(tenant,id)=>JSON.stringify([tenant,id]);
   function localPlanData(tenant,id){
@@ -692,7 +697,7 @@
   }
   async function loadLocalPlans(){
     if(!premiumAdmin()||localPlansBusy||!window.GestLokSupabase?.rpc)return;
-    localPlansBusy=true;localPlansTried=true;localPlansError='';
+    localPlansBusy=true;localPlansTried=true;localPlansIndex=localPlanIndex();localPlansError='';
     try{
       const sb=window.GestLokSupabase;
       const [a,b]=await Promise.all([sb.rpc('gestlok_chat_admin_empresas'),sb.rpc('gestlok_chat_admin_whatsapp_premium',{p_accion:'listar'})]);
@@ -781,7 +786,7 @@
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
   // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
   function premiumLocales(p) {
-    if(!localPlansTried&&!localPlansBusy)queueMicrotask(()=>loadLocalPlans());
+    if((!localPlansTried||localPlansIndex!==localPlanIndex())&&!localPlansBusy)queueMicrotask(()=>loadLocalPlans());
     const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
     const currentTenant=api.S?.me?.tenant_id;
@@ -1471,7 +1476,8 @@
     if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
     if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';}
     if(v !== 'hq') hqReset();
-    if(v !== 'chat-prueba') showroomExpandido = false;
+    if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
+    else if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales'){void loadMicroapps(true);void loadLocalPlans();}
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
     if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;}
