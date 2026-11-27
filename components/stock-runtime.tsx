@@ -42,7 +42,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-push.js?rev=hq-push-20261125",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123",
-    "/stock/gestlok-chat-central.js?rev=chat-wai-20261127",
+    "/stock/gestlok-chat-central.js?rev=chat-wai-cupo-20261127",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
@@ -88,7 +88,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123");
       if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=recuperar-noche-20261117");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=conteo-cierre-sin-stock-20261123");
-      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-wai-20261127");
+      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-wai-cupo-20261127");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
@@ -130,8 +130,8 @@ export function StockRuntime() {
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=stock-local-cierre-0050-20261123");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
-      await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
-      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");
+      await load("/stock/gestlok-mobile-dock.js?rev=menu-chat-20261126");
+      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-chat-20261126");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();

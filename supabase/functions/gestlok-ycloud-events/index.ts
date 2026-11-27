@@ -1,5 +1,6 @@
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
 import {parseEvent} from "./events.mjs";
+import {resolveWaiRoute} from "./wai-route.mjs";
 const env=(k:string)=>Deno.env.get(k)||"";
 const reply=(status:number)=>new Response(null,{status,headers:{"Cache-Control":"no-store"}});
 Deno.serve(async request=>{
@@ -8,8 +9,16 @@ Deno.serve(async request=>{
  try{
   const result=await parseEvent(request,env("YCLOUD_PARTNER_WEBHOOK_SECRET"));
   if(!result.args)return reply(result.status);
-  if(result.kind==="inbound"&&env("YCLOUD_MANUAL_PILOT_ENABLED")!=="true")return reply(204);
+  const routeCheck=result.kind==="inbound"&&env("YCLOUD_WAI_ROUTE_CHECK_ONLY")==="true";
+  const manual=result.kind==="inbound"&&env("YCLOUD_MANUAL_PILOT_ENABLED")==="true";
+  if(result.kind==="inbound"&&!routeCheck&&!manual)return reply(204);
   const service=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
+  if(routeCheck){
+   const check=await resolveWaiRoute((fn:string,args:Record<string,unknown>)=>service.rpc(fn,args),result);
+   // Log status only: no customer phones, content or tenant identifiers.
+   console.info("YCLOUD_WAI_ROUTE_"+check.status.toUpperCase());
+   if(!manual)return reply(204);
+  }
   const {error}=await service.rpc(result.kind==="account"?"gestlok_chat_partner_estado":"gestlok_chat_srv_whatsapp_piloto_recibir",result.args);
   return reply(error?500:204);
  }catch{return reply(500);}

@@ -183,3 +183,12 @@ export async function leerArchivo(file, prog) {
   }
   return cs.length ? ocr(cs, prog) : '';
 }
+
+
+/** Newly imported promotions or rows with choices need a human-verified option
+ * configuration before becoming orderable. OCR cannot safely infer the
+ * allowed flavours, required totals, extra prices or dates. */
+export function requiereRevisionOpciones(categoria,producto){
+ const n=normalizar([categoria,producto?.nombre,producto?.descripcion].join(' '));
+ return /\b(promocion(?:es)?|promos?|combos?|packs?|ofertas?|a eleccion|a elegir|elegi[rs]?|variedades?|sabores?|tamanos?|otros precios|opciones?|personaliz[ao]\w*)\b/.test(n);
+}

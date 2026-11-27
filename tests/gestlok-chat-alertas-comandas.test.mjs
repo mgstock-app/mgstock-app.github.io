@@ -95,11 +95,11 @@ test('el panel y la app usan recursos renovados para evitar código cacheado',()
  const panel=leer('public/chat/panel/panel.js');
  const central=leer('public/stock/gestlok-chat-central.js');
  const runtime=leer('components/stock-runtime.tsx');
- assert.match(pag,/panel\.js\?v=20261127wai1/);
- assert.match(pag,/panel\.css\?v=20261127wai1/);
- assert.match(panel,/VERSION_CSS = '20261127wai1'/);
- assert.match(central,/VERSION_PANEL='20261127wai1'/);
- assert.match(runtime,/chat-wai-20261127/);
+ assert.match(pag,/panel\.js\?v=20261127waicupo1/);
+ assert.match(pag,/panel\.css\?v=20261127waicupo1/);
+ assert.match(panel,/VERSION_CSS = '20261127waicupo1'/);
+ assert.match(central,/VERSION_PANEL='20261127waicupo1'/);
+ assert.match(runtime,/chat-wai-cupo-20261127/);
  assert.match(central,/RECORDAR_PENDIENTES_MS=120000/);
  assert.match(central,/RECORDAR_PREPARACION_MS=300000/);
  assert.match(central,/data-gcc-comandas/);

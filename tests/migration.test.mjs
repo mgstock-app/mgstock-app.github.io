@@ -32,6 +32,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      for (const [updated, original] of [
+        ["S.view === 'pedidos-clientes' ? 'GESTLOK Chat · Central de mensajes'", "S.view === 'pedidos-clientes' ? 'Central de mensajes'"],
+        ['<span class="nl">GESTLOK Chat · Central de mensajes</span>', '<span class="nl">Central de mensajes</span>']
+      ]) {
+        assert.equal(content.split(updated).length - 1, 1, 'Nombre de GESTLOK Chat en menú y título');
+        content = content.replace(updated, original);
+      }
     // Revertir exclusivamente los tres fragmentos de edición histórica revisados.
     const closedEditHooks=[
   {
