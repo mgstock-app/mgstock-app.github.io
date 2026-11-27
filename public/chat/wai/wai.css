@@ -108,3 +108,6 @@ a{color:#087a98}
 .alias-form label{display:grid;gap:5px;font-size:13px;font-weight:650}
 .alias-form input{width:100%;padding:10px;border:1px solid #cadce5;border-radius:10px;font:inherit}
 @media(max-width:680px){.alias-btn{padding:6px 8px;font-size:11px}}
+
+.history-notice{padding:10px 20px;background:#f5f8fb;border-bottom:1px solid #dce7ee;color:#526b80;font-size:12px;line-height:1.45}
+.history-label{display:block;color:#6a8091;font-size:11px;margin-top:4px}

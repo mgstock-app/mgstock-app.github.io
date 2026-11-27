@@ -136,6 +136,24 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  assert.equal((await inbox(S)).chats.length,0);
  const p3=await authorize(S,H,contact);assert.ok(p3);const renamed=(await inbox(S)).chats[0];assert.equal(renamed.alias,'Cliente frecuente');assert.equal(renamed.nombre_agenda,'Nombre agendado');
  await anon();await signal('wai_senal',H,keyA,cmd.revision,'conectado','+5491100000001');await role('creadora');assert.equal((await connections(S))[0].estado,'verificando');
+ // Persist already authorized history when disconnected/expired; never use it as permission to send.
+ await db.exec('reset role;'+read('entornos/sql/wai-historial-persistente.sql'));
+ await role('gerente');let hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.piloto_activo,p3);assert.equal(hist.conexion_activa,false);assert.equal(hist.puede_responder,false);
+ assert.equal(hist.mensajes.length,5);assert.equal(hist.alias,'Cliente frecuente');assert.ok(hist.mensajes.every(m=>!m.puede_editar&&!m.puede_eliminar));
+ const historicalIncoming=hist.mensajes.filter(m=>m.direccion==='entrada').map(m=>m.id);
+ assert.equal(await mark(S,hist.id,historicalIncoming),3);assert.equal((await inbox(S)).chats[0].mensajes.filter(m=>m.direccion==='entrada'&&!m.leido).length,0);
+ await assert.rejects(inbox(S,'responder',hist.id,'No enviar desconectado',E),/Prueba no disponible/);
+ await role('gerente',T);await assert.rejects(inbox(S),/Sin permiso/);await assert.rejects(mark(S,hist.id,historicalIncoming),/Sin permiso/);
+ await anon();await signal('wai_senal_v2',H,keyA,cmd.revision,'conectado','+5491100000001');
+ await role('gerente');hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.puede_responder,true);
+ await inbox(S,'responder',hist.id,'Continuación del mismo contacto',E);
+ await anon();const continuation=await motor(H,keyA,'tomar',p3,null,null,null,null,null,cmd.revision);assert.ok(continuation.id);assert.equal(continuation.jid,jid);
+ await motor(H,keyA,'resultado',p3,jid,'WA-CONTINUATION',null,continuation.id,'aceptado',cmd.revision);
+ await role('creadora');await authorize(S,H,null,'cancelar');
+ hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.archivado,true);assert.equal(hist.piloto_activo,null);assert.equal(hist.puede_responder,false);assert.equal(hist.mensajes.length,6);
+ assert.equal(await alias(S,hist.id,'Alias aun sin ensayo'),true);
+ const p4=await authorize(S,H,contact);hist=(await inbox(S)).chats[0];assert.equal(hist.id,p);assert.equal(hist.piloto_activo,p4);assert.equal(hist.alias,'Alias aun sin ensayo');assert.equal(hist.puede_responder,true);assert.equal(hist.mensajes.length,6);
+
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{
