@@ -4,7 +4,9 @@
 const root=document.getElementById('wai-root');
 const valid=s=>typeof s==='string'&&s.length>=3&&s.length<=60&&/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s);
 const direct=/^\/gestlok-wai-([a-z0-9-]+)\/?$/.exec(location.pathname)?.[1];
-const query=new URLSearchParams(location.search).get('local');
+const params=new URLSearchParams(location.search);
+const query=params.get('local');
+const openConnection=params.get('vincular')==='1';
 const slug=direct||query||null;
 const node=(tag,attrs={},...children)=>{
  const e=document.createElement(tag);
@@ -43,7 +45,7 @@ function login(){
  access('Ingresá al espacio del local',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':'Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,resend,status,node('a',{href:'/'},'Volver a GESTLOK'));
 }
 async function init(){
- const mine=++generation;destroyed=false;
+ const mine=++generation;destroyed=false;clearInterval(navigatorTimer);
  try{
   const {data,error}=await sb.auth.getUser();
   if(mine!==generation)return;
@@ -54,14 +56,46 @@ async function init(){
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Configurar línea de ensayo'),node('p',{class:'hint'},'Solo números de prueba, nunca los números comerciales.'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn primary')):null;
-   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));return;
+   const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
+   access('Elegí tu local',links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',...links,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:'/'},'Volver a GESTLOK'));
+   if(health){startAdminHealth(health,mine);}
+   return;
   }
   sessionLocal=locals.find(s=>s.slug===slug&&['gestionar','configurar'].includes(s.nivel));
   if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:'/chat/wai/'},'Mis locales'));return;}
   if(location.pathname==='/chat/wai/'&&query===slug){history.replaceState(null,'',portalHref(slug));}
-  renderShell();await refresh();
+  renderShell();await refresh();if(openConnection&&mine===generation)openDrawer('conexion');
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
  }catch{if(mine===generation)access('No pudimos abrir WAI','Revisá la conexión o volvé a ingresar. Este espacio puede estar pendiente de publicación.',button('Reintentar',()=>void init()));}
+}
+function startAdminHealth(host,mine){
+ let busy=false,actionBusy=false,last='',fail=false;
+ const visible=()=>mine===generation&&host.isConnected&&!destroyed;
+ const title=node('h2',{},'Centro de conexiones'),label=node('p',{class:'hint',role:'status'},'Comprobando los locales…'),list=node('div',{class:'wai-health-list'}),actionStatus=node('p',{class:'hint',role:'status'});
+ const refreshNow=async()=>{
+  if(!visible()||busy||actionBusy)return;busy=true;
+  try{
+   const data=await rpc('wai_estado_global');if(!visible())return;
+   if(!Array.isArray(data))throw Error('Estado no disponible');
+   const enabled=data.filter(r=>r.habilitada),alerts=enabled.filter(r=>r.estado!=='conectado');
+   label.className=alerts.length?'wai-health-warn':'hint';
+   label.textContent=enabled.length?enabled.filter(r=>r.estado==='conectado').length+' con señal comprobada · '+alerts.length+' requieren revisión':'Sin líneas habilitadas';
+   const signature=JSON.stringify(data);
+   if(signature===last&&!fail)return;last=signature;fail=false;
+   const sorted=[...data].sort((a,b)=>(a.estado==='conectado')-(b.estado==='conectado'));
+   list.replaceChildren(...sorted.map(r=>{
+    const healthy=r.estado==='conectado',warn=r.habilitada&&!healthy;
+    const canRetry=r.habilitada&&['desconectado','qr_vencido','qr'].includes(r.estado)&&Date.now()-Date.parse(r.senal_at)<90000;
+    const href=r.slug&&valid(r.slug)?(portalHref(r.slug)+(portalHref(r.slug).includes('?')?'&':'?')+'vincular=1'):null;
+    return node('article',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),node('small',{},r.numero),node('span',{class:healthy?'wai-health-ok':warn?'wai-health-warn':'hint'},(healthy?'● ':warn?'⚠ ':'')+(labels[r.estado]||'Sin estado comprobado')),node('small',{class:'hint'},'Última comprobación: '+(r.wa_verificada_at?scheduledLabel(r.wa_verificada_at):'sin señal comprobada')),
+     node('div',{class:'actions'},canRetry?button('Restablecer señal',async()=>{if(actionBusy)return;actionBusy=true;actionStatus.textContent='Solicitando reconexión…';try{await rpc('wai_conexiones',{p_accion:'reconectar',p_id:r.id});actionStatus.textContent='Solicitud enviada. Esperando una comprobación real.';}catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}},'btn'):null,
+     href?node('a',{class:'btn',href},healthy?'Ver vinculación':'Vincular / revisar QR'):null));
+   }));
+  }catch{if(visible()){fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();}}
+  finally{busy=false;}
+ };
+ host.replaceChildren(title,label,list,actionStatus,button('Actualizar estados',()=>{last='';void refreshNow();},'btn'));
+ void refreshNow();navigatorTimer=setInterval(()=>{if(!document.hidden)void refreshNow();},10000);
 }
 async function registerTrial(box){
  if(!trialEnvironment()||portal?.administradora!==true)return;
@@ -106,6 +140,7 @@ function renderShell(){
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
  shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(label),node('div',{class:'top-actions'},
+  portal?.administradora?node('a',{class:'toolbar-btn',href:'/chat/wai/',title:'Ver el estado de todos los locales'},'Conexiones'):null,
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
