@@ -302,6 +302,7 @@ async function attentionAction(c,a){
  finally{if(me===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
 }
 const orderMoney=n=>n==null?'—':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2,minimumFractionDigits:0}).format(n);
+function scheduledLabel(v){const n=Date.parse(v||'');return Number.isFinite(n)?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'}).format(n):'';}
 function privateOrderSheet(c,f){
  const row=(label,value)=>node('div',{class:'wai-sheet-row'},node('span',{},label),node('strong',{},value||'Pendiente'));
  const items=[...(f.carrito||[]),...(f.producto_id||(!f.carrito&&f.producto)?[f]:[])];
@@ -316,7 +317,7 @@ function privateOrderSheet(c,f){
   node('h3',{class:'wai-sheet-heading'},'Cliente'),row('Nombre',f.nombre),row('WhatsApp',c.cliente),node('h3',{class:'wai-sheet-heading'},'Pedido'),...itemLines,node('h3',{class:'wai-sheet-heading'},'Entrega y pago'),
   row('Modalidad',f.modalidad==='delivery'?'Delivery':f.modalidad==='retiro'?'Retiro en el local':'Pendiente'),
   f.modalidad==='delivery'?row('Dirección',f.direccion):null,f.modalidad==='delivery'?row('Entre calles',f.entrecalles||'No indicadas'):null,row('Forma de pago',f.pago?.replaceAll('_',' ')),
-  row('Subtotal',orderMoney(f.subtotal)),row('Envío',orderMoney(f.envio)),row('Demora',f.demora),
+  row('Subtotal',orderMoney(f.subtotal)),row('Envío',orderMoney(f.envio)),row('Demora',f.demora),f.programado_para?row('Programado para',scheduledLabel(f.programado_para)):null,
   node('div',{class:'wai-sheet-total'},node('span',{},'TOTAL'),node('strong',{},orderMoney(f.total))),node('span',{class:'order-state'},f.estado==='pendiente'?'Esperando confirmación':f.estado==='confirmado'||f===c.pedidos?.[0]?.ficha?'Confirmado':'Completando datos')));
  return detail;
 }
@@ -324,7 +325,8 @@ function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
  const ready=orderReady(c),orderTransport=orderReady({...c,puede_responder:c.puede_operar_pedido??c.puede_responder}),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,orderTransport,!!last&&Date.parse(last.creado_at)>Date.now()-14400000,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
+ const scheduledFuture=!!c.ficha?.programado_para&&Date.parse(c.ficha.programado_para)>Date.now();
+ const sig=JSON.stringify([c.id,ready,orderTransport,scheduledFuture,!!last&&Date.parse(last.creado_at)>Date.now()-14400000,c.transferencia_configurada,c.resena_configurada,orders,c.ficha,orderBusy,c.opciones_activas,c.imagenes_activas,c.atencion_manual,c.atencion_pendiente,c.pedido_pendiente,c.pedido_texto,c.pedidos_habilitados,c.modalidad_detectada,c.seguimiento_min,c.agente_activo,c.ciclo_activo,c.cerrado_at,c.aviso_cierre,c.aviso_cierre_estado,c.alerta_sync,c.alerta_sync_at]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready||!!c.cerrado_at;
  const recent=!!last&&Date.parse(last.creado_at)>Date.now()-14400000, activeOrder=recent&&last.estado!=='entregado'&&!last.atencion_finalizada_at, collecting=!!c.ficha&&!['pendiente','confirmado'].includes(c.ficha.estado),newRequest=!!c.pedido_pendiente||collecting,ficha=newRequest?c.ficha:last?.ficha||c.ficha,modeKey=newRequest?c.modalidad_detectada:recent?last.modalidad:c.modalidad_detectada;
@@ -348,13 +350,14 @@ function renderOrder(c){
    c.archivado?node('small',{class:'hint'},'Ensayo vencido. Autorizá el contacto en Vincular.'):null,
    last?.valoracion==='problema'?node('small',{class:'hint'},last.resuelto?'Reclamo atendido':'Reclamo pendiente'):null);
  menu.append(node('summary',{class:'wai-manage','aria-label':'Más opciones de la conversación',title:'Gestionar conversación'},'⋯'),options);
- const info=node('div',{class:'wai-order-info'},node('strong',{},c.pedido_pendiente?'Pedido para confirmar':collecting?'Completando pedido':recent?orderLabels[last.estado]||last.estado:'Atención al cliente'),
+ const info=node('div',{class:'wai-order-info'},node('strong',{},c.pedido_pendiente?(scheduledFuture?'Pedido programado':'Pedido para confirmar'):collecting?'Completando pedido':recent?orderLabels[last.estado]||last.estado:'Atención al cliente'),
    mode?node('span',{class:'order-detected confirmed'},mode):null,
+   c.pedido_pendiente&&c.ficha?.programado_para?node('small',{class:'hint'},'Programado · '+scheduledLabel(c.ficha.programado_para)):null,
    !mode&&c.pedido_pendiente?node('small',{class:'hint'},'Esperando modalidad'):null,
    c.pedido_pendiente&&c.pedido_texto?node('small',{class:'wai-order-draft',title:c.pedido_texto},c.pedido_texto):null);
  let next=null;
  if(c.pedidos_habilitados!==false&&(!activeOrder&&!issues.length)&&c.pedido_pendiente===true&&mode&&!c.cerrado_at&&!collecting&&(!c.ficha||c.ficha.estado==='pendiente')){
-   next=button('Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn order-main',{disabled});
+   next=button(scheduledFuture?'Disponible al abrir':'Recibido y en preparación',()=>void orderAction(c,'aceptar'),'btn primary order-btn order-main',{disabled:disabled||scheduledFuture});
  }else if(!newRequest&&recent&&last?.estado==='preparacion'){
    next=button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn order-btn order-main',{disabled:orderDisabled});
  }
@@ -468,7 +471,7 @@ async function renderAttentionSettings(host){
     const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
-  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar y se cierra la atención. Durante 4 horas el cliente puede elegir otro pedido, atención o reportar un problema. No se envían encuestas automáticas de entrega. El historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar y se cierra la atención. Durante 4 horas el cliente puede elegir otro pedido, atención o reportar un problema. No se envían encuestas automáticas de entrega. El historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
   host.replaceChildren(form);
  }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }
