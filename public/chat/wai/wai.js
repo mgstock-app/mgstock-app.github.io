@@ -124,9 +124,9 @@ function renderList(){
  const total=chats.reduce((n,c)=>n+unreadIds(c).length,0);
  if(unreadSummary){unreadSummary.hidden=!total;unreadSummary.textContent=total?total+' sin leer':'';}
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>[c.cliente,c.alias,c.nombre_agenda].some(n=>String(n||'').toLowerCase().includes(value))||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
- list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)).map(c=>{
+ list.replaceChildren(...(matching.length?matching.slice().sort((a,b)=>Number(!!b.reclamo_pendiente)-Number(!!a.reclamo_pendiente)||Number(!!b.atencion_pendiente)-Number(!!a.atencion_pendiente)).map(c=>{
   const count=unreadIds(c).length;
-  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):null,c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+  return node('button',{class:'chat-row'+(count?' unread':'')+(c.reclamo_pendiente?' complaint':c.atencion_pendiente?' needs-human':''),type:'button','aria-current':String(c.id===selected),'aria-label':displayName(c)+(displayName(c)!==c.cliente?' · '+c.cliente:'')+(count?' · '+count+' mensaje(s) sin leer':'')+(c.reclamo_pendiente?' · Reclamo pendiente':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},displayName(c)),displayName(c)!==c.cliente?node('span',{class:'contact-number'},c.cliente):null,node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba'),c.reclamo_pendiente?node('span',{class:'complaint-label'},'⚠ Reclamo pendiente'):c.atencion_pendiente?node('span',{class:'human-label'},'Solicita atención humana'):null,c.archivado?node('span',{class:'history-label'},'Historial guardado'):c.conexion_activa===false?node('span',{class:'history-label'},'Sin conexión · historial guardado'):null),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
  }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
 }
 async function markVisibleRead(){
@@ -152,7 +152,7 @@ function composerKey(e){
 function messageStatus(m){
  if(m.direccion==='entrada')return 'Recibido';
  if(m.estado==='aceptado')return m.entregado?'✓✓ Entregado':'✓ Enviado';
- return {pendiente:'En cola',reservado:'Enviando',incierto:'Envío incierto · no repetir'}[m.estado]||'Sin confirmar';
+ return {pendiente:'En cola',cancelado:'Cancelado por atención manual',reservado:'Enviando',incierto:'Envío incierto · no repetir'}[m.estado]||'Sin confirmar';
 }
 function actionStatus(m){
  if(m.accion_estado==='pendiente'||m.accion_estado==='reservado')return m.accion_tipo==='editar'?'Editando…':'Eliminando…';
@@ -177,8 +177,9 @@ function renderMessage(c,m){
  if(m.puede_editar)actions.push(button('Editar',()=>openMessageAction(c.id,m,'editar'),'msg-action',{'aria-label':'Editar mensaje',title:'Editar mensaje'}));
  if(m.puede_eliminar)actions.push(button('Eliminar',()=>openMessageAction(c.id,m,'eliminar'),'msg-action danger',{'aria-label':'Eliminar mensaje',title:'Eliminar mensaje'}));
  return node('div',{class:'bubble'+(outgoing?' out':'')+(m.eliminado?' deleted':'' )},
-   node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.texto),
-   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':null,change?' · '+change:null),
+   node('span',{class:'message-text'},m.eliminado?'Mensaje eliminado':m.interaccion?.pregunta||m.texto),
+   !m.eliminado&&m.interaccion?node('div',{class:'wai-option-list'},...(m.interaccion.opciones||[]).map(o=>node('span',{class:'wai-option'+(m.interaccion.seleccion===o.id?' chosen':'')},(m.interaccion.seleccion===o.id?'✓ ':'○ ')+o.label))):null,
+   node('small',{class:'message-meta'},messageTime(m.fecha),' · ',node('span',{class:m.entregado?'delivery-confirmed':'','aria-label':status},status),m.origen==='telefono'?' · Teléfono':m.origen==='valoracion'?' · Encuesta':m.origen==='opcion'?' · Opción de WhatsApp':null,change?' · '+change:null),
    actions.length?node('div',{class:'message-actions'},...actions):null);
 }
 function cancelMessageAction(){
@@ -254,23 +255,36 @@ async function showOrderPhoto(c,o){
   messageActionHost.replaceChildren(node('div',{class:'order-photo'},node('strong',{},'Foto enviada por el cliente'),node('img',{alt:'Foto adjunta al reclamo',src:'data:image/jpeg;base64,'+photo}),button('Cerrar foto',cancelMessageAction)));
  }catch(e){if(mine===generation&&selected===c.id)orderMessage(e.message);}
 }
+async function attentionAction(c,a){
+ if(orderBusy||selected!==c.id||!sessionLocal)return;
+ const me=generation,chat=c.id;orderBusy=true;orderSignature='';renderOrder(c);
+ try{const ok=await rpc('wai_atencion_accion',{p_sucursal:sessionLocal.id,p_hilo:chat,p_accion:a,p_evento:crypto.randomUUID()});if(ok!==true)throw Error('No se confirmó la solicitud.');if(me===generation){if(selected===chat)orderMessage(a==='enviar'?'Opciones en cola para WhatsApp.':a==='manual'?'Atención manual. Respuestas del menú pausadas.':a==='asistido'?'Atención asistida reactivada.':'Solicitud atendida.');await refresh();}}
+ catch(e){if(me===generation&&selected===chat)orderMessage(e.message);}
+ finally{if(me===generation){orderBusy=false;orderSignature='';const x=chats.find(v=>v.id===selected);if(x)renderOrder(x);}}
+}
 function renderOrder(c){
  if(!orderHost)return;
  orderHost.hidden=false;
  const ready=orderReady(c),orders=c.pedidos||[],last=orders[0],issues=orders.filter(o=>o.valoracion==='problema'&&!o.resuelto);
- const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy]);
+ const sig=JSON.stringify([c.id,ready,c.transferencia_configurada,c.resena_configurada,orders,orderBusy,c.opciones_activas,c.atencion_manual,c.atencion_pendiente,c.pedidos_habilitados]);
  if(sig===orderSignature)return;orderSignature=sig;
  const disabled=orderBusy||!ready;
  const transfer=button('Enviar datos de transferencia',()=>void orderAction(c,'transferencia'),'btn order-btn',{disabled:disabled||!c.transferencia_configurada,title:c.transferencia_configurada?'Envía los datos de Ajustes al contacto':'Cargá los datos en Ajustes del local'});
  const actions=node('div',{class:'order-actions'},transfer);
- const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Pedido del cliente'),last?node('span',{class:'order-state'},orderLabels[last.estado]||last.estado):node('span',{class:'hint'},'Sin pedido registrado')),actions);
- if(!last||last.estado==='entregado'&&!issues.length){
+ const attention=node('div',{class:'order-actions'},
+  button('Enviar opciones',()=>void attentionAction(c,'enviar'),'btn order-btn',{disabled:disabled||!c.opciones_activas,title:c.opciones_activas?'Enviar opciones configuradas al chat de WhatsApp':'Actualizá el conector privado para activar las opciones'}),
+  button(c.atencion_manual?'Reactivar asistente':'Tomar atención manual',()=>void attentionAction(c,c.atencion_manual?'asistido':'manual'),'btn order-btn',{disabled:orderBusy}),
+  c.atencion_pendiente?button('Marcar atendido',()=>void attentionAction(c,'atendido'),'btn order-btn',{disabled:orderBusy}):null);
+ const panel=node('div',{class:'order-summary'},node('div',{class:'order-heading'},node('strong',{},'Atención'),node('span',{class:'order-state'+(c.atencion_manual?' human-mode':'')},c.atencion_manual?'Manual':'Asistida')),attention,
+  c.pedidos_habilitados!==false||last?node('div',{class:'order-heading'},node('strong',{},'Pedido del cliente'),last?node('span',{class:'order-state'},orderLabels[last.estado]||last.estado):node('span',{class:'hint'},'Sin pedido registrado')):null,actions);
+ if(!c.opciones_activas&&ready)panel.append(node('small',{class:'hint'},'Opciones en WhatsApp: conector actualizado requerido.'));
+ if(c.pedidos_habilitados!==false&&(!last||last.estado==='entregado'&&!issues.length)){
   const type=node('select',{'aria-label':'Modalidad de entrega'},node('option',{value:'retiro'},'Retiro en el local'),node('option',{value:'delivery'},'Delivery'));
   const delay=node('input',{type:'number',min:1,max:20,value:2,'aria-label':'Minutos hasta consulta de satisfacción'});
   actions.append(node('label',{class:'order-field'},'Modalidad',type),node('label',{class:'order-field delay'},'Consultar en (min)',delay),button('Recibido y en preparación',()=>{const n=Number(delay.value);if(!Number.isInteger(n)||n<1||n>20){orderMessage('Elegí una demora entre 1 y 20 minutos.');return;}void orderAction(c,'aceptar',null,{p_modalidad:type.value,p_demora:n});},'btn primary order-btn',{disabled}));
- }else if(last.estado==='preparacion'){
+ }else if(last?.estado==='preparacion'){
   actions.append(button(last.modalidad==='retiro'?'Listo para retirar':'En camino',()=>void orderAction(c,'listo',last),'btn primary order-btn',{disabled}));
- }else if(['listo','en_camino'].includes(last.estado)){
+ }else if(['listo','en_camino'].includes(last?.estado)){
   actions.append(button('Pedido recibido por el cliente',()=>void orderAction(c,'entregado',last),'btn primary order-btn',{disabled}));
  }
  if(!c.resena_configurada&&last&&last.estado!=='entregado')panel.append(node('small',{class:'hint'},'Reseñas: configurá el enlace en Ajustes.'));
@@ -310,7 +324,7 @@ function showNotice(error){
  if(selected&&pendingUnknown.has(selected)){notice.className='notice bad';notice.textContent='Verificando una respuesta incierta. No la repitas hasta comprobar el estado.';return;}
  const live=rows.filter(r=>r.estado==='conectado').length;
  notice.className='notice'+(live?' good':'');
- notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) con señal de WhatsApp comprobada':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba · seguimiento de pedidos; sin IA automática':'Mensajería comercial todavía no habilitada')));
+ notice.replaceChildren(node('span',{class:'status-dot'}),node('strong',{},live?live+' número(s) con señal de WhatsApp comprobada':rows.length?rows.map(r=>labels[r.estado]||'Estado no verificado').join(' · '):'Sin número autorizado'),node('span',{},'· '+(portal.piloto_disponible?'Bandeja de prueba · atención asistida y manual':'Mensajería comercial todavía no habilitada')));
 }
 async function refresh(){
  if(running||destroyed||!sessionLocal)return;running=true;const mine=generation,id=sessionLocal.id;
@@ -327,8 +341,49 @@ async function refresh(){
 function openDrawer(kind){
  settingsPanel?.destruir();settingsPanel=null;drawerBody.replaceChildren();connectionList=null;authorizationHost=null;authorizationDraft=null;drawerKind=kind;overlay.hidden=false;
  drawerTitle.textContent=kind==='config'?'Configuración del local':'Vinculación de WhatsApp';
- if(kind==='config'){const host=node('div');drawerBody.append(host);settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});}
+ if(kind==='config'){
+  const host=node('div'),tabs=node('div',{class:'wai-config-tabs'});
+  const local=button('Datos del local',()=>{settingsPanel?.destruir();host.waiSettings=null;host.replaceChildren();settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});},'btn');
+  const attention=button('Atención WAI',()=>{settingsPanel?.destruir();settingsPanel=null;void renderAttentionSettings(host);},'btn primary');
+  tabs.append(local,attention);drawerBody.append(tabs,host);
+  void renderAttentionSettings(host);
+ }
  else{renderConnection();void refresh();}
+}
+async function renderAttentionSettings(host){
+ const me=generation,local=sessionLocal?.id,identity=Symbol();host.waiSettings=identity;
+ host.replaceChildren(node('p',{class:'hint',style:'padding:18px'},'Cargando configuración de atención…'));
+ try{
+  const data=await rpc('wai_atencion_config',{p_sucursal:local});
+  if(me!==generation||drawerKind!=='config'||!host.isConnected||host.waiSettings!==identity)return;
+  const title=node('input',{type:'text',maxlength:120,value:data.pregunta||'',required:true});
+  const auto=node('input',{type:'checkbox',checked:data.bienvenida_auto===true});
+  const orders=node('input',{type:'checkbox',checked:data.pedidos!==false});
+  const items=node('div',{class:'wai-setting-options'}),fields=[],status=node('p',{class:'hint',role:'status'});
+  const add=()=>{
+   if(fields.length>=6)return;row({label:'',respuesta:'',humano:true});
+  };
+  const row=(o)=>{
+   const label=node('input',{type:'text',maxlength:60,required:true,value:o.label||''});
+   const answer=node('textarea',{rows:2,maxlength:400,placeholder:'Respuesta configurada para esta opción'});answer.value=o.respuesta||'';
+   const person=node('input',{type:'checkbox',checked:o.humano!==false});
+   const box=node('div',{class:'wai-setting-card'});
+   const f={label,answer,person,box};fields.push(f);
+   const remove=button('Quitar',()=>{if(fields.length<=2){status.textContent='Mantené al menos dos opciones.';return;}fields.splice(fields.indexOf(f),1);box.remove();},'btn');
+   const sync=()=>{answer.disabled=person.checked;};person.addEventListener('change',sync);sync();
+   box.append(node('label',{},'Texto de opción',label),node('label',{class:'wai-check'},person,'Derivar a una persona'),node('label',{},'Respuesta automática',answer),remove);items.append(box);
+  };
+  for(const o of data.opciones||[])row(o);
+  const submit=node('button',{class:'btn primary',type:'submit'},'Guardar atención');
+  const form=node('form',{class:'wai-settings',onsubmit:async e=>{
+   e.preventDefault();submit.disabled=true;status.textContent='Guardando…';
+   try{
+    const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
+    await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
+   }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},auto,'Enviar opciones automáticamente al primer mensaje del ensayo'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Opciones de WhatsApp'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  host.replaceChildren(form);
+ }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }
 function closeDrawer(){settingsPanel?.destruir();settingsPanel=null;drawerKind='';authorizationDraft=null;authorizationHost=null;connectionList=null;drawerBody.replaceChildren();overlay.hidden=true;void markVisibleRead();}
 let connectionBusy=false;
