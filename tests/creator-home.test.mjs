@@ -792,7 +792,8 @@ test('Los controles de Chat tienen una sola ubicación principal para la adminis
   r.h.setTab('habilitacion');
   const html=r.h.view({parts:{}});
   assert.match(html,/aria-label="GESTLOK Chat por empresa"/);
-  assert.match(html,/GESTLOK Chat Premium/);
+  assert.match(html,/GESTLOK WAI/);
+  assert.doesNotMatch(html,/GESTLOK Chat Premium/);
   const other=load(async()=>({data:DASH,error:null}),{email:'otra@empresa.com'});
   other.h.mode();await tick();await tick();
   assert.doesNotMatch(other.h.view({parts:{}}),/gl-ch-group-nav|gl-ch-admin-summary|data-ch-tab="habilitacion"/);

@@ -14,10 +14,11 @@ const PRIMER_MES = pesos(PRECIOS.cuota * (100 - PRECIOS.descuentoPrimerMes) / 10
 const CIERRE = " ¿Arrancamos? Tocá «Registrarme», elegí GESTLOK Chat y en pocos minutos tu comercio queda en revisión.";
 
 export const EMMA_SALUDO =
-  "¡Hola! Soy Emma, la asistente de GESTLOK. Te cuento cómo funciona GESTLOK Chat, qué le puede servir a tu comercio y cómo empezar. ¿En qué te ayudo?";
+  "¡Hola! Soy Emma, la asistente de GESTLOK. Te cuento cómo funcionan GESTLOK Chat y GESTLOK WAI, qué le puede servir a tu comercio y cómo empezar. ¿En qué te ayudo?";
 
 export const EMMA_SUGERENCIAS = [
   "¿Qué es GESTLOK Chat?",
+  "¿Qué es GESTLOK WAI?",
   "¿Cómo funciona?",
   "Quiero ver la demo",
   "¿Cuánto cuesta?",
@@ -36,10 +37,10 @@ const TEMAS: Tema[] = [
   { claves: /(local(es)? adicional(es)?|sucursal(es)? adicional(es)?|otro local|otra sucursal|segundo local|segunda sucursal|mas locales|mas sucursales|local(es)? extra|sucursal(es)? extra)/,
     texto: "Agregar un local adicional es opcional y cuesta " + pesos(PRECIOS.localAdicional) +
       " por mes por cada local adicional. El plan principal es GESTLOK Chat (web): " + pesos(PRECIOS.cuota) +
-      " por mes, o GESTLOK Chat Premium: " + pesos(PRECIOS.premium) +
+      " por mes, o GESTLOK WAI: " + pesos(PRECIOS.premium) +
       " por mes. Dejanos tu consulta en Contacto para coordinar la incorporación de otra sucursal.", contacto: true },
-  { claves: /\bpremium\b/,
-    texto: "GESTLOK Chat Premium cuesta " + pesos(PRECIOS.premium) +
+  { claves: /\b(premium|wai)\b/,
+    texto: "GESTLOK WAI cuesta " + pesos(PRECIOS.premium) +
       " por mes para el primer local. Incluye el chat web y la atención por WhatsApp las 24 horas, previa habilitación y verificación del número. " +
       "Si el local está cerrado, puede informar horarios, carta y precios y recibir pedidos programados. Agregar un local adicional es opcional: " +
       pesos(PRECIOS.localAdicional) + " por mes. Consultá en Contacto para coordinar la conexión de WhatsApp.", contacto: true },
@@ -50,10 +51,10 @@ const TEMAS: Tema[] = [
     texto: "Podés probarlo ahora en la demo: hacés un pedido como cliente y ves cómo le llega al panel del local, en la misma pantalla. " +
       "Es un local de ejemplo, no se envía nada a ningún comercio.", demo: true },
   { claves: /(cuanto (sale|cuesta|vale|cobran)|precio|plan(es)?\b|abono|tarifa|suscrip|mensual|presupuesto|cotiz|pago|pagar|tarjeta|mercado ?pago)/,
-    texto: "GESTLOK Chat (web) cuesta " + pesos(PRECIOS.cuota) + " por mes para el primer local, con soporte incluido. GESTLOK Chat Premium cuesta " +
+    texto: "GESTLOK Chat (web) cuesta " + pesos(PRECIOS.cuota) + " por mes para el primer local, con soporte incluido. GESTLOK WAI cuesta " +
       pesos(PRECIOS.premium) + " por mes para el primer local, con WhatsApp sujeto a habilitación y verificación. Local adicional (opcional): " +
       pesos(PRECIOS.localAdicional) + " por mes por cada local adicional. Por lanzamiento, el plan web tiene " +
-      PRECIOS.descuentoPrimerMes + "% de descuento: " + PRIMER_MES + " el primer mes. El plan web se paga con débito automático por Mercado Pago y empezás a pagar recién cuando tu chat está activo. Para Premium o locales adicionales, consultanos en Contacto. " +
+      PRECIOS.descuentoPrimerMes + "% de descuento: " + PRIMER_MES + " el primer mes. El plan web se paga con débito automático por Mercado Pago y empezás a pagar recién cuando tu chat está activo. Para GESTLOK WAI o locales adicionales, consultanos en Contacto. " +
       "Si querés, por única vez (" + pesos(PRECIOS.adaptacion) + ", opcional) te dejamos todo listo: carta, precios, promos y el asistente adaptados a tu local." + CIERRE, registrarme: true },
   { claves: /(adapta|configur|cargar (la |mi )?carta|me lo arm|lo arman|carga(n|r) (los )?precios)/,
     texto: "Vos podés cargar tu carta solo, incluso desde un PDF o una foto. Si preferís no ocuparte, por " + pesos(PRECIOS.adaptacion) +

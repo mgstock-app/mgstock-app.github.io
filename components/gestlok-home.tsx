@@ -222,6 +222,7 @@ export function GestlokHome() {
           <p className="glh-marca-chat">Gest<em>Lok</em> Chat</p>
           <h1>Tus clientes piden solos por chat, las 24 horas.</h1>
           <p className="glh-bajada">Tu carta, tus promos y tus pedidos en un solo chat. El cliente arma su pedido desde el celular y vos lo confirmás desde tu panel.</p>
+          <p className="glh-bajada"><strong>GESTLOK Chat</strong> · Asistente web. <strong>GESTLOK WAI</strong> · Asistente integrado con WhatsApp, sujeto a habilitación y verificación del número.</p>
           <div className="glh-hero-acciones">
             <a className="glh-btn glh-btn-navy glh-btn-xl" href="#como-funciona">Ver cómo funciona</a>
             <a className="glh-btn glh-btn-claro glh-btn-xl" href="#contacto">Quiero GESTLOK Chat</a>
