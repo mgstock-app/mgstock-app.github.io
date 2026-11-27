@@ -76,3 +76,11 @@ a{color:#087a98}
 .authorization-form input[type=tel]{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bfd1dc;border-radius:11px;font:inherit;color:#17334c}
 .authorization-form .consent-line{display:flex;align-items:flex-start;gap:9px;font-size:14px;font-weight:500}
 .authorization-form .consent-line input{width:18px;height:18px;flex:none;margin:2px 0 0;accent-color:#107990}
+
+/* Unread is visible independently of the connection state; also meaningful without color. */
+.inbox-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between}
+.unread-summary{font-size:11px;font-weight:750;color:#176643;background:#dff4e7;padding:5px 9px;border-radius:999px;white-space:nowrap}
+.chat-row{grid-template-columns:42px minmax(0,1fr) auto}
+.chat-row.unread{background:#e9f7ef;border-color:#c9e8d4}
+.chat-row.unread .preview small{font-weight:650;color:#1a6346}
+.unread-badge{display:grid;place-items:center;min-width:23px;height:23px;padding:0 6px;border-radius:999px;background:#178349;color:#fff;font-size:12px;font-weight:800;line-height:1}

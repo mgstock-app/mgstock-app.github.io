@@ -23,7 +23,8 @@ try{const C=window.GESTLOK_CHAT_CONFIG;sb=window.supabase.createClient(C.url,C.k
 catch{access('Sin conexión','No se pudo iniciar el servicio. Recargá la página.');return;}
 async function rpc(name,args={}){const r=await sb.rpc('gestlok_chat_'+name,args);if(r.error)throw Error(r.error.message||'No se pudo completar la consulta');return r.data;}
 let sessionLocal=null,portal=null,rows=[],chats=[],selected=null,claimed=false,running=false,destroyed=false,navigatorTimer=0,settingsPanel=null,drawerKind='',lastSignature='',lastThreadSignature='',drafts=new Map(),pendingUnknown=new Map(),generation=0;
-let shell,notice,list,search,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
+const readBusy=new Set();
+let shell,notice,list,search,unreadSummary,thread,head,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
 let connectionList=null,authorizationHost=null,authorizationDraft=null;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
 const portalHref=s=>location.hostname.endsWith('.vercel.app')?'/chat/wai/?local='+encodeURIComponent(s):'/gestlok-wai-'+encodeURIComponent(s)+'/';
@@ -84,7 +85,7 @@ async function registerTrial(box){
  }catch(e){box.replaceChildren(node('p',{class:'error'},e.message),button('Reintentar',()=>void registerTrial(box)));}
 }
 function clearPrivate(){
- generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
+ generation++;destroyed=true;clearInterval(navigatorTimer);settingsPanel?.destruir();settingsPanel=null;sessionLocal=null;rows=[];chats=[];drafts.clear();pendingUnknown.clear();readBusy.clear();lastSignature='';lastThreadSignature='';selected=null;root.replaceChildren();
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
@@ -93,7 +94,8 @@ function renderShell(){
  notice=node('div',{class:'notice',role:'status'},'Verificando WhatsApp…');
  search=node('input',{class:'search',type:'search',placeholder:'Buscar conversación', 'aria-label':'Buscar conversación',oninput:()=>renderList()});
  list=node('div',{class:'chat-list','aria-label':'Conversaciones'});
- head=node('div',{class:'chat-head'});thread=node('div',{class:'thread',role:'log','aria-label':'Mensajes'});
+ unreadSummary=node('span',{class:'unread-summary','aria-live':'polite',hidden:true});
+ head=node('div',{class:'chat-head'});thread=node('div',{class:'thread',role:'log','aria-label':'Mensajes',onscroll:()=>void markVisibleRead()});
  textarea=node('textarea',{placeholder:'Escribí un mensaje',rows:'1',maxlength:'1000','aria-label':'Escribí un mensaje',oninput:()=>{if(selected)drafts.set(selected,textarea.value);updateComposer();}});
  send=node('button',{type:'submit',class:'btn primary',disabled:true},'Enviar');
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
@@ -103,18 +105,40 @@ function renderShell(){
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
-  node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{},'Conversaciones'),search),list),
+  node('div',{class:'workspace'},node('aside',{class:'inbox'},node('div',{class:'inbox-head'},node('p',{class:'eyebrow'},'Bandeja del local'),node('h2',{class:'inbox-title'},'Conversaciones',unreadSummary),search),list),
    node('section',{class:'chat','aria-label':'Conversación seleccionada'},head,thread,compose)),overlay);
  root.replaceChildren(shell);renderList();renderThread(true);
 }
 function selection(id){
  if(selected&&textarea)drafts.set(selected,textarea.value);
- selected=id;shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);
+ selected=id;shell.classList.toggle('selected',!!id);textarea.value=drafts.get(id)||'';lastThreadSignature='';renderList();renderThread(true);void markVisibleRead();
 }
+function unreadIds(c){return (c?.mensajes||[]).filter(m=>m.direccion==='entrada'&&m.leido===false).map(m=>m.id);}
 function renderList(){
  if(!list)return;
+ const total=chats.reduce((n,c)=>n+unreadIds(c).length,0);
+ if(unreadSummary){unreadSummary.hidden=!total;unreadSummary.textContent=total?total+' sin leer':'';}
  const value=search.value.trim().toLowerCase();const matching=chats.filter(c=>String(c.cliente).includes(value)||c.mensajes?.some(m=>String(m.texto).toLowerCase().includes(value)));
- list.replaceChildren(...(matching.length?matching.map(c=>node('button',{class:'chat-row',type:'button','aria-current':String(c.id===selected),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},c.cliente),node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba')))): [node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
+ list.replaceChildren(...(matching.length?matching.map(c=>{
+  const count=unreadIds(c).length;
+  return node('button',{class:'chat-row'+(count?' unread':''),type:'button','aria-current':String(c.id===selected),'aria-label':c.cliente+(count?' · '+count+' mensaje(s) sin leer':''),onclick:()=>selection(c.id)},node('span',{class:'avatar'},'WA'),node('div',{class:'preview'},node('strong',{},c.cliente),node('small',{},c.mensajes?.at(-1)?.texto||'Esperando primer mensaje de prueba')),count?node('span',{class:'unread-badge',title:count+' mensaje(s) sin leer','aria-hidden':'true'},count):null);
+ }):[node('p',{class:'hint',style:'padding:12px'},value?'No hay coincidencias.':'Todavía no hay conversaciones autorizadas.')]));
+}
+async function markVisibleRead(){
+ // Merely polling or opening the connection/configuration drawer is not reading.
+ if(!selected||document.hidden||drawerKind||!sessionLocal||destroyed||!thread||!thread.isConnected||thread.scrollHeight-thread.scrollTop-thread.clientHeight>100||readBusy.has(selected))return;
+ const c=chats.find(x=>x.id===selected),ids=unreadIds(c);
+ if(!ids.length)return;
+ const id=c.id,mine=generation,local=sessionLocal.id;
+ readBusy.add(id);
+ try{
+  const n=await rpc('wai_marcar_leidos',{p_sucursal:local,p_piloto:id,p_mensajes:ids});
+  if(mine!==generation||destroyed||n!==ids.length)return;
+  const latest=chats.find(x=>x.id===id),seen=new Set(ids);
+  if(latest)for(const m of latest.mensajes||[])if(seen.has(m.id))m.leido=true;
+  renderList();
+ }catch{/* Keep the unread indicator if the server could not confirm it. */}
+ finally{if(mine===generation)readBusy.delete(id);}
 }
 function empty(title,txt){return node('div',{class:'empty'},node('div',{class:'mark','aria-hidden':'true'},'✉'),node('h2',{},title),node('p',{},txt));}
 function renderThread(force=false){
@@ -154,7 +178,7 @@ async function refresh(){
   rows=Array.isArray(r)?r:[];chats=Array.isArray(b?.chats)?b.chats:[];
   for(const [id,event] of pendingUnknown){const c=chats.find(x=>x.id===id);if(c?.mensajes?.some(m=>m.evento===event)){pendingUnknown.delete(id);drafts.delete(id);if(selected===id)textarea.value='';}}
   const sig=JSON.stringify(chats);if(lastSignature!==sig){lastSignature=sig;renderList();}
-  renderThread();showNotice(false);if(drawerKind==='conexion')renderConnection();
+  renderThread();void markVisibleRead();showNotice(false);if(drawerKind==='conexion')renderConnection();
  }catch{if(mine===generation&&!destroyed){rows=[];chats=[];lastSignature='';renderList();renderThread();showNotice(true);if(drawerKind==='conexion')renderConnection();}}
  finally{running=false;}
 }
@@ -164,7 +188,7 @@ function openDrawer(kind){
  if(kind==='config'){const host=node('div');drawerBody.append(host);settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});}
  else{renderConnection();void refresh();}
 }
-function closeDrawer(){settingsPanel?.destruir();settingsPanel=null;drawerKind='';authorizationDraft=null;authorizationHost=null;connectionList=null;drawerBody.replaceChildren();overlay.hidden=true;}
+function closeDrawer(){settingsPanel?.destruir();settingsPanel=null;drawerKind='';authorizationDraft=null;authorizationHost=null;connectionList=null;drawerBody.replaceChildren();overlay.hidden=true;void markVisibleRead();}
 let connectionBusy=false;
 async function connectionAction(action,id){
  if(connectionBusy)return;connectionBusy=true;

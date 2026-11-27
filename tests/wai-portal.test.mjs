@@ -16,7 +16,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  create table public.docs(tenant_id uuid,col text,id text,data jsonb,primary key(tenant_id,col,id));
  create table gestlok_chat_private.empresas(tenant_id uuid primary key,nombre_publico text,habilitada boolean);
  create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text);
- create function auth.uid() returns uuid language sql stable as $$select '${U}'::uuid$$;
+ create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('test.uid',true),''),'${U}')::uuid$$;
  create function public.mi_rol() returns text language sql stable as $$select current_setting('test.role',true)$$;
  create function gestlok_platform.require_admin() returns uuid language plpgsql as $$begin if current_setting('test.role',true) is distinct from 'creadora' then raise exception 'Sin permiso';end if;return '${U}';end$$;
  create function gestlok_chat_private.es_creadora_chat() returns boolean language sql stable as $$select coalesce(current_setting('test.role',true)='creadora',false)$$;
@@ -67,6 +67,23 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await role('creadora');assert.equal((await connections(S))[0].estado,'conectado');
  const p2=await authorize(S,H,contact);assert.ok(p2);
  await db.exec('reset role;'+read('entornos/sql/wai-piloto-entrega-pendiente.sql'));await anon();const grant=await motor();assert.equal(grant.id,p2);assert.ok(Date.parse(grant.creado_at)<Date.parse(grant.vence_at));assert.ok(Date.parse(grant.hora_servidor));
+ await db.exec('reset role;'+read('entornos/sql/wai-mensajes-no-leidos.sql'));
+ await anon();await motor(H,keyA,'recibir',p2,jid,'unread-1','Nuevo');
+ await role('gerente');let thread=(await inbox(S)).chats[0];assert.equal(thread.mensajes[0].leido,false);
+ const first=thread.mensajes[0].id;const mark=(s,p,ids)=>call('wai_marcar_leidos',[s,p,ids]);
+ // Polling alone does not consume unread messages.
+ assert.equal((await inbox(S)).chats[0].mensajes[0].leido,false);
+ await anon();await assert.rejects(mark(S,p2,[first]),/permission denied/);
+ await motor(H,keyA,'recibir',p2,jid,'unread-2','Segundo');
+ await role('gerente',T);await assert.rejects(mark(S,p2,[first]),/Sin permiso/);
+ await role('gerente');await assert.rejects(mark(S,p2,[first,E]),/Mensaje no disponible/);
+ assert.equal(await mark(S,p2,[first]),1);assert.equal(await mark(S,p2,[first]),1);
+ thread=(await inbox(S)).chats[0];assert.equal(thread.mensajes.filter(m=>!m.leido).length,1);assert.equal(thread.mensajes.find(m=>m.id===first).leido,true);
+ await db.exec(`reset role;set test.uid='${E}'`);
+ await role('gerente');assert.equal((await inbox(S)).chats[0].mensajes.filter(m=>!m.leido).length,2);
+ await db.exec("reset role;set test.uid=''");
+ await role('gerente');assert.equal((await inbox(S)).chats[0].mensajes.filter(m=>!m.leido).length,1);
+
  await role('gerente',T);await assert.rejects(connections(T,'revalidar',H),/Número no habilitado/);
  await role('gerente');assert.equal((await connections(S,'revalidar',H))[0].estado,'reconectando');
  await anon();const cmd=await signal('wai_senal',H,keyA,rev,'conectado','+5491100000001');assert.equal(cmd.orden,'qr_forzado');
