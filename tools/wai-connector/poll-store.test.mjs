@@ -47,3 +47,37 @@ test('Baileys rc14: selección en encuesta nativa usa el voto cifrado real, incl
   const votes=calls.filter(a=>a.p_accion==='voto');assert.equal(votes.length,1);assert.equal(votes[0].p_evento,'POLL1');assert.equal(votes[0].p_texto,'op2');assert.equal(votes[0].p_jid,jid);assert.ok(calls.some(a=>a.p_accion==='alerta'&&a.p_estado==='voto_no_descifrado'));
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('encuesta de salsas: una sola encuesta ponderada, permite cantidades repetidas y combinadas',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'wai-sauces-')),t=Date.now(),grant={id:'p',tester:number,vence_at:new Date(t+60000).toISOString()};
+ try{
+  const names=['Criolla','Chimichurri','Crema de ajo','Barbacoa','Cheddar','American ketchup'];
+  const opciones=[1,2].flatMap(q=>names.map((n,i)=>({id:'sm_'+q+'_'+(i+1),label:q+' × '+n})));
+  const spec={pregunta:'Elegí exactamente 3 salsas',multiple:true,opciones};
+  assert.equal(normalizePoll({...spec,multiple:false}),null);
+  const store=createPollStore(dir,{now:()=>t}),payload=await store.create('SAUCES',jid,jid,grant,spec);
+  assert.equal(payload.poll.selectableCount,0);assert.equal(payload.poll.values.length,12);
+  const record=await store.get('SAUCES',grant,jid,jid,t);assert.equal(record.multiple,true);
+  const ajo=digest('2 × Crema de ajo'),cheddar=digest('1 × Cheddar'),unaAjo=digest('1 × Crema de ajo');
+  assert.equal(selectionFromVote(record.opciones,{selectedOptions:[ajo,cheddar]},true),'sm_1_5,sm_2_3');
+  assert.equal(selectionFromVote(record.opciones,{selectedOptions:[ajo,unaAjo]},true),'sm_1_3,sm_2_3');
+  assert.equal(selectionFromVote(record.opciones,{selectedOptions:[ajo,ajo]},true),null);
+  assert.equal(selectionFromVote(record.opciones,{selectedOptions:[ajo,digest('falso')]},true),null);
+  assert.equal(selectionFromVote(record.opciones,{selectedOptions:[ajo,cheddar]},false),null);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('conector: descifra voto múltiple real de Baileys y envía el conjunto al servidor sin perder el voto parcial',{skip:!lib},async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'wai-multi-')),t=Date.now(),grant={id:'p',tester:number,creado_at:new Date(t-5000).toISOString(),vence_at:new Date(t+60000).toISOString(),hora_servidor:new Date(t).toISOString()};
+ try{
+  const opts=[{id:'sm_1_1',label:'1 × Crema de ajo'},{id:'sm_2_1',label:'2 × Crema de ajo'},{id:'sm_1_2',label:'1 × Cheddar'},{id:'sm_2_2',label:'2 × Cheddar'}];
+  let job={id:'db1',jid,texto:'Salsas',interaccion:{pregunta:'Elegí exactamente 3 salsas',multiple:true,opciones:opts}},sent=null;
+  const calls=[],rpc=async(_name,a)=>{calls.push(a);if(a.p_accion==='control')return grant;if(a.p_accion==='tomar'){const next=job;job=null;return next;}if(a.p_accion==='tomar_accion')return null;return {ok:true};};
+  const args={now:()=>t,active:()=>true,rpc,socket:{sendMessage:async(target,content,options)=>{sent=content;assert.equal(target,jid);return {key:{id:options.messageId}};}},ownJids:()=>[me],newMessageId:()=> 'POLL2',decryptVote:lib.decryptPollVote};
+  const pilot=pilotTransport({...args,pollStore:createPollStore(dir)});await pilot.tick('revision');assert.equal(sent.poll.selectableCount,0);
+  const hmac=(data,key)=>createHmac('sha256',key).update(data).digest(),sign=Buffer.concat([Buffer.from('POLL2'),Buffer.from(me),Buffer.from(jid),Buffer.from('Poll Vote'),Buffer.from([1])]);
+  const key=hmac(sign,hmac(sent.poll.messageSecret,Buffer.alloc(32)));
+  const event=(id,selected)=>{const iv=randomBytes(12),plain=lib.proto.Message.PollVoteMessage.encode({selectedOptions:selected.map(digest)}).finish(),cipher=createCipheriv('aes-256-gcm',key,iv);cipher.setAAD(Buffer.from('POLL2\0'+jid));const encPayload=Buffer.concat([cipher.update(plain),cipher.final(),cipher.getAuthTag()]);return {type:'notify',messages:[{key:{remoteJid:jid,id,fromMe:false},messageTimestamp:Math.floor(t/1000),message:{pollUpdateMessage:{pollCreationMessageKey:{id:'POLL2',fromMe:true,remoteJid:jid},vote:{encPayload,encIv:iv}}}}]};};
+  await pilot.receive(event('part',['2 × Crema de ajo']));await pilot.receive(event('full',['2 × Crema de ajo','1 × Cheddar']));await pilot.tick('revision');
+  assert.deepEqual(calls.filter(a=>a.p_accion==='voto').map(a=>a.p_texto),['sm_2_1','sm_1_2,sm_2_1']);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});

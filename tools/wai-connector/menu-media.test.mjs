@@ -17,7 +17,7 @@ test('conector envía foto como contenido nativo, solo al contacto autorizado',a
  let job=null,attempts=0,states=[];
  const p=pilotTransport({active:()=>true,now:()=>now,pollStore:{},decryptVote:()=>{},menuImage:async u=>{assert.equal(u,url);return {image:bytes,mimetype:'image/jpeg'};},
  socket:{sendMessage:async(j,m)=>{attempts++;assert.equal(j,target);assert.ok(m.image.equals(bytes));assert.equal(m.caption,undefined);assert.equal(m.text,undefined);return {key:{id:'native-photo'}};}},
- rpc:async(name,a)=>{if(a.p_accion==='control'){assert.equal(a.p_estado,'opciones_imagen_v1');return {id:'pilot',tester:'+5491100000003',vence_at:new Date(now+60000).toISOString()};}if(a.p_accion==='tomar'){const r=job;job=null;return r;}if(a.p_accion==='resultado'){states.push(a.p_estado);return {ok:true};}}});
+ rpc:async(name,a)=>{if(a.p_accion==='control'){assert.equal(a.p_estado,'opciones_imagen_v2');return {id:'pilot',tester:'+5491100000003',vence_at:new Date(now+60000).toISOString()};}if(a.p_accion==='tomar'){const r=job;job=null;return r;}if(a.p_accion==='resultado'){states.push(a.p_estado);return {ok:true};}}});
  job={id:'j',jid:target,texto:'Carta',imagen_url:url};await p.tick('rev');
  job={id:'wrong',jid:other,texto:'Carta',imagen_url:url};await p.tick('rev');
  assert.equal(attempts,1);assert.deepEqual(states,['aceptado']);
