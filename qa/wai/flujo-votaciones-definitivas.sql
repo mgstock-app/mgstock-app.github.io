@@ -116,7 +116,7 @@ begin
    update gestlok_chat_private.wai_mensajes set estado='aceptado',wa_id='qa-regreso-opciones',wa_ruta=tester_jid where id=m.id;
    if pack=6 then
     perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'voto',p.id,tester_jid,'qa-regreso-opciones','pedido');
-    if not exists(select 1 from gestlok_chat_private.wai_mensajes x join gestlok_chat_private.wai_atencion_hilos a on a.ciclo_id=x.ciclo_id where a.hilo_id=p.id and (x.interaccion->>'pregunta'='¿Qué te gustaría pedir?' or x.imagen_url is not null)) then raise exception 'No inició el nuevo pedido';end if;
+    if not exists(select 1 from gestlok_chat_private.wai_mensajes x join gestlok_chat_private.wai_atencion_hilos a on a.ciclo_id=x.ciclo_id where a.hilo_id=p.id and (x.interaccion->>'pregunta'='¿Qué te gustaría pedir?' or x.imagen_url is not null or x.texto like '%/chat/wai/menu/#%')) then raise exception 'No inició el nuevo pedido';end if;
     voto=public.gestlok_chat_wai_piloto_motor(h,llave,rev,'voto',p.id,tester_jid,'qa-regreso-opciones','reciente_problema');
     if not coalesce((voto->>'ignorada')::boolean,false) or exists(select 1 from gestlok_chat_private.wai_pedidos where id=o.id and valoracion='problema') then raise exception 'Voto antiguo generó reclamo falso';end if;
     perform public.gestlok_chat_wai_piloto_motor(h,llave,rev,'recibir',p.id,tester_jid,'qa-reclamo-directo','Tuve un problema con mi pedido');
