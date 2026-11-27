@@ -21,3 +21,14 @@ export function projectYCloudText({from,to,messages=[],lastInboundAt,now=new Dat
  }
  return {reason:'preview_only',payloads:chunks.map(body=>({from,to,type:'text',text:{body}})),dispatchAllowed:false};
 }
+
+
+// One projected service message instead of the numbered fallback. Caller
+// supplies a server-generated conversation result, never a client payload.
+export function projectYCloudTurn({from,to,turn,lastInboundAt,now}={}){
+ const fallback=projectYCloudText({from,to,messages:turn?.messages,lastInboundAt,now});
+ if(fallback.reason!=='preview_only'||!turn?.native)return fallback;
+ const native=turn.native;
+ if(!['button','list'].includes(native.type))return fallback;
+ return {reason:'preview_only',payloads:[{from,to,type:'interactive',interactive:structuredClone(native)}],dispatchAllowed:false};
+}

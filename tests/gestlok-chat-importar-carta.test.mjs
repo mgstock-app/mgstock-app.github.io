@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {analizarCarta, lineasDesdePalabras, numeroPrecio} from '../public/chat/panel/importar-carta.js';
+import {analizarCarta, lineasDesdePalabras, numeroPrecio, requiereRevisionOpciones} from '../public/chat/panel/importar-carta.js';
 
 test('arma categorías, productos, precios y descripciones de una carta gastronómica', () => {
   const carta = `CARTA
@@ -50,8 +50,21 @@ import {readFileSync} from 'node:fs';
 test('el panel ofrece importar la carta con revisión y sin borrar nada', () => {
   const panel = readFileSync(new URL('../public/chat/panel/panel.js', import.meta.url), 'utf8');
   assert.match(panel, /Importar carta \(PDF, foto o texto\)/);
-  assert.match(panel, /importar-carta\.js\?v=20261123importar1/);
+  assert.match(panel, /importar-carta\.js\?v=20261126revision2/);
   assert.match(panel, /Revisá la propuesta/);
   assert.match(panel, /No se borra nada de la carta actual/);
   assert.doesNotMatch(panel, /panel_producto_eliminar|delete from/i);
+});
+
+
+test('promos nuevas y precios alternativos requieren revisión antes de habilitarse',()=>{
+ const cats=analizarCarta('EMPANADAS\nCarne $1200\nPROMOCIONES\n6 empanadas + 2 salsas $9000\nSabores a elección');
+ assert.equal(requiereRevisionOpciones(cats[0].nombre,cats[0].productos[0]),false);
+ assert.equal(requiereRevisionOpciones(cats[1].nombre,cats[1].productos[0]),true);
+ assert.equal(requiereRevisionOpciones('General',{nombre:'Pizza',descripcion:'Otros precios: $ 15.500'}),true);
+ assert.equal(requiereRevisionOpciones('General',{nombre:'Camisa',descripcion:'Tamaños a elegir'}),true);
+ const panel=readFileSync(new URL('../public/chat/panel/panel.js',import.meta.url),'utf8');
+ assert.match(panel,/mod\.requiereRevisionOpciones\(c\.nombre, p\)/);
+ assert.match(panel,/disponible: !revisarOpciones, opciones: \[\]/);
+ assert.match(panel,/opciones: previo.opciones \|\| \[\]/);
 });

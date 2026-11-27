@@ -2,6 +2,7 @@
 // replace raw-body signature verification. The caller supplies synthetic events
 // and a server-controlled allowlist. No network, credentials, storage or sends.
 import {conversationPreview} from './conversation.mjs';
+import {readYCloudInput} from './native-menu.mjs';
 import {prepareExclusions,excludedSender} from './exclusions.mjs';
 const e164=/^\+[1-9]\d{7,14}$/;
 const id=v=>typeof v==='string'&&v.length>0&&v.length<=200;
@@ -26,7 +27,7 @@ export function createOfflinePilot(routes){
   if(p?.type!=='whatsapp.inbound_message.received'||p.apiVersion!=='v2')return drop('other_event');
   const m=p.whatsappInboundMessage;
   if(!id(p.id)||!id(m?.id)||!id(m.wabaId)||m.groupId||!e164.test(m.from)||!e164.test(m.to)||m.from===m.to)return drop('invalid_message');
-  if(m.type!=='text'||typeof m.text?.body!=='string'||m.text.body.length>600)return drop('unsupported_message');
+  const input=readYCloudInput(m);if(!input)return drop('unsupported_message');
   const route=registry.find(r=>r.waba===m.wabaId&&r.to===m.to);
   if(!route)return drop('unmatched_route');
   if(excludedSender(route.exclusions,m.from))return drop('excluded_sender');
@@ -34,7 +35,7 @@ export function createOfflinePilot(routes){
   const scope=JSON.stringify([route.empresa,route.sucursal,m.from]);
   const eventKey=JSON.stringify([scope,p.id]),messageKey=JSON.stringify([scope,m.id]),wamidKey=id(m.wamid)?JSON.stringify([scope,m.wamid]):null;
   if(seen.has(eventKey)||seen.has(messageKey)||wamidKey&&seen.has(wamidKey))return drop('duplicate');
-  const result=await conversationPreview({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:route.config,catalogo:route.catalogo,privado:route.privado,session:sessions.get(scope),event:{id:m.id,text:m.text.body},ahora:now});
+  const result=await conversationPreview({identity:{empresa:route.empresa,sucursal:route.sucursal,phone:m.from},sucursal:route.config,catalogo:route.catalogo,privado:route.privado,session:sessions.get(scope),event:{id:m.id,...input},ahora:now});
   sessions.set(scope,result.session);seen.add(eventKey);seen.add(messageKey);if(wamidKey)seen.add(wamidKey);
   if(result.action?.type==='simulated_order'){
    const requestId=messageKey;
@@ -43,7 +44,7 @@ export function createOfflinePilot(routes){
   if(result.action?.type==='simulated_handoff'){
    handoffs.set(messageKey,{id:messageKey,empresa:route.empresa,sucursal:route.sucursal,status:'pendiente',reason:result.action.reason,detail:result.action.detail});
   }
-  return {accepted:true,messages:result.messages,options:result.options,stage:result.session.stage,sendAllowed:false};
+  return {accepted:true,messages:result.messages,options:result.options,stage:result.session.stage,sendAllowed:false,...(result.native?{native:result.native}:{})};
  }
  // Manager review demonstration only: no live order approval or permission system.
  // Actual manager authentication/authorization stays with GESTLOK.
@@ -65,4 +66,5 @@ export function createOfflinePilot(routes){
  }
  return {receive,listPending,listHandoffs,reviewPending};
 }
+
 

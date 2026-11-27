@@ -2,6 +2,7 @@
 // Supabase or paid providers. State and event identity must be provided by a
 // verified, tenant-bound transport; this module is not an HTTP endpoint.
 import {previewWhatsApp,completePreviewProduct,checkoutPreview} from './preview.mjs';
+import {buildNativeMenu,resolveNativeReply,isNativeReplyId} from './native-menu.mjs';
 import {parseQuantities,parseNamedQuantities,parseCheckoutData,normalizeCash,isCourtesy} from './compact.mjs';
 import {carteleraDelDia,describirLinea,importeLinea,pesos,totalCarrito,pagosDe,soloEfectivo,descuentoEfectivoAplica,PAGOS,clasificarSoporte,normalizar,botonesCarrito,estadoInicial} from '../gestlok-chat/motor.js';
 const PAGE=8;
@@ -20,23 +21,28 @@ function snapshot(c,s,now,st,d){
  return JSON.stringify(canonical({cart:st.carrito,prices:st.carrito.map(l=>({total:importeLinea(a.catalogo,l),description:describirLinea(a.catalogo,l)})),
   datos:d,minimum:a.sucursal.pedido_minimo??0,delivery:a.sucursal.envio_costo??null,discount:a.sucursal.descuento_efectivo_pct??0,discountApplies:descuentoEfectivoAplica(a.sucursal,d.entrega),cashOnly:soloEfectivo(a.catalogo,st.carrito),payments:pagosDe(a.sucursal,d.entrega),scheduled:st.programado,at:a.sucursal.atencion?.abierto??null,opens:a.sucursal.atencion?.proxima_apertura??null,board:a.clave}));
 }
-export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,ahora=new Date()}){
+export async function conversationPreview({identity,sucursal,catalogo,privado={},session,event,iaSimulada,publicSlug,ahora=new Date()}){
  if(!identity||!['empresa','sucursal','phone'].every(k=>typeof identity[k]==='string'&&identity[k].length>0)||!/^\+[1-9]\d{7,14}$/.test(identity.phone))throw Error('Identidad de piloto inválida');
- if(!event||typeof event.id!=='string'||!event.id||event.id.length>200||typeof event.text!=='string'||event.text.length>600)throw Error('Evento inválido');
+ if(!event||typeof event.id!=='string'||!event.id||event.id.length>200||typeof event.text!=='string'||event.text.length>600||event.interactiveId!==undefined&&!isNativeReplyId(event.interactiveId))throw Error('Evento inválido');
  const scope=JSON.stringify([identity.empresa,identity.sucursal,identity.phone]);
  if(session&&session.scope!==scope)throw Error('Sesión de otra conversación');
  const st=session?clone(session):{scope,engine:estadoInicial(),stage:'menu',seen:[],menu:[],page:0};
- const result=(messages=[],options=[],action)=>({session:st,messages,options,sendAllowed:false,...(action?{action}: {})});
+ const result=(messages=[],options=[],action,native)=>({session:st,messages,options,sendAllowed:false,...(action?{action}: {}),...(native?{native}: {})});
  // Bounded memory only; a durable transport must deduplicate ALL events atomically.
  if(st.seen.includes(event.id))return {...result(),duplicate:true};
  st.seen=[...st.seen.slice(-255),event.id];
- const input=clean(event.text), word=normalizar(input);
+ const clicked=event.interactiveId!==undefined;
+ const selectedInput=clicked?resolveNativeReply(st,event.interactiveId):null;
+ // Consume the binding before processing. Every new render gets fresh IDs.
+ // A reply from a different turn/session never becomes free text.
+ delete st.nativeMenu;delete st.nativePreview;
+ const input=clean(clicked?selectedInput:event.text), word=normalizar(input);
  const a=carteleraDelDia(sucursal,catalogo,ahora), c=a.catalogo;
  function show(messages,options=[],page=0){
   st.menu=options;st.page=Math.min(Math.max(0,page),Math.max(0,Math.ceil(options.length/PAGE)-1));st.prompt=messages;
   return redraw();
  }
- function redraw(){
+ function redraw(extra=[]){
   const options=st.menu.slice(st.page*PAGE,(st.page+1)*PAGE).map((o,i)=>({...o,number:i+1}));
   const nav=[];
   if(st.page>0)nav.push('Anterior');
@@ -46,16 +52,31 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   const hint=st.stage==='flavor'&&options.length
    ? ['Puede indicar varias cantidades juntas con el número (ej.: 1x2'+(options.length>1?', 2x1':'')+') o con el nombre exacto de la variedad.']
    : firstProduct?['Para elegir producto y cantidad en un paso, escriba '+firstProduct.number+'x2 (2 unidades).']:[];
-  return result([...st.prompt,...(lines.length?[lines.join('\n')]:[]),...(nav.length?['Pág. '+(st.page+1)+'/'+Math.ceil(st.menu.length/PAGE)+'. Escriba '+nav.join(' o ')+'.']:[]),...hint],options);
+  const built=buildNativeMenu({prompt:[...extra,...st.prompt,...(nav.length?['Pág. '+(st.page+1)+'/'+Math.ceil(st.menu.length/PAGE)+'.']:[])],options,page:st.page,totalPages:Math.ceil(st.menu.length/PAGE)});
+  if(built){st.nativeMenu=built.mapping;st.nativePreview=built.interactive;}
+  return result([...extra,...st.prompt,...(lines.length?[lines.join('\n')]:[]),...(nav.length?['Pág. '+(st.page+1)+'/'+Math.ceil(st.menu.length/PAGE)+'. Escriba '+nav.join(' o ')+'.']:[]),...hint],options,undefined,built?.interactive);
+ }
+ if(clicked&&selectedInput===null){
+  if(st.menu?.length&&Array.isArray(st.prompt))return redraw(['Esa opción ya no está vigente. Elija nuevamente.']);
+  return result(['Esa opción ya no está vigente. Escriba MENU para volver a la carta o NUEVO PEDIDO si ya envió una solicitud.']);
  }
  const pageOptions=()=>st.menu.slice(st.page*PAGE,(st.page+1)*PAGE);
  const selected=pageOptions()[number(input)-1]?.id;
+ // The web is optional, never a prerequisite to place an order. The slug
+ // comes from the verified commercial route, not the customer's text.
+ if(!clicked&&['carta web','ver carta web','menu web','ver menu web'].includes(word)){
+  const slug=publicSlug??sucursal?.slug;
+  const note=typeof slug==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&slug.length<=120
+   ? 'Puede consultar la carta web en https://gestlok.com.ar/chat/?s='+slug+'. Su pedido de WhatsApp sigue aquí; no se transfiere a la web.'
+   : 'Puede continuar haciendo el pedido en este chat.';
+  return st.menu?.length&&Array.isArray(st.prompt)?redraw([note]):result([note]);
+ }
  if(word==='siguiente'&&(st.page+1)*PAGE<st.menu.length){st.page++;return redraw();}
  if(word==='anterior'&&st.page>0){st.page--;return redraw();}
  async function run(entrada,explicitQuantity,expectedProductId){
   // Always present a selector on WhatsApp (no ambiguous cart writes).
   const fake=typeof iaSimulada==='function'?{config:{proveedor:'openai',clave:'ficticia',url:'https://mock.invalid'},fetchImpl:iaSimulada}:{};
-  const r=await previewWhatsApp({sucursal:{...sucursal,menu_interactivo:true},catalogo,privado,estado:st.engine,entrada,ahora,...fake});
+  const r=await previewWhatsApp({sucursal:{...sucursal,menu_interactivo:true},catalogo,privado,estado:st.engine,entrada,ahora,whatsappCategories:true,...fake});
   st.engine=r.estado??st.engine;
   const p=r.projection;
   if(p.pending.includes('derivacion_humana')||p.pending.some(x=>x==='accion_cancelar'||x==='accion_estado'||x==='accion_derivar')){
@@ -83,7 +104,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   // Explicit quantities are still reviewed, with the same required option and
   // stock/price validation as a product chosen in individual steps.
   if(Number.isInteger(explicitQuantity)&&explicitQuantity>=1&&explicitQuantity<=50){st.product.qty=explicitQuantity;return productStep();}
-  st.stage='quantity';return show([p.label+'. ¿Cuántas unidades quiere? Escriba una cantidad de 1 a 50. Sugerida: '+p.quantity+'.']);
+  st.stage='quantity';return show([p.label+'. ¿Cuántas unidades quiere? Elija o escriba una cantidad de 1 a 50. Sugerida: '+p.quantity+'.'],[1,2,3].map(n=>choice(String(n),String(n)+' unidad'+(n===1?'':'es'))));
  }
  function productStep(){
   const p=st.product,g=p.offered.groups[p.group];
@@ -132,14 +153,14 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
  // A completed request remains immutable. Only an explicit new-order command
  // resets the local draft; the persisted event history is never reset.
  if(st.stage==='submitted'){
-  if(word==='nuevo pedido'||word==='hacer otro pedido'){
+  if(word==='nuevo pedido'||word==='hacer otro pedido'||clicked&&selectedInput==='1'&&st.menu?.[0]?.id==='new_order'){
    const seen=st.seen;
    for(const k of Object.keys(st))delete st[k];
    Object.assign(st,{scope,engine:estadoInicial(),stage:'menu',seen,menu:[],page:0});
    return run({inicio:true});
   }
   if(isCourtesy(input))return result();
-  return show(['La solicitud de prueba ya fue registrada. No se creó un pedido real. Para empezar otro, escriba NUEVO PEDIDO.'],[]);
+  return show(['La solicitud de prueba ya fue registrada. No se creó un pedido real. Para empezar otro, escriba NUEVO PEDIDO.'],[choice('new_order','Nuevo pedido')]);
  }
  if(st.stage==='handoff'&&word!=='menu'&&word!=='volver al menu')return isCourtesy(input)?result():show(['La consulta requiere atención del gerente. No se ha enviado al local en esta simulación. Escriba MENU para volver a la carta.'],[]);
  if(word==='hablar con el gerente'||word==='ayuda con mi pedido'||clasificarSoporte({texto:input})&&st.stage==='menu')return run({texto:input});
@@ -183,7 +204,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   if(!g.values.some(v=>v.id===selected))return redraw();
   p.flavor=selected;st.stage='flavor_qty';
   const done=Object.values(p.choices[g.id]||{}).reduce((sum,v)=>sum+v,0);
-  return show(['¿Cuántas de '+g.values.find(v=>v.id===selected).label+'? Faltan '+(g.total-done)+'.']);
+  return show(['¿Cuántas de '+g.values.find(v=>v.id===selected).label+'? Faltan '+(g.total-done)+'. Elija o escriba la cantidad.'],Array.from({length:Math.min(3,g.total-done)},(_,i)=>choice(String(i+1),String(i+1))));
  }
  if(st.stage==='flavor_qty'){
   const p=st.product,g=p.offered.groups[p.group],current=p.choices[g.id]??{};
@@ -242,7 +263,7 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   const r=checkoutPreview({sucursal,catalogo,estado:st.engine,datos:st.data,confirmed:true,ahora});
   if(r.stage!=='preview_order')return checkout();
   st.stage='submitted';st.menu=[];st.prompt=[];delete st.review;delete st.data;delete st.field;
-  return result([r.message],[],{type:'simulated_order',idempotencyKey:event.id,pedido:r.action.pedido});
+  return {...show([r.message],[choice('new_order','Nuevo pedido')]),action:{type:'simulated_order',idempotencyKey:event.id,pedido:r.action.pedido}};
  }
  if(selected==='edit_cart'){st.stage='remove';return show(['Elija una línea para quitar.'],[...st.engine.carrito.map((l,i)=>choice('remove:'+i,describirLinea(c,l))),choice('back','Volver')]);}
  if(selected)return run({boton:selected});
@@ -257,4 +278,5 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
  }
  return run({texto:input});
 }
+
 

@@ -471,7 +471,7 @@
   async function importarCarta() {
     const sucId = S.suc.id;
     let mod;
-    try { mod = await import('/chat/panel/importar-carta.js?v=20261123importar1'); }
+    try { mod = await import('/chat/panel/importar-carta.js?v=20261126revision2'); }
     catch { return aviso('No se pudo abrir el importador. Revisá la conexión.', true); }
     const archivo = el('input', {type: 'file', accept: 'application/pdf,image/jpeg,image/png,image/webp', 'aria-label': 'Archivo de la carta'});
     const pegado = el('textarea', {rows: '5', maxlength: '40000', placeholder: 'Ej.:\nEMPANADAS\nCarne $ 1.900\nJamón y queso $ 1.700\nBEBIDAS\nAgua 500 ml $ 1.500'});
@@ -522,7 +522,7 @@
         if (!elegidos.length) return aviso('No hay productos marcados para guardar.', true);
         const destinos = [sucId, ...otrasChk.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value)];
         guardar.disabled = true;
-        let creados = 0, actualizados = 0, omitidos = 0;
+        let creados = 0, actualizados = 0, omitidos = 0, porRevisar = 0;
         try {
           for (const destino of destinos) {
             const cat = await rpc('panel_catalogo', {p_sucursal: destino});
@@ -547,16 +547,18 @@
                     orden: Number(previo.orden) || 0, activo: previo.activo !== false, disponible: previo.disponible !== false, opciones: previo.opciones || []}});
                   actualizados++;
                 } else {
+                  const revisarOpciones = mod.requiereRevisionOpciones(c.nombre, p);
                   await rpc('panel_producto_guardar', {p_sucursal: destino, p_producto: {nombre: p.nombre.trim().slice(0, 120),
                     descripcion: String(p.descripcion || '').trim().slice(0, 300), precio: Math.round(Number(p.precio) * 100) / 100,
-                    categoria_id: catId, orden: ordenProd, activo: true, disponible: true, opciones: []}});
+                    categoria_id: catId, orden: ordenProd, activo: true, disponible: !revisarOpciones, opciones: []}});
+                  if (revisarOpciones) porRevisar++;
                   creados++;
                 }
               }
             }
           }
           estado.textContent = '';
-          aviso('Carta importada: ' + creados + ' nuevo(s), ' + actualizados + ' precio(s) actualizado(s)' + (omitidos ? ', ' + omitidos + ' sin cambios' : '') + '.');
+          aviso('Carta importada: ' + creados + ' nuevo(s), ' + actualizados + ' precio(s) actualizado(s)' + (omitidos ? ', ' + omitidos + ' sin cambios' : '') + '.' + (porRevisar ? ' ' + porRevisar + ' promoción(es) o productos con opciones quedaron no disponibles: revisá sus condiciones, cargá las opciones y habilitalos desde la carta.' : ''));
           verCarta();
         } catch (e) {
           estado.textContent = '';
@@ -566,7 +568,7 @@
       };
       pintarResumen();
       propuesta.replaceChildren(el('h3', {text: 'Revisá la propuesta'}),
-        el('p', {class: 'nota', text: 'Corregí nombres, precios y categorías, y destildá lo que no va. Las promos con variedades a elección y las opciones (tamaños, sabores) se completan después en cada producto.'}),
+        el('p', {class: 'nota', text: 'Corregí nombres, precios y categorías, y destildá lo que no va. Las nuevas promos y los productos que mencionan opciones o precios alternativos se guardan no disponibles: revisá sus condiciones, configurá las opciones obligatorias y habilitalos después. Los ya existentes conservan sus opciones.'}),
         ...bloques, el('label', {class: 'check'}, actualizar, ' Si un producto ya existe con el mismo nombre, actualizar su precio'),
         ...otrasChk, resumen, guardar);
     };
@@ -1684,3 +1686,4 @@
     montar(document.getElementById(script.dataset.montar), {demo: Q.get('demo') === '1', local: Q.get('local') || ''});
   }
 })();
+

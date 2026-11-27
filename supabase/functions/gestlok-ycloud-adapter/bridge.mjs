@@ -2,6 +2,7 @@
 // the private test-only RPC. No network client and no WhatsApp response sender.
 // Never mount this module as an unauthenticated public endpoint.
 import {processVerifiedPilotText} from './verified-pilot.mjs';
+import {readYCloudInput} from './native-menu.mjs';
 import {prepareExclusions} from './exclusions.mjs';
 const enc=new TextEncoder(),e164=/^\+[1-9]\d{7,14}$/;
 const good=v=>typeof v==='string'&&v.length>0&&v.length<=200;
@@ -49,13 +50,14 @@ export function createSignedYCloudBridge({secret,routes,store,enabled=false}){
   if(p?.type!=='whatsapp.inbound_message.received'||p.apiVersion!=='v2')return drop('ignored_type');
   const m=p.whatsappInboundMessage;
   if(!good(p.id)||!good(m?.id)||!e164.test(m.from)||!e164.test(m.to)||!good(m.wabaId)||m.groupId)return drop('invalid_message');
-  if(m.type!=='text'||typeof m.text?.body!=='string'||m.text.body.length>600)return drop('unsupported_message');
+  const input=readYCloudInput(m);if(!input)return drop('unsupported_message');
   const route=registry.find(r=>r.waba===m.wabaId&&r.to===m.to);
   // Match only the signed sender on the verified business number. Exclusion
   // wins over allowlist, before loading data, invoking AI, committing orders,
   // or preparing an outbound response. The native WhatsApp chat is untouched.
   if(!route)return drop('not_allowlisted');
-  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:m.text.body,now});
+  return processVerifiedPilotText({route,store,from:m.from,eventId:p.id,messageId:m.id,wamid:m.wamid,customer:input.text,interactiveId:input.interactiveId,now});
  };
 }
+
 

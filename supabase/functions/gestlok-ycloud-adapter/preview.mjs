@@ -3,15 +3,23 @@
 import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea,pagosDe,soloEfectivo,totalCarrito,PAGOS,descuentoEfectivoAplica,totalSinDescuento} from '../gestlok-chat/motor.js';
 import {responderIA} from '../gestlok-chat/ia.js';
 const text=v=>String(v??'').trim();
-const available=p=>p?.activo!==false&&p?.disponible!==false;
-export function projectWhatsApp(turn,catalogo){
+const available=p=>!!p&&p.activo!==false&&p.disponible!==false&&p.precio!==null&&p.precio!==undefined&&p.precio!==''&&Number.isFinite(Number(p.precio))&&Number(p.precio)>=0;
+export function projectWhatsApp(turn,catalogo,{categories=false}={}){
  const messages=[];const pending=new Set();const options=[];const selectors=[];
- const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id))return;options.push({id,label:text(label).slice(0,80)});};
+ const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id))return;
+  if(id.startsWith('elegir:')&&!catalogo?.productos?.some(p=>p.id===id.split(':')[1]&&available(p)))return;
+  options.push({id,label:text(label).slice(0,180)});};
  for(const m of turn.mensajes||[]){
   if(text(m.texto))messages.push(text(m.texto));
   if(m.tipo==='carta'){
    const list=(catalogo?.productos||[]).filter(p=>available(p)&&(!m.categoria||p.categoria_id===m.categoria));
-   if(list.length){messages.push('Productos disponibles:');for(const p of list)add('elegir:'+p.id+':1',p.nombre+' · $ '+Number(p.precio).toLocaleString('es-AR'));}
+   const cats=(catalogo?.categorias||[]).filter(c=>c.activa!==false&&list.some(p=>p.categoria_id===c.id));
+   if(categories&&!m.categoria&&cats.length>1){
+    messages.push('Seleccione una categoría:');
+    for(const c of cats)add('carta:'+c.id,c.nombre);
+    for(const p of list.filter(p=>!cats.some(c=>c.id===p.categoria_id)))add('elegir:'+p.id+':1',p.nombre+' · $ '+Number(p.precio).toLocaleString('es-AR'));
+   }else if(list.length){messages.push('Productos disponibles:');for(const p of list)add('elegir:'+p.id+':1',p.nombre+' · $ '+Number(p.precio).toLocaleString('es-AR'));}
+   if(categories&&m.categoria)add('carta','Volver a categorías');
    if(list.length>30)pending.add('paginacion_carta');
   }else if(m.tipo==='producto'){
    pending.add('selector_producto');
@@ -29,7 +37,7 @@ export function projectWhatsApp(turn,catalogo){
  if(turn.accion)pending.add('accion_'+turn.accion.tipo);
  return {messages,selectors,options:options.map((o,i)=>({...o,number:i+1})),pending:[...pending],sendAllowed:false};
 }
-export async function previewWhatsApp({sucursal,catalogo,privado={},estado,historial=[],entrada,config={},fetchImpl,ahora=new Date()}){
+export async function previewWhatsApp({sucursal,catalogo,privado={},estado,historial=[],entrada,config={},fetchImpl,ahora=new Date(),whatsappCategories=false}){
  const active=carteleraDelDia(sucursal,catalogo,ahora);
  const x={sucursal:active.sucursal,catalogo:active.catalogo,estado,entrada,mensajes:privado.mensajes||{},ahora};
  const raw=text(entrada?.texto).slice(0,600);
@@ -43,7 +51,7 @@ export async function previewWhatsApp({sucursal,catalogo,privado={},estado,histo
  if(raw&&unknown(turn)&&privado.ia_activa!==false&&config.clave&&typeof fetchImpl==='function'){
   try{turn=await responderIA({...x,privado,historial,texto:raw,config,fetchImpl});motor='ia';}catch{/* same guided fallback */}
  }
- const projection=projectWhatsApp(turn,active.catalogo);
+ const projection=projectWhatsApp(turn,active.catalogo,{categories:whatsappCategories});
  if(raw&&unknown(turn))projection.pending.push('derivacion_humana');
  return {motor,estado:turn.estado,projection};
 }
@@ -113,4 +121,5 @@ export function checkoutPreview({sucursal,catalogo,estado,datos={},confirmed=fal
  if(turn.accion?.tipo!=='crear_pedido')return error('El pedido necesita revisión antes de enviarlo.');
  return {stage:'preview_order',message:'Pedido simulado, pendiente de validación y confirmación del gerente.',estimatedProductsTotal:total,action:turn.accion,sendAllowed:false};
 }
+
 
