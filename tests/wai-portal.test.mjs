@@ -15,7 +15,7 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  create table gestlok_tenancy.tenants(id uuid primary key,code text);
  create table public.docs(tenant_id uuid,col text,id text,data jsonb,primary key(tenant_id,col,id));
  create table gestlok_chat_private.empresas(tenant_id uuid primary key,nombre_publico text,habilitada boolean);
- create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text,datos_transferencia text default '',horario text default '10 a 20',direccion text default 'Calle 123',acepta_retiro boolean default true,acepta_envio boolean default true,envio_zona text default 'Barrio',envio_costo numeric default 100,mensajes jsonb default '{}'::jsonb);
+ create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text,slug text,nombre text,datos_transferencia text default '',horario text default '10 a 20',direccion text default 'Calle 123',acepta_retiro boolean default true,acepta_envio boolean default true,envio_zona text default 'Barrio',envio_costo numeric default 100,carta_imagen_url text default '',mensajes jsonb default '{}'::jsonb);
  create table gestlok_chat_private.categorias(id uuid primary key,activa boolean default true);
  create table gestlok_chat_private.productos(id uuid default gen_random_uuid(),sucursal_id uuid,categoria_id uuid,nombre text,precio numeric,activo boolean default true,disponible boolean default true,orden int default 0);
  create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('test.uid',true),''),'${U}')::uuid$$;
@@ -329,6 +329,36 @@ test('portal WAI: slug no concede permiso; la mensajería exige entorno, permiso
  await db.exec(`reset role;update gestlok_chat_private.wai_mensajes set creado_at=now()-interval '6 minutes' where ciclo_id=(select ciclo_id from gestlok_chat_private.wai_atencion_hilos where hilo_id='${p}');update gestlok_chat_private.wai_ciclos set inicio_at=now()-interval '6 minutes' where hilo_id='${p}' and cerrado_at is null;update gestlok_chat_private.wai_atencion_hilos set actualizado_at=now()-interval '6 minutes' where hilo_id='${p}';`);
  await anon();await v8('control',null);
  await role('gerente');cc=(await inbox(S)).chats[0];assert.ok(cc.cerrado_at);assert.equal(cc.ciclos.find(x=>x.id===cycle2).motivo,'inactividad');
+ // Photo menu pages per business and short colloquial order requests.
+ await db.exec(`reset role;insert into gestlok_chat_private.productos(sucursal_id,nombre,precio) values ('${S}','Empanada de jamón y queso (DEMO)',500);`);
+ await db.exec(read('entornos/sql/wai-carta-y-pedidos.sql'));
+ const photoUrl='https://gestlok-prueba.vercel.app/chat/carta-wai/empanadas-sabores.jpg';
+ await db.exec(`insert into gestlok_chat_private.wai_carta_paginas values ('${S}','empanadas','Empanadas clásicas y premium','${photoUrl}',1),('${S}','pizzas','Pizzas Family','https://gestlok-prueba.vercel.app/chat/carta-wai/pizzas-family.jpg',2)`);
+ assert.equal((await db.query(`select gestlok_chat_private.wai_pedido_texto('${S}','Dos de jamón y queso','retiro') as x`)).rows[0].x,true);
+ assert.equal((await db.query(`select gestlok_chat_private.wai_pedido_texto('${T}','Dos de jamón y queso',null) as x`)).rows[0].x,false);
+ assert.equal((await db.query(`select gestlok_chat_private.wai_pedido_texto('${S}','¿Tienen jamón y queso?','retiro') as x`)).rows[0].x,false);
+ assert.equal((await db.query(`select gestlok_chat_private.wai_menu_paginas('${T}') as x`)).rows[0].x.length,0);
+ assert.equal((await db.query(`select gestlok_chat_private.wai_imagen_permitida('${S}','https://127.0.0.1/foto.jpg') as x`)).rows[0].x,false);
+ await role('creadora');await authorize(S,H,null,'cancelar');const p9=await authorize(S,H,contact);
+ const v9=(action,pid=p9,j=null,event=null,txt=null,msg=null,state='opciones_imagen_v1')=>motor(H,keyA,action,pid,j,event,txt,msg,state,cmd.revision);
+ const job9=async id=>{const j=await v9('tomar');assert.ok(j);await v9('resultado',p9,jid,id,null,j.id,'aceptado');return j;};
+ await anon();await v9('control',null);
+ await v9('recibir',p9,jid,'MENU','Pasame el menú');await v9('control',null);
+ const pages=await job9('WA-PAGES');assert.equal(pages.interaccion.opciones[0].id,'carta_empanadas');
+ await v9('voto',p9,jid,'WA-PAGES','carta_empanadas');await v9('control',null);
+ // A previous connector cannot claim an image placeholder as a text message.
+ assert.equal(await v9('tomar',p9,null,null,null,null,'opciones_v1'),null);
+ const imageJob=await job9('WA-PHOTO');assert.equal(imageJob.imagen_url,photoUrl);
+ await v9('recibir',p9,jid,'MODE','Paso a buscar');await v9('control',null);assert.match((await job9('WA-RETIRO2')).texto,/retiro/);
+ await v9('recibir',p9,jid,'ORDER','Dos de jamón y queso');await v9('control',null);
+ const acknow=await job9('WA-ORDER');assert.match(acknow.texto,/Anoté tu solicitud/);
+ await role('gerente');cc=(await inbox(S)).chats[0];assert.equal(cc.pedido_pendiente,true);assert.equal(cc.pedido_texto,'Dos de jamón y queso');assert.equal(cc.atencion_manual,false);assert.equal(cc.modalidad_detectada,'retiro');
+ assert.ok(cc.mensajes.some(m=>m.imagen_url===photoUrl&&m.estado==='aceptado'));
+ await assert.rejects(att('finalizar'),/pendientes/);
+ assert.equal(await order('aceptar',null,null,2,'10000000-0000-4000-8000-000000000077'),true);
+ cc=(await inbox(S)).chats[0];assert.equal(cc.pedido_pendiente,false);assert.equal(cc.pedidos[0].estado,'preparacion');
+ await anon();assert.match((await job9('WA-PREP2')).texto,/en preparación/);
+
  }finally{await db.close();}
 });
 test('rutas y ajustes WAI no tienen acceso público ni heredan un local arbitrario',()=>{

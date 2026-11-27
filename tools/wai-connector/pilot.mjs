@@ -3,6 +3,7 @@
 // A reserved reply is never retried after ambiguity.
 import {phoneKey} from './session.mjs';
 import {normalizePoll,selectionFromVote} from './poll-store.mjs';
+import {loadMenuImage} from './menu-media.mjs';
 const pnJid=jid=>{
  const m=/^([1-9]\d{7,14})(?::\d+)?@(?:s\.whatsapp\.net|hosted)$/.exec(jid||'');
  return m?m[1]+'@s.whatsapp.net':null;
@@ -13,7 +14,7 @@ const lidJid=jid=>{
 };
 const phone=jid=>{const pn=pnJid(jid);return pn?phoneKey('+'+pn.split('@')[0]):null;};
 
-export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[]}){
+export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},newMessageId=()=>null,initialGrant=null,pollStore=null,decryptVote=null,ownJids=()=>[],menuImage=loadMenuImage}){
  let pilot=null,inbox=[],working=false,epoch=0,replyRoute=null,lookup=null,lookupAt=0,serverOffset=0,lastLog=new Map(),pendingName=null,lastName=null,readyLogged=false,syncRequested=false;
  const known=new Map(),delivered=new Set();
  const keyId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,200}$/.test(id)?id:null;
@@ -164,7 +165,7 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
   working=true;
   try{
    const call=(action,args={})=>rpc('gestlok_chat_wai_piloto_motor',{p_revision:revision,p_accion:action,...args});
-   const capabilities=pollStore&&decryptVote?{p_estado:'opciones_v1'}:{};
+   const capabilities=pollStore&&decryptVote?{p_estado:'opciones_imagen_v1'}:{};
    const next=await call('control',capabilities);
    if(!active())return;
    const remoteTime=Date.parse(next?.hora_servidor);if(Number.isFinite(remoteTime))serverOffset=remoteTime-now();
@@ -225,6 +226,10 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
       if(id!==proposed)id=null;
      }catch{}
     }
+   }else if(job.imagen_url){
+    // Load an approved bounded public asset before attempting WhatsApp; do not retry ambiguous sends.
+    try{const media=await menuImage(job.imagen_url);if(active()&&valid()&&matches(job.jid))id=await transmit(target,{...media,caption:job.texto});}
+    catch{note('menu-media','No se pudo descargar la foto de carta. Revisá su configuración en Gestlok.');}
    }else id=await transmit(target,{text:job.texto});
    const state=id?'aceptado':'incierto';
    await call('resultado',{p_piloto:pilot.id,p_mensaje:job.id,p_estado:state,...(id?{p_evento:id,p_jid:target}:{})});
