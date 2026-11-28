@@ -20,7 +20,9 @@ test('al actualizar Chat, prueba/testing reciben código y SQL sin borrar sus de
   put(src,'entornos/backend.mjs','// backend aislado');
   put(src,'vercel.json','{"git":{"deploymentEnabled":{"*":false,"prueba":true,"testing":true}}}');
   put(src,'scripts/vercel-ignore-entornos.mjs','// only correct project');
-  put(src,'entornos/sql.txt','# base\nentornos/sql/base-pruebas.sql\nentornos/sql/semilla.sql\n');
+  put(src,'entornos/sql.txt','# base\nentornos/sql/base-pruebas.sql\nentornos/sql/registro-base-pruebas.sql\nentornos/sql/marca-base-pruebas.sql\nentornos/sql/semilla.sql\n');
+  put(src,'entornos/sql/registro-base-pruebas.sql','-- registro sin datos');
+  put(src,'entornos/sql/marca-base-pruebas.sql','-- marcas sin datos');
   for(const dir of ['public/chat','supabase/functions/gestlok-chat',
    'supabase/functions/gestlok-chat-push','public/icons','public/img','public/vendor']){
    put(src,dir+'/recurso.txt','de main');
@@ -44,6 +46,11 @@ test('al actualizar Chat, prueba/testing reciben código y SQL sin borrar sus de
   assert.equal(existsSync(join(dst,'supabase/migrations/20261122220000_otra_app.sql')),false);
   const sql=readFileSync(join(dst,'entornos/sql.txt'),'utf8');
   assert.match(sql,/20261121220000_gestlok_chat_nuevo.sql/);
+  for(const [file,contents] of [['registro','-- registro sin datos'],['marca','-- marcas sin datos']]){
+   const path='entornos/sql/'+file+'-base-pruebas.sql';
+   assert.equal(readFileSync(join(dst,path),'utf8'),contents);
+   assert.ok(sql.indexOf(path)<sql.indexOf('entornos/sql/semilla.sql'));
+  }
   assert.ok(sql.indexOf('20261121220000')<sql.indexOf('entornos/sql/semilla.sql'));
   assert.ok(sql.indexOf('entornos/sql/catalogo-demo.sql')>sql.indexOf('entornos/sql/semilla.sql'));
   execFileSync(process.execPath,[command,src,dst,'testing']);
