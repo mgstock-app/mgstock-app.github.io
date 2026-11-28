@@ -1,5 +1,7 @@
 # GESTLOK HQ — Activación de IA gratuita
 
+> **ARCHIVO HISTÓRICO (28/11/2026): GESTLOK HQ fue retirado.** La oficina no está disponible, el worker está pausado y las funciones rechazan solicitudes. No seguir las instrucciones de activación ni volver a programar HQ. El historial se conserva; GESTLOK Chat, WAI y Renata QA son independientes.
+
 La oficina privada usa una función independiente de GESTLOK Chat. Solo la creadora autenticada puede ejecutar tareas y decidir incorporaciones.
 
 1. Crear una cuenta en https://console.groq.com/ y mantener la organización en **Free**, sin método de pago ni upgrade. Confirmar el plan y cuota en el panel de Groq.
