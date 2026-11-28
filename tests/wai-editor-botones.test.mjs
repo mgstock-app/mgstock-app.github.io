@@ -1,0 +1,47 @@
+import {PGlite} from '@electric-sql/pglite';
+import test from 'node:test';
+import {readFileSync} from 'node:fs';import assert from 'node:assert/strict';
+const sql=readFileSync('entornos/sql/wai-editor-botones.sql','utf8');
+test('editor WAI conserva páginas, aplica permisos, aislamiento, archivo y alta',async()=>{const db=new PGlite();
+const A='00000000-0000-4000-8000-000000000001',B='00000000-0000-4000-8000-000000000002';
+try{
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema gestlok_chat_private;
+create function auth.uid() returns uuid language sql as $$select '00000000-0000-4000-8000-000000000003'::uuid$$;
+create function gestlok_chat_private.wai_portal_nivel(p uuid) returns text language sql as $$select case when p='${A}'::uuid then 'gestionar' end$$;
+create function gestlok_chat_private.wai_imagen_permitida(p uuid,u text) returns boolean language sql as $$select coalesce(u like '%/storage/v1/object/public/gestlok-chat-cartas/'||p::text||'/%' or u='https://gestlok-prueba.vercel.app/chat/carta-wai/test.jpg',false)$$;
+create table gestlok_chat_private.sucursales(id uuid primary key, carta_imagen_url text);
+create table gestlok_chat_private.categorias(id uuid,sucursal_id uuid,nombre text,orden int,activa boolean);
+create table gestlok_chat_private.productos(id uuid,sucursal_id uuid,categoria_id uuid,nombre text,orden int,activo boolean,disponible boolean,precio numeric,opciones jsonb,reglas jsonb);
+create table gestlok_chat_private.wai_carta_paginas(sucursal_id uuid,clave text,titulo text,imagen_url text,orden int,categorias text[],productos_nombres text[],detalle_clave text,detalle_grupo text,primary key(sucursal_id,clave));
+create table gestlok_chat_private.wai_atencion_config(sucursal_id uuid primary key,pregunta text,opciones jsonb,bienvenida_auto boolean,pedidos boolean,agente_activo boolean,seguimiento_min int,cierre_auto boolean,cierre_min int,actualizado_at timestamptz);
+create table gestlok_chat_private.wai_plantillas_empresa(id uuid);
+create table gestlok_chat_private.wai_pilotos(id uuid,sucursal_id uuid,habilitacion_id uuid);
+create table gestlok_chat_private.wai_mensajes(id uuid,piloto_id uuid,evento text,direccion text,estado text,imagen_url text);
+create table gestlok_chat_private.wai_sesiones(habilitacion_id uuid,imagenes_at timestamptz,solicitada_at timestamptz);
+create function gestlok_chat_private.wai_normalizar(t text) returns text language sql as $$select lower(t)$$;
+set check_function_bodies=off;
+insert into gestlok_chat_private.sucursales values('${A}',null),('${B}',null);
+insert into gestlok_chat_private.categorias values('${A}','${A}','Categoría A',1,true),('${B}','${B}','Categoría B',1,true);
+insert into gestlok_chat_private.productos values('${A}','${A}','${A}','Producto A',1,true,true,100,'[]','{}');
+insert into gestlok_chat_private.wai_carta_paginas values('${A}','previa','Opción existente','https://gestlok-prueba.vercel.app/chat/carta-wai/test.jpg',1,array['Categoría A'],'{}',null,null),('${B}','otro','Otra opción','',1,array['Categoría B'],'{}',null,null);
+`);
+await db.exec(readFileSync('tests/fixtures/wai-editor-motores.sql','utf8'));await db.exec(sql);await db.exec(sql);
+const call=async(local,cambio=null)=>(await db.query('select public.gestlok_chat_wai_carta_editor($1::uuid,$2::jsonb) as r',[local,cambio===null?null:JSON.stringify(cambio)])).rows[0].r;
+await db.exec('set role anon');await assert.rejects(call(A),/permission denied/);await db.exec('reset role;set role authenticated');
+await assert.rejects(call(B),/Sin permiso/);
+const orig=await call(A);assert.equal(orig.paginas.length,1);assert.equal(orig.paginas[0].titulo,'Opción existente');assert.equal(orig.paginas[0].activa,true);
+const row=orig.paginas[0];await assert.rejects(call(A,{...row,titulo:'Cambio',categorias:['Categoría B']}),/ajena/);await assert.rejects(call(A,{...row,titulo:'Cambio',imagen_url:'https://otro.example/test.jpg'}),/imagen autorizada/);
+const updated=await call(A,{...row,titulo:'Nuevo nombre',activa:false});assert.equal(updated.paginas[0].titulo,'Nuevo nombre');assert.equal(updated.paginas[0].activa,false);assert.equal(updated.paginas[0].imagen_url,row.imagen_url);
+await assert.rejects(call(A,row),/cambió/);
+const change={clave:null,titulo:'Nuevo botón',activa:true,imagen_url:'',orden:2,categorias:['Categoría A'],productos_nombres:['Producto A'],detalle_clave:null,detalle_grupo:null};
+await assert.rejects(call(A,change),/necesita una foto/);
+change.imagen_url='https://storage.example/storage/v1/object/public/gestlok-chat-cartas/'+A+'/test.jpg';
+const added=await call(A,change);assert.equal(added.paginas.length,2);
+for(let i=0;i<5;i++)await call(A,{...change,titulo:'Botón '+i});
+await assert.rejects(call(A,{...change,titulo:'Séptimo'}),/Máximo 6/);
+await db.exec('reset role');const m=(await db.query('select gestlok_chat_private.wai_menu_paginas($1::uuid) as x',[A])).rows[0].x;assert.equal(m.length,6);assert.ok(m.every(x=>x.id!=='carta_previa'));
+const offerings=(await db.query("select count(*)::int as n from gestlok_chat_private.wai_ofertas($1::uuid,'carta_previa')",[A])).rows[0].n;assert.equal(offerings,0);
+
+}finally{await db.close();}
+});
+test('interfaz permite configurar imágenes y botones sin tocar la carta general',()=>{const ui=readFileSync('public/chat/wai/wai.js','utf8');assert.ok(ui.includes("rpc('wai_carta_editor'"));assert.ok(ui.includes("button('Botones y respuestas'"));assert.ok(ui.includes("sb.storage.from('gestlok-chat-cartas')"));assert.ok(ui.includes('imagen_url:f.person.checked'));});

@@ -60,3 +60,15 @@ test('recepción abierta admite únicamente mensajes directos nuevos y el servid
  assert.equal(calls.length,3);
  open=false;grants.length=0;await multi.tick('r');await multi.receive({type:'notify',messages:[msg(jids[0],'off')]});assert.equal(calls.length,3);
 });
+
+test('un envío lento de un contacto nuevo no bloquea la atención de otro cliente del mismo lote',async()=>{
+ const t=Date.now(),grant=i=>({id:'p'+i,tester:numbers[i],creado_at:new Date(t-1000).toISOString(),vence_at:new Date(t+60000).toISOString()});
+ const received=[];let release,started;
+ const slow=new Promise(r=>{release=r}),began=new Promise(r=>{started=r});
+ const multi=multiPilotTransport({active:()=>true,initialOpen:true,initialRevision:'r',initialGrants:[grant(0)],now:()=>t,socket:{},
+  workerFactory:({initialGrant:p})=>({receive:async()=>{received.push(p.id);if(p.id==='p1'){started();await slow;}},tick:async()=>{},reset(){},receipt:async()=>{},contacts:async()=>{}}),
+  rpc:async(name)=>name==='gestlok_chat_wai_admitir_entrada'?grant(1):null});
+ const msg=(i)=>({key:{remoteJid:jids[i],id:'m'+i,fromMe:false},message:{conversation:'Hola'},messageTimestamp:Math.floor(t/1000)});
+ const pending=multi.receive({type:'notify',messages:[msg(1),msg(0)]});
+ try{await began;assert.deepEqual(received.sort(),['p0','p1']);}finally{release();await pending;}
+});

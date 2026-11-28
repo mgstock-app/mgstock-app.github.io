@@ -77,8 +77,9 @@ export function multiPilotTransport({rpc,active,initialGrants=[],initialOpen=fal
    }catch{}
   }
   const existing=[...children.values()];
-  if(open){
-   await Promise.allSettled(messages.map(async m=>{
+  // New-contact admission and known-contact dispatch must not block one another.
+  // Each worker keeps its own serialized send queue and atomic server claims.
+  const admissionsWork=open?Promise.allSettled(messages.map(async m=>{
     const direct=await identity(m?.key);if(!direct||mine!==epoch||!active())return;
     const key=phoneJid(direct);
     const found=existing.find(c=>phoneKey(c.grant.tester)===key&&Date.parse(c.grant.vence_at)>now());
@@ -87,10 +88,9 @@ export function multiPilotTransport({rpc,active,initialGrants=[],initialOpen=fal
     if(!child||!active()||mine!==epoch)return;
     await child.worker.receive({...event,messages:[m]});
     if(lastRevision)await child.worker.tick(lastRevision);
-   }));
-  }
-  if(!active()||mine!==epoch)return;
-  await Promise.allSettled(existing.map(async c=>{
+   })):Promise.resolve();
+  const existingWork=Promise.allSettled(existing.map(async c=>{
+   if(!active()||mine!==epoch)return;
    const phone=phoneKey(c.grant.tester);
    const matching=messages.filter(m=>{
     const remote=m?.key?.remoteJid;
@@ -102,6 +102,7 @@ export function multiPilotTransport({rpc,active,initialGrants=[],initialOpen=fal
    });
    if(matching.length)await c.worker.receive({...event,messages:matching});
   }));
+  await Promise.allSettled([admissionsWork,existingWork]);
  }
  async function receipt(events){if(active())await Promise.allSettled([...children.values()].map(c=>c.worker.receipt(events)));}
  async function contacts(events){if(active())await Promise.allSettled([...children.values()].map(c=>c.worker.contacts(events)));}

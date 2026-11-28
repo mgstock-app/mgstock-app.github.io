@@ -181,12 +181,17 @@ export function pilotTransport({rpc,socket,active,now=Date.now,logger=()=>{},new
  }
  async function transmit(target,content,requestedId=null){
   const proposed=keyId(requestedId||newMessageId());if(proposed)known.set(proposed,target);
+  const started=now();
   try{
    const result=await socket.sendMessage(target,content,proposed?{messageId:proposed}:{});
    const id=keyId(result?.key?.id);
    if(proposed&&proposed!==id){known.delete(proposed);delivered.delete(proposed);}
    if(id){known.set(id,target);return id;}
   }catch{/* Ambiguous transport result: never retry a message or correction. */}
+  finally{
+   const elapsed=Math.max(0,now()-started);
+   if(elapsed>10000)note('slow-send','Envío al transporte de WhatsApp demorado: '+Math.round(elapsed/1000)+' s. No se reenvía automáticamente.');
+  }
   if(proposed){known.delete(proposed);delivered.delete(proposed);}
   return null;
  }
