@@ -27,8 +27,12 @@ test('la pausa de 5 s no reserva antes de tiempo ni salta mensajes y excluye man
  assert.equal(await take(),1);assert.equal(await take(),2);assert.equal(await take(),null);
  }finally{await db.close();}
 });
-test('el encabezado de prueba conserva el nombre solicitado y producción conserva su local',()=>{
+test('el laboratorio muestra el nombre solicitado en todas las zonas y producción conserva su local',()=>{
  const ui=readFileSync('public/chat/wai/wai.js','utf8');
- assert.ok(ui.includes("const label=trialPanel?'Mi Gusto (Prueba)':sessionLocal.empresa+' · '+sessionLocal.nombre;"));
+ assert.ok(ui.includes("const displayLocalName=(empresa,local)=>trialPanel?'Mi Gusto (Prueba)':empresa+' · '+local;"));
+ assert.ok(ui.includes('displayLocalName(s.empresa,s.nombre)'));
+ assert.equal((ui.match(/displayLocalName\(r\.empresa,r\.local\)/g)||[]).length,2);
+ assert.equal((ui.match(/displayLocalName\(l\.empresa,l\.nombre\)/g)||[]).length,2);
+ assert.ok(ui.includes('displayLocalName(sessionLocal.empresa,sessionLocal.nombre)'));
  assert.ok(ui.includes('brand(label)'));
 });

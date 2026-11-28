@@ -6,6 +6,7 @@ const valid=s=>typeof s==='string'&&s.length>=3&&s.length<=60&&/^[a-z0-9]+(-[a-z
 const direct=/^\/gestlok-wai-([a-z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const params=new URLSearchParams(location.search);
 const trialPanel=/^\/chat\/wai\/prueba\/?$/.test(location.pathname);
+const displayLocalName=(empresa,local)=>trialPanel?'Mi Gusto (Prueba)':empresa+' · '+local;
 // gestlok.com.ar/wai es la app única de GESTLOK WAI (instalable). /chat/wai/ sigue funcionando igual.
 const appRoute=/^\/wai\/?$/.test(location.pathname);
 const portalBase=trialPanel?'/chat/wai/prueba/':appRoute?'/wai/':'/chat/wai/';
@@ -63,11 +64,11 @@ async function init(){
    // Un solo local autorizado: entra directo. Con varios locales, elige de la lista.
    const propios=locals.filter(s=>['gestionar','configurar'].includes(s.nivel));
    if(result.administradora!==true&&propios.length===1&&valid(propios[0].slug)){location.replace(portalHref(propios[0].slug));return;}
-   const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
+   const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},displayLocalName(s.empresa,s.nombre))));
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Habilitación exclusiva de la administración. El rubro de cada local se define en Comercios → WAI. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
    const central=result.administradora===true?node('section',{class:'connection-card'}):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
-   access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/wai/'},'Volver al panel WAI de producción'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
+   access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (Prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/wai/'},'Volver al panel WAI de producción'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
    if(health){startAdminHealth(health,mine,central);}
    return;
   }
@@ -266,7 +267,7 @@ function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
   const byId=new Map(rows.map(r=>[r.id,r]));
   const items=data.filter(r=>r.habilitada).map(r=>{
    const a=byId.get(r.id);const warn=a&&(a.demora>0||a.inciertos>0);
-   return node('div',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),a?node('span',{class:warn?'wai-health-warn':'hint'},(warn?'⚠ ':'')+a.demora+' con demora mayor a 20 s · '+a.sin_confirmar+' sin confirmar · '+a.inciertos+' envíos inciertos'):node('small',{class:'hint'},'Todavía sin muestras recientes'),a?node('small',{class:'hint'},a.total+' respuestas · '+a.hasta5+' hasta 5 s · '+a.hasta10+' de 5 a 10 s · '+a.hasta20+' de 10 a 20 s · '+(a.max_entrega===null?'sin entregas comprobadas':'máxima confirmada: '+a.max_entrega+' s')):null);
+   return node('div',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},displayLocalName(r.empresa,r.local)),a?node('span',{class:warn?'wai-health-warn':'hint'},(warn?'⚠ ':'')+a.demora+' con demora mayor a 20 s · '+a.sin_confirmar+' sin confirmar · '+a.inciertos+' envíos inciertos'):node('small',{class:'hint'},'Todavía sin muestras recientes'),a?node('small',{class:'hint'},a.total+' respuestas · '+a.hasta5+' hasta 5 s · '+a.hasta10+' de 5 a 10 s · '+a.hasta20+' de 10 a 20 s · '+(a.max_entrega===null?'sin entregas comprobadas':'máxima confirmada: '+a.max_entrega+' s')):null);
   });
   latencyBox.replaceChildren(heading,info,...items);
  };
@@ -285,7 +286,7 @@ function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
     const healthy=r.estado==='conectado',warn=r.habilitada&&!healthy;
     const canRetry=r.habilitada&&['desconectado','qr_vencido','qr'].includes(r.estado)&&Date.now()-Date.parse(r.senal_at)<90000;
     const href=r.slug&&valid(r.slug)?(portalHref(r.slug)+(portalHref(r.slug).includes('?')?'&':'?')+'vincular=1'):null;
-    return node('article',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),node('small',{},r.numero),node('span',{class:healthy?'wai-health-ok':warn?'wai-health-warn':'hint'},(healthy?'● ':warn?'⚠ ':'')+(labels[r.estado]||'Sin estado comprobado')),node('small',{class:'hint'},'Última comprobación: '+(r.wa_verificada_at?scheduledLabel(r.wa_verificada_at):'sin señal comprobada')),
+    return node('article',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},displayLocalName(r.empresa,r.local)),node('small',{},r.numero),node('span',{class:healthy?'wai-health-ok':warn?'wai-health-warn':'hint'},(healthy?'● ':warn?'⚠ ':'')+(labels[r.estado]||'Sin estado comprobado')),node('small',{class:'hint'},'Última comprobación: '+(r.wa_verificada_at?scheduledLabel(r.wa_verificada_at):'sin señal comprobada')),
      node('div',{class:'actions'},canRetry?button('Intentar reconectar sin QR',async()=>{if(actionBusy)return;actionBusy=true;actionStatus.textContent='Solicitando reconexión…';try{await rpc('wai_conexiones',{p_accion:'reconectar',p_id:r.id});actionStatus.textContent='Solicitud enviada. Esperando una comprobación real.';}catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}},'btn'):null,
      trialEnvironment()&&portal?.administradora===true?button(r.habilitada?'Desactivar número':'Activar número',async()=>{
        if(actionBusy||!visible())return;
@@ -309,7 +310,7 @@ async function configureCommerce(box){
  try{
   const data=await rpc('wai_comercios');if(mine!==generation||!box.isConnected)return;
   const locals=Array.isArray(data)?data:[];
-  const select=node('select',{'aria-label':'Empresa y local'},...locals.map((l,i)=>node('option',{value:i},l.empresa+' · '+l.nombre)));
+  const select=node('select',{'aria-label':'Empresa y local'},...locals.map((l,i)=>node('option',{value:i},displayLocalName(l.empresa,l.nombre))));
   const apply=node('button',{type:'submit',class:'btn primary',disabled:!locals.length},'Guardar rubro y habilitación'),enabled=node('input',{type:'checkbox'}),status=node('p',{class:'hint',role:'status'});
   const sync=()=>{const l=locals[Number(select.value)];enabled.checked=!!l?.activo;status.textContent=l?(l.lineas+' línea(s) habilitadas · '+(l.activo?'WAI activo':'WAI no activo')):'No hay sucursales de prueba.';};
   select.onchange=sync;sync();
@@ -328,7 +329,7 @@ async function registerTrial(box){
   const info=await rpc('wai_comercios');
   if(generationAtStart!==generation||!box.isConnected)return;
   const locals=Array.isArray(info)?info:[];
-  const select=node('select',{'aria-label':'Local de ensayo',required:true},...locals.map((l,i)=>node('option',{value:i},l.empresa+' · '+l.nombre)));
+  const select=node('select',{'aria-label':'Local de ensayo',required:true},...locals.map((l,i)=>node('option',{value:i},displayLocalName(l.empresa,l.nombre))));
   const tel=node('input',{type:'tel',placeholder:'+54911…',required:true,autocomplete:'off'});
   const status=node('p',{role:'status',class:'hint'});
   const submit=node('button',{type:'submit',class:'btn primary',disabled:!locals.length},'Registrar y abrir local');
@@ -348,7 +349,7 @@ function clearPrivate(){
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
- const label=trialPanel?'Mi Gusto (Prueba)':sessionLocal.empresa+' · '+sessionLocal.nombre;
+ const label=displayLocalName(sessionLocal.empresa,sessionLocal.nombre);
  document.title=label+' · GESTLOK WAI';
  notice=node('div',{class:'notice',role:'status'},'Verificando WhatsApp…');
  search=node('input',{class:'search',type:'search',placeholder:'Buscar conversación', 'aria-label':'Buscar conversación',oninput:()=>renderList()});
