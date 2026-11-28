@@ -219,8 +219,8 @@ function renderAdminDashboard(mine){
  }
  dashboard.append(node('header',{class:'wa-admin-header'},brand('Panel de administración'),node('div',{class:'actions'},button('Actualizar',()=>void reload(),'btn'),node('a',{class:'btn',href:'/'},'GESTLOK'),button('Cerrar sesión',()=>void logout(),'btn'))),heading,summary,tabs,topNotice,localHost,trialHost,connectionHost,confirmation);
  root.replaceChildren(dashboard);
- startAdminHealth(health,mine,central,(data,ok)=>{
-  if(!visible())return;healthKnown=ok;noticed=ok?data.filter(r=>r.habilitada&&r.estado!=='conectado').length:0;
+ startAdminHealth(health,mine,central,(data,ok,latency=[])=>{
+  if(!visible())return;healthKnown=ok;noticed=ok?new Set([...data.filter(r=>r.habilitada&&r.estado!=='conectado').map(r=>r.id),...latency.filter(r=>r.demora>0||r.inciertos>0).map(r=>r.id)]).size:0;
   // No rerenderizar formularios durante el sondeo de conexiones.
   alertBadge.textContent=ok?String(noticed):'…';alertBadge.classList.toggle('warn',ok&&noticed>0);
   const m=summary.lastElementChild?.querySelector('strong');if(m)m.textContent=ok?String(noticed):'—';
@@ -258,11 +258,23 @@ function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
  let busy=false,actionBusy=false,last='',fail=false;
  const visible=()=>mine===generation&&host.isConnected&&!destroyed;
  const title=node('h2',{},trialPanel?'Números de prueba · activar o pausar':'Centro de conexiones'),label=node('p',{class:'hint',role:'status'},'Comprobando los locales…'),list=node('div',{class:'wai-health-list'}),actionStatus=node('p',{class:'hint',role:'status'});
+ const latencyBox=node('section',{class:'connection-card','aria-live':'polite'});
+ const paintLatency=(data,rows)=>{
+  const heading=node('h3',{},'Tiempo de respuesta · últimos 15 minutos');
+  const info=node('p',{class:'hint'},'Las respuestas automáticas esperan 5 s antes de poder enviarse. Confirmación hasta 10 s: objetivo; 10 a 20 s: demora; más de 20 s: alerta. Se mide hasta la confirmación registrada de WhatsApp, no garantiza entrega instantánea.');
+  if(!Array.isArray(rows)){latencyBox.replaceChildren(heading,info,node('p',{class:'hint'},'Medición no disponible. No se asume una entrega correcta.'));return;}
+  const byId=new Map(rows.map(r=>[r.id,r]));
+  const items=data.filter(r=>r.habilitada).map(r=>{
+   const a=byId.get(r.id);const warn=a&&(a.demora>0||a.inciertos>0);
+   return node('div',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),a?node('span',{class:warn?'wai-health-warn':'hint'},(warn?'⚠ ':'')+a.demora+' con demora mayor a 20 s · '+a.sin_confirmar+' sin confirmar · '+a.inciertos+' envíos inciertos'):node('small',{class:'hint'},'Todavía sin muestras recientes'),a?node('small',{class:'hint'},a.total+' respuestas · '+a.hasta5+' hasta 5 s · '+a.hasta10+' de 5 a 10 s · '+a.hasta20+' de 10 a 20 s · '+(a.max_entrega===null?'sin entregas comprobadas':'máxima confirmada: '+a.max_entrega+' s')):null);
+  });
+  latencyBox.replaceChildren(heading,info,...items);
+ };
  const refreshNow=async()=>{
   if(!visible()||busy||actionBusy)return;busy=true;
   try{
-   const [data,centralState]=await Promise.all([rpc('wai_estado_global'),central?rpc('wai_central_admin').catch(()=>null):Promise.resolve(null)]);if(!visible())return;if(centralState)paintCentral(centralState);
-   if(!Array.isArray(data))throw Error('Estado no disponible');onSnapshot(data,true);
+   const [data,centralState,latency]=await Promise.all([rpc('wai_estado_global'),central?rpc('wai_central_admin').catch(()=>null):Promise.resolve(null),rpc('wai_latencia_admin').catch(()=>null)]);if(!visible())return;if(centralState)paintCentral(centralState);
+   if(!Array.isArray(data))throw Error('Estado no disponible');paintLatency(data,latency);onSnapshot(data,true,Array.isArray(latency)?latency:[]);
    const enabled=data.filter(r=>r.habilitada),alerts=enabled.filter(r=>r.estado!=='conectado');
    label.className=alerts.length?'wai-health-warn':'hint';
    label.textContent=enabled.length?enabled.filter(r=>r.estado==='conectado').length+' con señal comprobada · '+alerts.length+' requieren revisión':'Sin líneas habilitadas';
@@ -284,10 +296,10 @@ function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
      },'btn'):null,
      href?node('a',{class:'btn',href},healthy?'Ver vinculación':'Vincular / revisar QR'):null));
    }));
-  }catch{if(visible()){onSnapshot([],false);fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();}}
+  }catch{if(visible()){onSnapshot([],false);fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();paintLatency([],null);}}
   finally{busy=false;}
  };
- host.replaceChildren(title,label,list,actionStatus,button('Actualizar estados',()=>{last='';void refreshNow();},'btn'));
+ host.replaceChildren(title,label,list,actionStatus,button('Actualizar estados',()=>{last='';void refreshNow();},'btn'),latencyBox);
  void refreshNow();navigatorTimer=setInterval(()=>{if(!document.hidden)void refreshNow();},10000);
 }
 async function configureCommerce(box){
@@ -336,7 +348,7 @@ function clearPrivate(){
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
- const label=sessionLocal.empresa+' · '+sessionLocal.nombre;
+ const label=trialPanel?'Mi Gusto (Prueba)':sessionLocal.empresa+' · '+sessionLocal.nombre;
  document.title=label+' · GESTLOK WAI';
  notice=node('div',{class:'notice',role:'status'},'Verificando WhatsApp…');
  search=node('input',{class:'search',type:'search',placeholder:'Buscar conversación', 'aria-label':'Buscar conversación',oninput:()=>renderList()});
@@ -350,7 +362,7 @@ function renderShell(){
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
- shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(trialPanel?'PRUEBA · '+label:label),node('div',{class:'top-actions'},
+ shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(label),node('div',{class:'top-actions'},
   portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Ver el estado de todos los locales'},'Conexiones'):(portal?.locales||[]).filter(l=>['gestionar','configurar'].includes(l.nivel)).length>1?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Cambiar de local'},'Mis locales'):null,
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),

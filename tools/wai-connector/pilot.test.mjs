@@ -172,3 +172,16 @@ test('solo imagen ordinaria del contacto autorizado se descarga y guarda; duplic
  assert.equal(uploads[0].p_texto,'Comprobante');assert.equal(uploads[0].p_base64,'AA==');
  assert.equal(uploads[1].p_base64,null);assert.equal(uploads[1].p_evento,'broken');
 });
+
+test('un envío demorado se informa sin repetir el mensaje ni cambiar su estado',async()=>{
+ let t=Date.now(),job={id:'j',jid,texto:'Respuesta'},count=0;
+ const logs=[],states=[];
+ const p=pilotTransport({now:()=>t,active:()=>true,logger:m=>logs.push(m),socket:{sendMessage:async()=>{count++;t+=31000;return {key:{id:'wa1'}};}},rpc:async(_name,a)=>{
+  if(a.p_accion==='control')return {id:'p1',tester:'+5491100000003',vence_at:new Date(t+120000).toISOString()};
+  if(a.p_accion==='tomar'){const j=job;job=null;return j;}
+  if(a.p_accion==='resultado'){states.push(a.p_estado);return {ok:true};}
+  return null;
+ }});
+ await p.tick('rev');await p.tick('rev');
+ assert.equal(count,1);assert.deepEqual(states,['aceptado']);assert.ok(logs.some(m=>m.includes('31 s')));
+});
