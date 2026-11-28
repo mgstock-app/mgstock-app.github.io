@@ -1,4 +1,4 @@
-import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2,decryptPollVote,downloadMediaMessage} from '@whiskeysockets/baileys';
+import makeWASocket,{useMultiFileAuthState,DisconnectReason,Browsers,generateMessageIDV2,decryptPollVote,downloadMediaMessage,initAuthCreds,BufferJSON,proto} from '@whiskeysockets/baileys';
 import pino from 'pino';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -8,6 +8,7 @@ import {createCentral} from './central.mjs';
 import {multiPilotTransport} from './multi-pilot.mjs';
 import {createPollStore} from './poll-store.mjs';
 import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
+import {createRemoteStore,useRemoteAuthState} from './remote-auth.mjs';
 
 process.umask(0o077);
 // INICIAR-WAI.cmd → Prueba · INICIAR-WAI-PRODUCCION.cmd → gestlok.com.ar. También acepta la ruta de un JSON importado.
@@ -59,7 +60,11 @@ function transportFor(s){
   if(!/^[a-f0-9-]{36}$/.test(sub))throw Error('Directorio de sesión inválido');
   const privateDir=join(path,sub);
   await protectDirectory(privateDir);
-  const {state,saveCreds}=await useMultiFileAuthState(privateDir);
+  // Servidor central: la sesión vive cifrada en GESTLOK, así la PC y el teléfono de respaldo
+  // usan la misma vinculación (solo el equipo con el turno puede usarla).
+  const remoteStore=config.central?createRemoteStore({call:(accion,args)=>remote('gestlok_chat_wai_auth',{p_clave:config.centralKey,p_instancia:instance,p_id:s.id,p_accion:accion,...args}),lineId:s.id,centralKey:config.centralKey}):null;
+  if(remoteStore&&reset)await remoteStore.clear();
+  const {state,saveCreds}=remoteStore?await useRemoteAuthState(remoteStore,{deps:{initAuthCreds,BufferJSON,proto},legacyDir:reset?null:privateDir,logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):await useMultiFileAuthState(privateDir);
   const initial=config.enableTestMessages===true&&revision?await rpc(s,'gestlok_chat_wai_ensayos_autorizados',{p_revision:revision,p_activo:false}).catch(()=>null):null;
   const initialGrants=initial?.ensayos||[];
   const sock=makeWASocket({auth:state,logger:pino({level:'silent'}),browser:Browsers.appropriate('Chrome'),
@@ -67,7 +72,7 @@ function transportFor(s){
     shouldIgnoreJid:jid=>typeof jid==='string'&&(jid.endsWith('@g.us')||jid.endsWith('@broadcast')||jid.endsWith('@newsletter')),
     connectTimeoutMs:15000,defaultQueryTimeoutMs:15000});
   let ended=false,verified=false,save=Promise.resolve();
-  const pollStore=createPollStore(privateDir);await pollStore.prune();
+  const pollStore=createPollStore(privateDir,{kv:remoteStore?.kv('poll')});await pollStore.prune();
   const pilot=config.enableTestMessages===true?multiPilotTransport({rpc:(name,args)=>rpc(s,name,args),socket:sock,active:()=>!ended&&verified,initialGrants,initialOpen:config.central&&initial?.recepcion_entrante===true,initialRevision:revision,centralAllowed:config.central===true,pollStore,receiveImage:receiveAuthorizedImage,immediate:true,decryptVote:decryptPollVote,ownJids:()=>[sock.user?.id,sock.user?.lid,state.creds.me?.id,state.creds.me?.lid],newMessageId:()=>generateMessageIDV2(sock.user?.id),logger:m=>console.log('[WAI '+s.id.slice(0,8)+'] '+m)}):null;
   if(pilot){sock.ev.on('messages.upsert',pilot.receive);sock.ev.on('messages.update',pilot.receipt);sock.ev.on('contacts.upsert',pilot.contacts);sock.ev.on('contacts.update',pilot.contacts);}
   const close=async()=>{if(ended)return;ended=true;verified=false;pilot?.reset();try{sock.end(undefined);}finally{await save.catch(()=>{});}};

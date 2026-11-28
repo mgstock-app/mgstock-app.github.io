@@ -99,3 +99,9 @@ El adaptador oficial de WhatsApp Business deberá traducir las mismas interaccio
 - Después de ingresar: con un solo local autorizado entra directo; con varios ve la lista y cambia con «Mis locales». Los permisos siguen en la base (`wai_portal_nivel`): dueño ve los locales de su lista, gerente solo los suyos, la administradora todos más el servidor central.
 - La activación de empresas, locales, rubros y números sigue en el panel de la administradora (Comercios → WAI).
 - Los subdominios ya publicados redirigen a `/wai/?local=<slug>`. La demo pública pasó a `/wai/demo/`.
+
+### Respaldo automático PC → teléfono Android (28/11/2026)
+- Pedido de la administradora: si la PC se apaga o se queda sin wifi, su teléfono Android sigue atendiendo sin que los comercios se desvinculen. Aclaración: un corte de la PC no desvincula (WhatsApp desconecta un dispositivo vinculado recién después de 30 días sin actividad); lo que se corta es la respuesta automática.
+- La sesión de WhatsApp de cada línea se guarda cifrada en `gestlok_chat_private.wai_auth_estado` (AES-256-GCM en el conector, clave derivada con HKDF del archivo central y la línea; la base solo ve datos cifrados). RPC `gestlok_chat_wai_auth`: solo el equipo con el turno vigente del servidor central (clave central + instancia + turno sin vencer) puede leer, guardar o borrar. Las encuestas propias también se guardan ahí para que el respaldo lea los votos.
+- PC y teléfono importan el mismo `gestlok-wai-produccion.json`. Uno atiende y el otro queda «en espera»; si el que atiende deja de dar señal, el turno vence a los 45 s y el otro sigue con la misma vinculación (sin QR). Las sesiones viejas en archivos se pasan solas a la base la primera vez.
+- Teléfono: Termux (F-Droid), `INSTALAR-WAI-TELEFONO.sh` y `INICIAR-WAI-TELEFONO.sh` (reinicio automático). SQL: `entornos/sql/wai-respaldo-sesion.sql`; QA con deshacer: `qa/wai/flujo-respaldo-sesion.sql`.
