@@ -1,6 +1,6 @@
 # Subdominios comerciales WAI
 
-**Estado 28/11/2026: app única.** Todos los locales usan https://gestlok.com.ar/wai (app instalable, ingreso con usuario y contraseña; cada usuario ve solo sus locales autorizados). No se crean subdominios nuevos. El Worker `gestlok-wai-dominios` (Cloudflare, plan gratis) queda solo para los dos subdominios ya publicados (`wai-mi-gusto-munro` y `wai-mi-gusto-torcuato`) y los redirige con 301 a `https://gestlok.com.ar/wai/?local=<slug>`. Si se cambia este archivo, pegar el código nuevo en el editor del Worker y desplegar.
+**Estado 28/11/2026: app única.** Todos los locales usan https://gestlok.com.ar/wai (app instalable, ingreso con usuario y contraseña; cada usuario ve solo sus locales autorizados). **No hay subdominios por local** (se quitaron wai-mi-gusto-munro y wai-mi-gusto-torcuato). El único subdominio es `wai.gestlok.com.ar`: Worker `gestlok-wai-dominios` (Cloudflare, plan gratis) que redirige (302) a `https://gestlok.com.ar/wai/`, conservando `?local=<slug>` si viene. Si se cambia este archivo, pegar el código nuevo en el editor del Worker y desplegar.
 
 - Formato de cada sucursal: `wai-<slug>.gestlok.com.ar`. Ejemplos: wai-mi-gusto-munro.gestlok.com.ar y wai-mi-gusto-torcuato.gestlok.com.ar.
 - El origen sigue siendo el sitio de producción en gestlok.com.ar (GitHub Pages). Nunca se encamina tráfico comercial hacia Prueba/Testing ni se cambia el dominio principal.
