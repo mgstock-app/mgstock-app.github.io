@@ -1,3 +1,21 @@
+GESTLOK WAI · PRODUCCIÓN (gestlok.com.ar)
+=========================================
+Mismo funcionamiento que Prueba, con un servidor central en tu PC.
+1. Ingresá a https://gestlok.com.ar/chat/wai/ con tu cuenta administradora.
+   En «Servidor central WAI · producción» tocá «Preparar servidor central
+   (una sola vez)». Se descarga gestlok-wai-produccion.json (privado).
+2. Abrí CONFIGURAR-WAI.cmd, arrastrá ese archivo y presioná Enter.
+   Se guarda aparte de Prueba (carpeta .gestlok-wai-produccion).
+3. Abrí INICIAR-WAI-PRODUCCION.cmd y dejá la PC encendida con internet.
+   INICIAR-WAI.cmd sigue siendo Prueba: pueden correr los dos a la vez.
+4. En Comercios → WAI: rubro del local → «Activar WAI» → agregar número.
+5. El dueño entra a su espacio (por ejemplo wai-mi-gusto-munro.gestlok.com.ar),
+   abre «Vincular», acepta el riesgo de la conexión no oficial y escanea
+   el QR desde WhatsApp → Dispositivos vinculados.
+Sin la aceptación del dueño el servidor no abre la sesión ni muestra QR.
+El asistente solo responde a quien escribe primero; nunca envía masivos.
+WhatsApp puede restringir números por uso automatizado (no es la API oficial).
+
 GESTLOK WAI · SERVIDOR CENTRAL DE PRUEBA
 ========================================
 Una sola instancia administra todas las líneas habilitadas en GESTLOK.

@@ -32,7 +32,7 @@ const readBusy=new Set();
 const photoUrls=new Map(),photoRequests=new Map();
 let messageActionHost,actionDraft=null,actionBusy=false,orderHost,orderStatus,orderBusy=false,orderSignature="",orderMenuOpen=false;
 let shell,notice,list,search,unreadSummary,thread,head,historyNotice,compose,textarea,send,overlay,drawerBody,drawerTitle,drawerStatus;
-let connectionList=null,authorizationHost=null,authorizationDraft=null;
+let connectionList=null,authorizationHost=null,authorizationDraft=null,riskHost=null,riesgo=null,riesgoBusy=false;
 const trialEnvironment=()=>window.GESTLOK_CHAT_CONFIG?.entorno==='prueba'||window.GESTLOK_CHAT_CONFIG?.entorno==='testing';
 const portalHref=s=>portalBase+'?local='+encodeURIComponent(s);
 function login(){
@@ -58,8 +58,8 @@ async function init(){
   portal=result;if(trialPanel&&result?.administradora!==true){access('Acceso exclusivo de administración','Este laboratorio está reservado a la administradora de GESTLOK.',button('Cerrar sesión',()=>void logout()),node('a',{href:'/login/'},'Volver al panel'));return;}const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
-   const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Solo gastronomía · habilitación exclusiva de la administración. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
-   const central=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'}):null;
+   const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Habilitación exclusiva de la administración. El rubro de cada local se define en Comercios → WAI. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
+   const central=result.administradora===true?node('section',{class:'connection-card'}):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
    access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/login/'},'Volver a administración de GESTLOK'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
    if(health){startAdminHealth(health,mine,central);}
@@ -74,9 +74,11 @@ async function init(){
 }
 function downloadCentralConfig(key){
  if(!/^[a-f0-9]{64}$/.test(key||''))throw Error('Configuración central inválida.');
- const C=window.GESTLOK_CHAT_CONFIG,config={url:C.url,anonKey:C.key,testOnly:true,enableTestMessages:true,central:true,centralKey:key,sessions:[]};
+ // Producción y Prueba usan archivos distintos: el conector los guarda en carpetas privadas separadas.
+ const C=window.GESTLOK_CHAT_CONFIG,prod=!trialEnvironment();
+ const config=prod?{entorno:'produccion',url:C.url,anonKey:C.key,central:true,centralKey:key,sessions:[]}:{entorno:'prueba',url:C.url,anonKey:C.key,testOnly:true,enableTestMessages:true,central:true,centralKey:key,sessions:[]};
  const url=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'}));
- const a=node('a',{href:url,download:'gestlok-wai-servidor-central.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ const a=node('a',{href:url,download:prod?'gestlok-wai-produccion.json':'gestlok-wai-servidor-central.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function startAdminHealth(host,mine,central){
  let centralBusy=false,centralSignature='';
@@ -87,12 +89,13 @@ function startAdminHealth(host,mine,central){
   const status=node('p',{role:'status',class:'hint'});
   const take=async(action)=>{
    if(centralBusy)return;
-   if(!confirm(action==='rotar'?'¿Reemplazar la configuración privada del servidor central? Solo si perdiste la anterior y el servicio está detenido.':'¿Preparar el servidor central una única vez? Detené el conector anterior antes de importarlo. El servicio administrará todos los locales de ensayo habilitados.'))return;
+   const prod=!trialEnvironment();
+   if(!confirm(action==='rotar'?'¿Reemplazar la configuración privada del servidor central'+(prod?' de PRODUCCIÓN':'')+'? Solo si perdiste la anterior y el servicio está detenido.':prod?'¿Preparar el servidor central de PRODUCCIÓN una única vez? Va a atender los locales WAI activos de gestlok.com.ar cuyos dueños aceptaron el riesgo.':'¿Preparar el servidor central una única vez? Detené el conector anterior antes de importarlo. El servicio administrará todos los locales de ensayo habilitados.'))return;
    centralBusy=true;status.textContent='Preparando configuración privada…';
-   try{const r=await rpc('wai_central_admin',{p_accion:action});downloadCentralConfig(r.clave);status.textContent='Importá este único archivo con CONFIGURAR-WAI y luego iniciá el servicio. No descargues archivos por local.';centralSignature='';}
+   try{const r=await rpc('wai_central_admin',{p_accion:action});downloadCentralConfig(r.clave);status.textContent=trialEnvironment()?'Importá este único archivo con CONFIGURAR-WAI y luego iniciá el servicio. No descargues archivos por local.':'Abrí CONFIGURAR-WAI, arrastrá este archivo y después abrí INICIAR-WAI-PRODUCCION. Dejá la PC encendida. No compartas el archivo.';centralSignature='';}
    catch(e){status.textContent=e.message;}finally{centralBusy=false;}
   };
-  central.replaceChildren(node('h2',{},'Servidor central WAI'),node('strong',{class:d?.activo?'wai-health-ok':'wai-health-warn'},d?.activo?'● Servicio central en línea':d?.preparado?'⚠ Servidor preparado · sin señal':'Pendiente de instalación única'),node('p',{class:'hint'},'Una sola instancia de Node.js administra todas las líneas habilitadas. Nuevas altas, pausas y QR desde GESTLOK, sin otra consola.'),node('p',{class:'hint'},(d?.lineas||0)+' líneas habilitadas · '+(d?.senal_at?'Última señal: '+scheduledLabel(d.senal_at):'Sin señal todavía')),!d?.preparado?button('Preparar servidor central (una sola vez)',()=>void take('preparar'),'btn primary'):!d?.activo?button('Recuperar configuración central',()=>void take('rotar'),'btn'):null,status);
+  central.replaceChildren(node('h2',{},trialEnvironment()?'Servidor central WAI':'Servidor central WAI · producción'),node('strong',{class:d?.activo?'wai-health-ok':'wai-health-warn'},d?.activo?'● Servicio central en línea':d?.preparado?'⚠ Servidor preparado · sin señal':'Pendiente de instalación única'),node('p',{class:'hint'},'Una sola instancia de Node.js administra todas las líneas habilitadas. Nuevas altas, pausas y QR desde GESTLOK, sin otra consola.'),node('p',{class:'hint'},(d?.lineas||0)+' líneas habilitadas · '+(d?.senal_at?'Última señal: '+scheduledLabel(d.senal_at):'Sin señal todavía')),!d?.preparado?button('Preparar servidor central (una sola vez)',()=>void take('preparar'),'btn primary'):!d?.activo?button('Recuperar configuración central',()=>void take('rotar'),'btn'):null,status);
  };
  let busy=false,actionBusy=false,last='',fail=false;
  const visible=()=>mine===generation&&host.isConnected&&!destroyed;
@@ -512,7 +515,7 @@ async function refresh(){
  finally{running=false;}
 }
 function openDrawer(kind){
- settingsPanel?.destruir();settingsPanel=null;drawerBody.replaceChildren();connectionList=null;authorizationHost=null;authorizationDraft=null;drawerKind=kind;overlay.hidden=false;
+ settingsPanel?.destruir();settingsPanel=null;drawerBody.replaceChildren();connectionList=null;authorizationHost=null;authorizationDraft=null;riskHost=null;riesgo=null;drawerKind=kind;overlay.hidden=false;
  drawerTitle.textContent=kind==='config'?'Configuración del local':'Vinculación de WhatsApp';
  if(kind==='config'){
   const host=node('div'),tabs=node('div',{class:'wai-config-tabs'});
@@ -583,7 +586,7 @@ async function renderAttentionSettings(host){
     const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
-  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Entrega · rubro gastronomía'),node('p',{class:'hint'},'Delivery es opcional. Configuralo en Datos del local → Ajustes → Entrega y pago. Si desactivás Envío a domicilio, dejá Retiro en el local activo: el asistente no pedirá dirección ni cobrará envío.'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar. La conversación queda abierta durante 4 horas desde la invitación. El cliente puede hacer otro pedido o reportar un problema. Los reclamos pendientes no se cierran automáticamente. No se envían encuestas de entrega y el historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
+  }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Entrega y retiro'),node('p',{class:'hint'},'Delivery es opcional. Configuralo en Datos del local → Ajustes → Entrega y pago. Si desactivás Envío a domicilio, dejá Retiro en el local activo: el asistente no pedirá dirección ni cobrará envío.'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar. La conversación queda abierta durante 4 horas desde la invitación. El cliente puede hacer otro pedido o reportar un problema. Los reclamos pendientes no se cierran automáticamente. No se envían encuestas de entrega y el historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
   host.replaceChildren(form);
  }catch(e){if(host.isConnected)host.replaceChildren(node('p',{class:'error'},e.message));}
 }
@@ -626,8 +629,11 @@ function renderConnection(){
  if(!connectionList||!connectionList.isConnected){
    authorizationHost=node('div',{class:'authorization-host'});
    connectionList=node('div',{class:'connection-cards'});
-   drawerBody.replaceChildren(node('div',{class:'connection-grid'},node('p',{class:'hint'},'Cada comercio vincula su propio número. Un corte de internet se intenta recuperar automáticamente. Si WhatsApp revoca la sesión, el titular deberá escanear un QR nuevo.'),drawerStatus,authorizationHost,connectionList,button('Actualizar señal',()=>void refresh())));
+   riskHost=node('div',{class:'wai-riesgo'});
+   drawerBody.replaceChildren(node('div',{class:'connection-grid'},node('p',{class:'hint'},'Cada comercio vincula su propio número. Un corte de internet se intenta recuperar automáticamente. Si WhatsApp revoca la sesión, el titular deberá escanear un QR nuevo.'),riskHost,drawerStatus,authorizationHost,connectionList,button('Actualizar señal',()=>void refresh())));
+   void loadRisk();
  }
+ paintRisk();
  const cards=rows.map(r=>{
   const box=node('article',{class:'connection-card'},node('h3',{},r.numero),node('strong',{},labels[r.estado]||'Sin estado comprobado'),node('p',{class:'hint'},'Última señal de Node.js: '+(r.senal_at?time(r.senal_at):'Nunca')));
   if(r.estado==='conectado'&&r.wa_verificada_at)box.append(node('p',{class:'hint'},'Última respuesta de WhatsApp: '+time(r.wa_verificada_at)));
@@ -660,6 +666,34 @@ function renderConnection(){
    authorizationDraft.submit.disabled=connectionBusy||!online;
    authorizationDraft.signal.textContent=online?'':'Esperando que vuelva la señal de WhatsApp.';
  }
+}
+// El dueño acepta una sola vez que la conexión no es la API oficial de WhatsApp.
+// Sin esa aceptación el servidor central no abre la sesión ni muestra QR.
+async function loadRisk(){
+ const local=typeof sessionLocal==='undefined'?null:sessionLocal?.id;if(!local)return;
+ const mine=generation;
+ try{const r=await rpc('wai_riesgo',{p_sucursal:local});if(mine===generation&&sessionLocal?.id===local){riesgo=r;paintRisk();}}
+ catch(e){if(mine===generation){riesgo={error:e.message};paintRisk();}}
+}
+let riskPainted=null,riskSignature='';
+function paintRisk(){
+ if(!riskHost||!riskHost.isConnected)return;
+ // Se repinta solo si cambió el estado, para no borrar la casilla mientras el dueño la marca.
+ const sig=riesgo?JSON.stringify(riesgo):'';if(riskPainted===riskHost&&riskSignature===sig)return;riskPainted=riskHost;riskSignature=sig;
+ if(!riesgo){riskHost.replaceChildren(node('p',{class:'hint'},'Comprobando la aceptación del dueño…'));return;}
+ if(riesgo.error){riskHost.replaceChildren(node('p',{class:'error'},riesgo.error));return;}
+ if(riesgo.aceptado){riskHost.replaceChildren(node('p',{class:'hint'},'Conexión no oficial aceptada por el dueño el '+new Date(riesgo.aceptado_at).toLocaleDateString('es-AR')+'.'));return;}
+ const check=node('input',{type:'checkbox'}),status=node('p',{class:'hint',role:'status'});
+ const accept=button('Aceptar y continuar',async()=>{
+  if(!check.checked||riesgoBusy)return;riesgoBusy=true;accept.disabled=true;
+  try{riesgo=await rpc('wai_riesgo',{p_sucursal:sessionLocal.id,p_accion:'aceptar'});paintRisk();drawerStatus.textContent='Listo. En unos segundos aparece el QR para vincular el WhatsApp del local.';void refresh();}
+  catch(e){status.textContent=e.message;accept.disabled=false;}finally{riesgoBusy=false;}
+ },'btn primary',{disabled:true});
+ check.onchange=()=>{accept.disabled=!check.checked;};
+ riskHost.replaceChildren(node('article',{class:'connection-card wai-riesgo-card'},node('h3',{},'Antes de vincular'),
+  node('p',{},'GESTLOK WAI se conecta como un dispositivo vinculado de WhatsApp, igual que WhatsApp Web. No es la API oficial de Meta: WhatsApp puede restringir o bloquear el número si detecta uso automatizado.'),
+  node('p',{class:'hint'},'Para reducir el riesgo: usá un número dedicado al local, el asistente responde solo a clientes que escriben primero y nunca envía mensajes masivos. Podés seguir atendiendo desde el teléfono en todo momento.'),
+  ...(riesgo.puede_aceptar?[node('label',{class:'consent-line'},check,node('span',{},'Entiendo el riesgo y lo acepto para este local')),accept,status]:[node('p',{class:'hint'},'El dueño del local tiene que aceptarlo desde su cuenta para que se genere el QR.')])));
 }
 function openRelink(id){
  if(connectionBusy||!authorizationHost||!rows.some(r=>r.id===id&&r.habilitada&&r.preparada))return;

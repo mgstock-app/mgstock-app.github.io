@@ -10,9 +10,12 @@ import {createPollStore} from './poll-store.mjs';
 import {loadConfig,defaultConfig,protectDirectory,privateRoot} from './config.mjs';
 
 process.umask(0o077);
-const root=await protectDirectory(privateRoot());
-const configFile=resolve(process.argv[2]||defaultConfig());
+// INICIAR-WAI.cmd → Prueba · INICIAR-WAI-PRODUCCION.cmd → gestlok.com.ar. También acepta la ruta de un JSON importado.
+const arg=process.argv[2];
+const configFile=resolve(arg==='produccion'?defaultConfig('produccion'):!arg||arg==='prueba'?defaultConfig('prueba'):arg);
 const config=await loadConfig(configFile);
+if(arg==='produccion'&&config.entorno!=='produccion')throw Error('La configuración importada no es de producción.');
+const root=await protectDirectory(privateRoot(config.entorno));
 const url=new URL(config.url);
 async function remote(name,args){
  const r=await fetch(new URL('/rest/v1/rpc/'+name,url),{method:'POST',headers:{apikey:config.anonKey,Authorization:'Bearer '+config.anonKey,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(7000),redirect:'error'});
@@ -101,8 +104,13 @@ const create=s=>createSession({id:s.id,number:s.number,transport:transportFor(s)
 const instance=randomUUID();
 const central=config.central?createCentral({inventory:action=>remote('gestlok_chat_wai_central_sync',{p_clave:config.centralKey,p_instancia:instance,p_accion:action}),create,log}):null;
 const sessions=central?[]:config.sessions.map(create);
-console.log('GESTLOK WAI · '+(central?'servidor central de ensayo · altas automáticas':sessions.length+' sesiones de ensayo')+'. Mensajes de prueba: '+(config.enableTestMessages===true?'según autorización':'desactivados'));
-console.log('La conexión no oficial puede ocasionar restricciones. Usá solo líneas de ensayo autorizadas.');
+if(config.entorno==='produccion'){
+ console.log('GESTLOK WAI · PRODUCCIÓN (gestlok.com.ar) · servidor central · altas, pausas y QR desde el panel.');
+ console.log('Conexión no oficial de WhatsApp: cada dueño aceptó el riesgo de restricción antes de vincular. Dejá esta PC encendida y con internet.');
+}else{
+ console.log('GESTLOK WAI · PRUEBA · '+(central?'servidor central de ensayo · altas automáticas':sessions.length+' sesiones de ensayo')+'. Mensajes de prueba: '+(config.enableTestMessages===true?'según autorización':'desactivados'));
+ console.log('La conexión no oficial puede ocasionar restricciones. Usá solo líneas de ensayo autorizadas.');
+}
 const tick=()=>central?central.tick():Promise.allSettled(sessions.map(s=>s.tick()));
 let stopping=false;
 const timer=setInterval(()=>void tick(),5000);

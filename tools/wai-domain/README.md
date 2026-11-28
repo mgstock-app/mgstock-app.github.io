@@ -1,4 +1,7 @@
-# Subdominios comerciales WAI (preparación, no desplegado)
+# Subdominios comerciales WAI
+
+**Estado 28/11/2026: PUBLICADO.** Cloudflare (cuenta de la administradora, plan gratis): Worker `gestlok-wai-dominios` con este código y solo dos Custom Domains exactos: `wai-mi-gusto-munro.gestlok.com.ar` y `wai-mi-gusto-torcuato.gestlok.com.ar` (DNS y TLS automáticos de Cloudflare; dirección workers.dev apagada). Supabase producción → Auth → Redirect URLs: `https://wai-mi-gusto-munro.gestlok.com.ar/**` y `https://wai-mi-gusto-torcuato.gestlok.com.ar/**`. Local nuevo: Cloudflare → Workers & Pages → gestlok-wai-dominios → Domains → Add Domain → `wai-<slug>`; sumar su Redirect URL en Supabase y el slug en `waiSubdominiosActivos` (public/stock/gestlok-creator-home.js). Si se cambia este archivo, pegar el código nuevo en el editor del Worker y desplegar.
+
 - Formato de cada sucursal: `wai-<slug>.gestlok.com.ar`. Ejemplos: wai-mi-gusto-munro.gestlok.com.ar y wai-mi-gusto-torcuato.gestlok.com.ar.
 - El origen sigue siendo el sitio de producción en gestlok.com.ar (GitHub Pages). Nunca se encamina tráfico comercial hacia Prueba/Testing ni se cambia el dominio principal.
 - El Worker sirve únicamente recursos estáticos aprobados, no copia cookies ni tokens a Pages. El portal reconoce el slug de hostname, rechaza discrepancias con query/path y consulta la autorización del usuario en Supabase. Un dominio no concede acceso.

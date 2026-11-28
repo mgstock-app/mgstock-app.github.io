@@ -16,3 +16,8 @@ test('solo recursos estáticos de producción sin reenviar credenciales',async()
  });
  assert.equal(await r.text(),'portal');assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(r.headers.has('set-cookie'),false);
 });
+test('el panel del local puede cargar el motor del chat por el subdominio',async()=>{
+ const r=await handle(new Request(origin+'/chat/motor.js?v=1'),async target=>{assert.equal(target,'https://gestlok.com.ar/chat/motor.js?v=1');return new Response('motor');});
+ assert.equal(r.status,200);
+ assert.equal((await handle(new Request(origin+'/chat/otro.js'))).status,404);
+});

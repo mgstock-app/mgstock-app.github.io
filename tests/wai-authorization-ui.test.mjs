@@ -14,7 +14,7 @@ test('autorización inline WAI conserva número y consentimiento durante polling
   const node=(...a)=>new Element(...a);
   const button=(t,f,c,attrs={})=>node('button',{onclick:f,class:c,...attrs},t);
   const calls=[];
-  const context={node,button,drawerKind:'conexion',connectionList:null,authorizationHost:null,authorizationDraft:null,drawerBody:node('main'),drawerStatus:node('p'),rows:[{id:'line-1',estado:'conectado',habilitada:true,preparada:true,numero:'+5491100000000'}],chats:[],labels:{},portal:{administradora:true,piloto_disponible:true},connectionBusy:false,sessionLocal:{id:'local-1'},generation:1,trialEnvironment:()=>true,time:()=>'',refresh:async()=>{},rpc:async(name,args)=>{calls.push({name,args});context.chats=[{linea:'line-1'}];},prepareTrial(){},connectionAction(){}};
+  const context={node,button,drawerKind:'conexion',connectionList:null,authorizationHost:null,authorizationDraft:null,riskHost:null,riesgo:null,riesgoBusy:false,drawerBody:node('main'),drawerStatus:node('p'),rows:[{id:'line-1',estado:'conectado',habilitada:true,preparada:true,numero:'+5491100000000'}],chats:[],labels:{},portal:{administradora:true,piloto_disponible:true},connectionBusy:false,sessionLocal:{id:'local-1'},generation:1,trialEnvironment:()=>true,time:()=>'',refresh:async()=>{},rpc:async(name,args)=>{if(name==='wai_riesgo')return {aceptado:true,aceptado_at:'2026-11-28T00:00:00Z',puede_aceptar:true};calls.push({name,args});context.chats=[{linea:'line-1'}];},prepareTrial(){},connectionAction(){}};
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf('function renderConnection(){'),source.indexOf("document.addEventListener('keydown'")),context);
   context.renderConnection();
