@@ -16,6 +16,8 @@ const profiles:Record<string,string>={
 const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
 Deno.serve(async req=>{
  if(req.method!=="POST")return reply({error:"Método inválido"},405);
+ const retired=true; // HQ retirado: rechazar incluso versiones antiguas y trabajos programados.
+ if(retired)return reply({error:"GESTLOK HQ fue retirado"},410);
  const token=req.headers.get("x-gestlok-hq-worker")||"";
  if(!/^[a-f0-9]{64}$/.test(token))return reply({error:"Acceso denegado"},403);
  const db=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
