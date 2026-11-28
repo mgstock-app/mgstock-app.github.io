@@ -11,7 +11,7 @@ test('WAI trial route never uses production config, links preserve trial, operat
  assert.match(js,/p_accion:'estado',p_id:r\.id,p_habilitada:!r\.habilitada/);
 });
 test('public WAI demo is illustrative and contains no network or production data',()=>{
- const h=read('public/wai/index.html'),js=read('public/wai/wai-demo.js');
+ const h=read('public/wai/demo/index.html'),js=read('public/wai/demo/wai-demo.js');
  assert.match(h,/DATOS FICTICIOS/);assert.match(h,/Simular pedido/);assert.doesNotMatch(js,/fetch\(|supabase|localStorage|XMLHttpRequest/);
  assert.doesNotMatch(h,/\+549\d{10}/);
 });

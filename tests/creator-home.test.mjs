@@ -861,7 +861,7 @@ test('WAI comercial: panel exclusivo, lectura real y controles por empresa y loc
  const r=load(async fn=>({data:fn==='gestlok_creator_dashboard'?DASH:fn==='gestlok_chat_wai_admin_organizacion'?org:data}));
  r.h.mode();await tick();await tick();r.h.setTab('wai');r.h.view({parts:{}});await tick();
  const html=r.h.view({parts:{}});
- assert.match(html,/GESTLOK WAI · Prueba/);assert.match(html,/Empresa A/);assert.match(html,/Dueño: Dueña A/);assert.match(html,/Configuración base de empresa/);assert.match(html,/href="\/chat\/wai\/prueba\/"/);assert.match(html,/href="\/wai\/"/);assert.match(html,/1 activos · 1 inactivos/);assert.match(html,/Munro/);assert.match(html,/Torcuato/);assert.match(html,/Gastronomía/);assert.match(html,/wai-a-uno.gestlok.com.ar/);assert.match(html,/Abrir local · ajustes y QR/);
+ assert.match(html,/GESTLOK WAI · Prueba/);assert.match(html,/Empresa A/);assert.match(html,/Dueño: Dueña A/);assert.match(html,/Configuración base de empresa/);assert.match(html,/href="\/chat\/wai\/prueba\/"/);assert.match(html,/href="\/wai\/"/);assert.match(html,/1 activos · 1 inactivos/);assert.match(html,/Munro/);assert.match(html,/Torcuato/);assert.match(html,/Gastronomía/);assert.match(html,/href="\/wai\/\?local=a-uno"/);assert.match(html,/Abrir local · ajustes y QR/);
  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-wai-commercial]'?{dataset:{waiCommercial:'numero',row:'0',number:'0'}}:null}});await tick();
  const i=r.calls.lastIndexOf('gestlok_chat_wai_admin_comercial');assert.equal(r.argsLog[i].p_tenant,'a');assert.equal(r.argsLog[i].p_local,'uno');assert.equal(r.argsLog[i].p_id,'n1');assert.equal(r.argsLog[i].p_activo,false);
  const other=load(async()=>({data:DASH}),{email:'other@example.com'});other.h.mode();await tick();other.h.setTab('wai');assert.notEqual(other.h.tab(),'wai');assert.doesNotMatch(other.h.view({parts:{}}),/data-ch-tab="wai"/);
@@ -877,7 +877,7 @@ test('WAI: rubro declarado por local, herencia visible y motor disponible para t
  assert.match(html,/data-row="1">Activar WAI/);
  assert.doesNotMatch(html,/motor específico en preparación/);
  assert.doesNotMatch(html,/data-wai-commercial-register data-row="1"/,'sin activar no se registran números');
- assert.match(html,/wai-a-uno\.gestlok\.com\.ar: agregalo en Cloudflare/);
+ assert.match(html,/href="\/wai\/\?local=a-uno"/);assert.doesNotMatch(html,/Cloudflare/);
  r.listeners.submit({preventDefault(){},target:{matches:s=>s==='[data-wai-rubro-form]',dataset:{row:'1'},elements:{rubro:{value:'servicios'}}}});await tick();await tick();
  const i=r.calls.lastIndexOf('gestlok_chat_wai_admin_rubro');assert.ok(i>=0);
  assert.deepEqual(JSON.parse(JSON.stringify(r.argsLog[i])),{p_tenant:'b',p_local:'uno',p_rubro:'servicios'});

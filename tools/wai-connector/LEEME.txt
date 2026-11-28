@@ -9,8 +9,8 @@ Mismo funcionamiento que Prueba, con un servidor central en tu PC.
 3. Abrí INICIAR-WAI-PRODUCCION.cmd y dejá la PC encendida con internet.
    INICIAR-WAI.cmd sigue siendo Prueba: pueden correr los dos a la vez.
 4. En Comercios → WAI: rubro del local → «Activar WAI» → agregar número.
-5. El dueño entra a su espacio (por ejemplo wai-mi-gusto-munro.gestlok.com.ar),
-   abre «Vincular», acepta el riesgo de la conexión no oficial y escanea
+5. El dueño entra a https://gestlok.com.ar/wai con su usuario y contraseña
+   (se puede instalar como app), elige el local, abre «Vincular», acepta el riesgo de la conexión no oficial y escanea
    el QR desde WhatsApp → Dispositivos vinculados.
 Sin la aceptación del dueño el servidor no abre la sesión ni muestra QR.
 El asistente solo responde a quien escribe primero; nunca envía masivos.

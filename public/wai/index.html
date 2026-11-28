@@ -1,6 +1,27 @@
 <!doctype html>
-<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="GESTLOK WAI: espacio de atención para gastronomía, catálogo, pedidos y gestión de conversaciones por sucursal. Conocé la demostración de GESTLOK."><meta name="theme-color" content="#102a32"><link rel="icon" href="/chat/gestlok-monograma.svg"><title>GESTLOK WAI · Atención inteligente para comercios</title><link rel="stylesheet" href="/wai/wai-demo.css"></head>
-<body><header class="top"><a href="/" class="logo"><img src="/chat/gestlok-monograma.svg" alt="">GESTLOK <span>WAI</span></a><a href="/chat/wai/" class="button outline">Ingresar al comercio</a></header>
-<main><section class="hero"><div><p class="eyebrow">GESTLOK · GASTRONOMÍA</p><h1>Tu atención.<br><em>En un solo lugar.</em></h1><p>Organizá conversaciones, carta digital y pedidos por sucursal. Configurá tus precios, horarios, fotos, medios de pago y tiempos de entrega desde tu espacio de atención.</p><a class="button" href="#demo">Explorar demostración</a><p class="fine">El portal está publicado. La conexión comercial de WhatsApp se habilitará tras verificar el canal y cada línea. No se inicia tráfico desde esta demo.</p></div><div class="hero-card"><p class="eyebrow">UNA EMPRESA · VARIOS LOCALES</p><h2>Control independiente</h2><div class="branch"><div><b>Local Centro</b><small>Carta · horarios · pedidos</small></div><span>Demo</span></div><div class="branch"><div><b>Local Norte</b><small>Configuración por sucursal</small></div><span>Demo</span></div><p>Una carta base de empresa. Cada dueño puede personalizar sus sucursales.</p></div></section>
-<section id="demo" class="demo"><p class="eyebrow">EXPERIENCIA INTERACTIVA · DATOS FICTICIOS</p><h2>Así fluye un pedido</h2><p>Elegí productos, simulá el envío y observá la revisión del local. No se utiliza WhatsApp ni se guarda ningún dato personal.</p><div class="demo-grid"><article class="screen"><div class="screen-top"><b>Cliente · Carta digital</b><span>Vista de prueba</span></div><div class="chat"><p class="bubble assistant">¡Hola! Soy el asistente del comercio. ¿En qué puedo ayudarte?</p><p class="bubble customer">Quiero hacer un pedido.</p><div class="menu"><h3>Menú interactivo</h3><div class="product"><div><b>Empanada clásica</b><small>$ 4.000</small></div><button data-add="0" aria-label="Agregar empanada">+</button></div><div class="product"><div><b>Pizza individual</b><small>$ 8.500</small></div><button data-add="1" aria-label="Agregar pizza">+</button></div><div class="product"><div><b>Bebida</b><small>$ 2.000</small></div><button data-add="2" aria-label="Agregar bebida">+</button></div></div><div class="cart"><span id="total">0 productos · $ 0</span><button id="send" disabled>Simular pedido</button></div><button class="link" id="reset">Reiniciar demostración</button></div></article><article class="screen"><div class="screen-top"><b>Local · Espacio de atención</b><span>Simulación</span></div><div class="operator"><h3>Pedidos recibidos</h3><div id="order" class="order" role="status">Todavía no hay pedidos. Agregá productos en la carta.</div><button id="accept" disabled>Confirmar pedido</button><p id="state" aria-live="polite"></p><div class="settings"><h3>Ajustes del local</h3><span>Carta digital</span><span>Horarios</span><span>Demoras</span><span>Reseñas</span><span>Fotos</span><span>Precios</span></div></div></article></div></section>
-<section class="features"><h2>Todo tu negocio, en orden.</h2><div class="tiles"><article><h3>Atención organizada</h3><p>Conversaciones y pedidos relacionados con el local correspondiente.</p></article><article><h3>Carta personalizada</h3><p>Menú por categorías, precios, fotos y opciones.</p></article><article><h3>Gestión por roles</h3><p>Administración de empresas, locales, responsables y accesos.</p></article></div></section></main><footer>GESTLOK WAI · Demostración pública con datos ficticios · <a href="/">Volver a GESTLOK</a></footer><script src="/wai/wai-demo.js"></script></body></html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="GESTLOK WAI: atención por WhatsApp para tu comercio. Ingresá con tu usuario y contraseña de GESTLOK e instalala como app.">
+<meta name="referrer" content="same-origin">
+<meta name="theme-color" content="#142d44">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GESTLOK WAI">
+<title>GESTLOK WAI</title>
+<link rel="manifest" href="/wai/manifest.webmanifest">
+<link rel="icon" href="/chat/gestlok-monograma.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/gestlok-apple-v2-180.png">
+<link rel="stylesheet" href="/chat/wai/wai.css?v=20261128-app1">
+</head>
+<body>
+<div id="wai-root" aria-live="polite"><p class="wai-loading">Cargando GESTLOK WAI…</p></div>
+<script src="/vendor/supabase.js"></script>
+<script src="/vendor/qrcode-generator.js"></script>
+<script src="/chat/config.js"></script>
+<script src="/chat/panel/panel.js?v=20261127portal1"></script>
+<script src="/chat/wai/wai.js?v=20261128-app1"></script>
+<script src="/wai/instalar.js?v=20261128-app1"></script>
+</body>
+</html>

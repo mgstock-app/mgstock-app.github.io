@@ -93,3 +93,9 @@ El adaptador oficial de WhatsApp Business deberá traducir las mismas interaccio
 - Rubros: el motor es el mismo para gastronomía, cafetería, almacén, perfumería, ferretería, pet shop, servicios y otros. El rubro declarado del local manda sobre `wai_comercios.rubro`; al activar se crea la atención inicial del rubro (servicios sin seguimiento de pedidos) y, fuera de gastronomía y cafetería, los mensajes salientes dicen «catálogo» en lugar de «carta» (no cambia opciones de votación ni pedidos). Cambiar el rubro exige pausar WAI del local.
 - SQL: `entornos/sql/wai-riesgo-y-rubros.sql` (Prueba y Producción, idempotente; parchea las RPC existentes verificando el texto) y `entornos/sql/wai-riesgo-prueba-semilla.sql` (solo Prueba, para no cortar la línea de ensayo vinculada). QA con deshacer: `qa/wai/flujo-riesgo-y-rubros.sql`.
 - Subdominios publicados: ver `tools/wai-domain/README.md`.
+
+### App única gestlok.com.ar/wai (28/11/2026)
+- Decisión de la administradora: no crear subdominios por local. Todas las empresas y locales entran por https://gestlok.com.ar/wai con su usuario y contraseña de GESTLOK (o Google). La app se instala desde el navegador (manifest `/wai/manifest.webmanifest`, service worker `/wai/sw.js` sin caché de datos; en iPhone, Compartir → Agregar a inicio).
+- Después de ingresar: con un solo local autorizado entra directo; con varios ve la lista y cambia con «Mis locales». Los permisos siguen en la base (`wai_portal_nivel`): dueño ve los locales de su lista, gerente solo los suyos, la administradora todos más el servidor central.
+- La activación de empresas, locales, rubros y números sigue en el panel de la administradora (Comercios → WAI).
+- Los subdominios ya publicados redirigen a `/wai/?local=<slug>`. La demo pública pasó a `/wai/demo/`.
