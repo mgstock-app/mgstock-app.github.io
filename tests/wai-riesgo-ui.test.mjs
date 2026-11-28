@@ -47,5 +47,5 @@ test('el servidor central se prepara sin cuadros del navegador y deja el archivo
   assert.ok(central.length>500);
   assert.doesNotMatch(central,/\bconfirm\(/,'confirm() no aparece en el navegador integrado de Claude');
   assert.match(central,/Sí, preparar/);assert.match(central,/Descargar archivo/);assert.match(central,/Copiar contenido/);
-  assert.match(central,/entorno:'produccion'/);assert.doesNotMatch(central,/revokeObjectURL\(url\),1000/,'el enlace no se invalida enseguida');
+  assert.match(central,/entorno:'produccion'/);assert.match(central,/\]\.filter\(Boolean\)\);/,'replaceChildren no debe recibir null');assert.doesNotMatch(central,/revokeObjectURL\(url\),1000/,'el enlace no se invalida enseguida');
 });
