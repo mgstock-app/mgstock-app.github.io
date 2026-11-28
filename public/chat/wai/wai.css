@@ -215,3 +215,7 @@ a{color:#087a98}
 /* Aceptación del riesgo de la conexión no oficial, antes del QR. */
 .wai-riesgo-card{border-color:#f59e0b;background:#fffbeb}
 .wai-riesgo-card h3{margin-top:0}
+/* Servidor central: confirmación y archivo dentro de la tarjeta (sin cuadros del navegador). */
+.wai-central-confirm,.wai-central-file{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px solid #f59e0b;border-radius:10px;background:#fffbeb}
+.wai-central-file{border-color:#16a34a;background:#f0fdf4}
+.wai-central-confirm .btn,.wai-central-file .btn{justify-self:start}

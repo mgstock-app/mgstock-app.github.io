@@ -42,3 +42,10 @@ test('el gerente ve el aviso pero no puede aceptar por el dueño',async()=>{
   assert.match(h.text(h.context.drawerBody),/El dueño del local tiene que aceptarlo/);
   assert.equal(h.find(h.context.drawerBody,e=>e.tag==='button'&&e.children[0]==='Aceptar y continuar'),null);
 });
+test('el servidor central se prepara sin cuadros del navegador y deja el archivo a mano',()=>{
+  const central=source.slice(source.indexOf('let centralFile=null;'),source.indexOf(" let busy=false,actionBusy=false,last='',fail=false;"));
+  assert.ok(central.length>500);
+  assert.doesNotMatch(central,/\bconfirm\(/,'confirm() no aparece en el navegador integrado de Claude');
+  assert.match(central,/Sí, preparar/);assert.match(central,/Descargar archivo/);assert.match(central,/Copiar contenido/);
+  assert.match(central,/entorno:'produccion'/);assert.doesNotMatch(central,/revokeObjectURL\(url\),1000/,'el enlace no se invalida enseguida');
+});
