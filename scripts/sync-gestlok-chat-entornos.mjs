@@ -93,6 +93,11 @@ for(const file of migrations)copy(file);
 const manifestFile='entornos/sql.txt';
 const old=readFileSync(join(dest,manifestFile),'utf8').split(/\r?\n/).map(s=>s.trim());
 const lines=readFileSync(join(source,manifestFile),'utf8').trimEnd().split(/\r?\n/);
+// Copiar las dependencias de esquema aislado declaradas en main, sin datos demo.
+for(const line of lines){
+ const file=line.trim();
+ if(/^entornos\/sql\/(?:registro|marca)-base-pruebas\.sql$/.test(file))copy(file);
+}
 const present=new Set(lines.map(s=>s.trim()));
 const extra=migrations.filter(path=>!present.has(path));
 const position=lines.findIndex(line=>line.trim()==='entornos/sql/semilla.sql');
