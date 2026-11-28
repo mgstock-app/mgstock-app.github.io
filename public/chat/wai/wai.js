@@ -6,7 +6,9 @@ const valid=s=>typeof s==='string'&&s.length>=3&&s.length<=60&&/^[a-z0-9]+(-[a-z
 const direct=/^\/gestlok-wai-([a-z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const params=new URLSearchParams(location.search);
 const trialPanel=/^\/chat\/wai\/prueba\/?$/.test(location.pathname);
-const portalBase=trialPanel?'/chat/wai/prueba/':'/chat/wai/';
+// gestlok.com.ar/wai es la app única de GESTLOK WAI (instalable). /chat/wai/ sigue funcionando igual.
+const appRoute=/^\/wai\/?$/.test(location.pathname);
+const portalBase=trialPanel?'/chat/wai/prueba/':appRoute?'/wai/':'/chat/wai/';
 const query=params.get('local');
 const openConnection=params.get('vincular')==='1';
 const hostSlug=/^wai-([a-z0-9-]+)\.gestlok\.com\.ar$/.exec(location.hostname)?.[1];
@@ -45,7 +47,7 @@ function login(){
   if(!email.value.trim()||!email.checkValidity()){status.textContent='Escribí el email de tu cuenta.';return;}
   resend.disabled=true;try{await sb.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:location.origin+portalBase}});status.textContent='Si la confirmación está pendiente, revisá tu correo y spam. No compartas el enlace.';}catch{status.textContent='No se pudo solicitar. Reintentá más tarde.';}finally{setTimeout(()=>resend.disabled=false,60000);}
  });
- access(trialPanel?'Ingresá al panel WAI de prueba':'Ingresá al espacio del local',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':'Usá tu cuenta de GESTLOK. El acceso se comprueba para esta sucursal.',google,form,resend,status,node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
+ access(trialPanel?'Ingresá al panel WAI de prueba':slug?'Ingresá al espacio del local':'Ingresá a GESTLOK WAI',trialEnvironment()?'Usá tu cuenta de prueba. El acceso se comprueba para esta sucursal.':slug?'Usá tu usuario y contraseña de GESTLOK. El acceso se comprueba para esta sucursal.':'Usá tu usuario y contraseña de GESTLOK. Vas a ver solo los locales que tenés autorizados.',google,form,resend,status,node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
 }
 async function init(){
  const mine=++generation;destroyed=false;clearInterval(navigatorTimer);
@@ -57,6 +59,9 @@ async function init(){
   if(mine!==generation)return;
   portal=result;if(trialPanel&&result?.administradora!==true){access('Acceso exclusivo de administración','Este laboratorio está reservado a la administradora de GESTLOK.',button('Cerrar sesión',()=>void logout()),node('a',{href:'/login/'},'Volver al panel'));return;}const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
+   // Un solo local autorizado: entra directo. Con varios locales, elige de la lista.
+   const propios=locals.filter(s=>['gestionar','configurar'].includes(s.nivel));
+   if(result.administradora!==true&&propios.length===1&&valid(propios[0].slug)){location.replace(portalHref(propios[0].slug));return;}
    const links=locals.map(s=>node('p',{},node('a',{class:'btn',href:portalHref(s.slug)},s.empresa+' · '+s.nombre)));
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Habilitación exclusiva de la administración. El rubro de cada local se define en Comercios → WAI. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
    const central=result.administradora===true?node('section',{class:'connection-card'}):null;
@@ -66,7 +71,7 @@ async function init(){
    return;
   }
   sessionLocal=locals.find(s=>s.slug===slug&&['gestionar','configurar'].includes(s.nivel));
-  if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:hostSlug?'https://gestlok.com.ar/chat/wai/':portalBase},'Mis locales'));return;}
+  if(!sessionLocal){access('Sin acceso a este local','Tu cuenta no tiene un espacio WAI autorizado aquí. Pedile acceso a la administración.',node('a',{href:hostSlug?'https://gestlok.com.ar/wai/':portalBase},'Mis locales'));return;}
   // Keep the local route scoped to the current host. Authentication remains server-side.
   renderShell();await refresh();if(openConnection&&mine===generation)openDrawer('conexion');
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
@@ -209,7 +214,7 @@ function renderShell(){
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
  shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(trialPanel?'PRUEBA · '+label:label),node('div',{class:'top-actions'},
-  portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/chat/wai/':portalBase,title:'Ver el estado de todos los locales'},'Conexiones'):null,
+  portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Ver el estado de todos los locales'},'Conexiones'):(portal?.locales||[]).filter(l=>['gestionar','configurar'].includes(l.nivel)).length>1?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Cambiar de local'},'Mis locales'):null,
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),
   button('Salir',()=>void logout(),'toolbar-btn',{'aria-label':'Cerrar sesión'}))),notice,
