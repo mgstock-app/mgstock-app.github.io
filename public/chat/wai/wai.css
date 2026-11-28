@@ -224,3 +224,56 @@ a{color:#087a98}
 .wai-install[hidden]{display:none}
 .wai-install span{flex:1;font-size:14px}
 .wai-install .icon-btn{color:#fff;background:transparent;border:0;font-size:20px}
+
+/* Inicio WAI comercial · tarjetas y navegación privadas de la administradora. */
+.wa-admin-dashboard{max-width:1400px;margin:0 auto;padding:24px clamp(16px,4vw,54px) 56px}
+.wa-admin-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 0 24px;border-bottom:1px solid #d7e4eb}
+.wa-admin-header .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.wa-admin-title{margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.wa-admin-title h1{font-size:clamp(24px,3vw,35px);line-height:1.2;letter-spacing:-.035em;margin:7px 0 10px;color:#142d44}
+.wa-admin-kicker{color:#087a98;font-size:11px;font-weight:800;letter-spacing:.12em}
+.wa-admin-title p,.wa-admin-section-heading p{color:#61798c;margin:0;line-height:1.5}
+.wa-admin-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:24px 0}
+.wa-admin-metric{background:white;border:1px solid #dce7ee;border-radius:16px;padding:18px;min-width:0;display:grid;gap:7px;box-shadow:0 4px 18px #17334c08}
+.wa-admin-metric small{font-weight:700;color:#536e81;font-size:12px}
+.wa-admin-metric strong{font-size:31px;line-height:1;font-variant-numeric:tabular-nums;color:#142d44}
+.wa-admin-metric span{font-size:12px;color:#73899a}
+.wa-admin-tabs{background:#fff;padding:6px;border:1px solid #dce7ee;border-radius:14px;display:flex;gap:5px;align-items:center}
+.wa-admin-tab{border:0;background:transparent;border-radius:10px;padding:13px 19px;color:#526d80;font-weight:700;display:flex;gap:8px;align-items:center;justify-content:center;font-size:14px;min-height:46px}
+.wa-admin-tab.active{background:#17354c;color:white}.wa-admin-tab:not(.active):hover{background:#f0f6fa}
+.wa-admin-counter{display:inline-flex;min-width:23px;height:23px;align-items:center;justify-content:center;border-radius:20px;font-size:12px;padding:0 6px;background:#e4edf2;color:#17354c}
+.wa-admin-counter.warn{background:#fee3df;color:#a82a25}.wa-admin-tab.active .wa-admin-counter:not(.warn){background:#ffffff30;color:#fff}
+.wa-admin-status{margin:12px 0 4px;color:#386b56;font-size:13px;min-height:0}.wa-admin-status:empty{display:none}.wa-admin-status.error{color:#a82a25}
+.wa-admin-content{margin-top:24px}.wa-admin-section-heading{margin:0 0 20px}.wa-admin-section-heading h2{font-size:23px;margin:0 0 7px;letter-spacing:-.02em}
+.wa-admin-search{width:min(100%,420px);background:#fff;border:1px solid #cfdee7;border-radius:12px;padding:12px 15px;color:#142d44;margin-bottom:17px}
+.wa-admin-company-grid,.wa-admin-local-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px}
+.wa-admin-company,.wa-admin-owner{width:100%;text-align:left;color:inherit;display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dce7ee;border-radius:17px;padding:22px;min-width:0;box-shadow:0 5px 20px #17334c07}
+.wa-admin-company:hover,.wa-admin-owner:hover{border-color:#1490ad;background:#fcfeff}
+.wa-admin-initials{height:56px;width:56px;flex:0 0 56px;border-radius:15px;background:#e7f4f7;color:#087a98;font-size:20px;font-weight:800;display:grid;place-items:center;letter-spacing:.02em}
+.wa-admin-initials.small{height:43px;width:43px;flex-basis:43px;border-radius:12px;font-size:16px}
+.wa-admin-company-info{flex:1;min-width:0}.wa-admin-company-info h3{margin:0 0 5px;font-size:19px;overflow-wrap:anywhere}.wa-admin-company-info strong{font-size:16px}
+.wa-admin-company-info p{margin:4px 0 8px;color:#657e90;font-size:13px}.wa-admin-arrow{font-size:27px;color:#8095a3;font-weight:500;flex:none}
+.wa-admin-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.3;color:#51697a;background:#edf2f5;max-width:100%;white-space:normal}
+.wa-admin-badge i{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;background:currentColor}
+.wa-admin-badge.ok{color:#176b47;background:#e4f5eb}.wa-admin-badge.bad{color:#a62a25;background:#fce9e6}.wa-admin-badge.neutral{color:#61798c;background:#edf2f5}
+.wa-admin-owner-list{display:grid;gap:12px;max-width:900px}.wa-admin-owner{padding:16px 20px}
+.wa-admin-back{margin-bottom:16px}.wa-admin-subheading{font-size:18px;margin:25px 0 12px}
+.wa-admin-local,.wa-admin-payment,.wa-admin-trial,.wa-admin-empty{padding:21px;background:#fff;border:1px solid #dce7ee;border-radius:17px;box-shadow:0 5px 20px #17334c06;min-width:0}
+.wa-admin-payment{max-width:900px;margin-bottom:16px}.wa-admin-payment h3,.wa-admin-local h3{margin:0;font-size:19px}
+.wa-admin-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wa-admin-local h4{margin:18px 0 8px;font-size:14px;color:#17354c}
+.wa-admin-inline{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:12px 0}
+.wa-admin-inline label{flex:1;min-width:min(160px,100%);display:grid;gap:5px;font-size:13px;font-weight:700;color:#51697a}
+.wa-admin-inline input,.wa-admin-inline select{min-width:0;width:100%;border:1px solid #cbdce6;border-radius:10px;background:#fff;color:#142d44;padding:11px;font:inherit;min-height:43px}
+.wa-admin-config{margin-top:15px;border:1px solid #e1e9ee;padding:12px;border-radius:12px}.wa-admin-config summary{font-weight:700;font-size:13px;color:#51697a;cursor:pointer}
+.wa-admin-phone{padding:12px 0;border-top:1px solid #e4ebf0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px;align-items:center}
+.wa-admin-phone>div:first-child{display:grid;gap:5px;min-width:0}.wa-admin-phone strong{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.wa-admin-warning{color:#8d342b;background:#fff3ed;border:1px solid #f1d8cb;border-radius:10px;padding:10px;line-height:1.45}
+.wa-admin-trial{max-width:800px;padding:26px}.wa-admin-trial h3{font-size:22px;margin:14px 0 10px}.wa-admin-trial p{color:#536e81;line-height:1.65}
+.wa-admin-trial-icon{display:grid;place-items:center;background:#e7f4f7;color:#087a98;width:54px;height:54px;border-radius:15px;font-size:26px;font-weight:800}
+.wa-admin-health-card,.wa-admin-central{max-width:100%;margin-bottom:15px}.wa-admin-health-card .wai-health-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:10px}
+.wa-admin-dashboard .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media(max-width:720px){.wa-admin-dashboard{padding:16px 12px 36px}.wa-admin-header{align-items:flex-start;flex-wrap:wrap;padding-bottom:16px}.wa-admin-header .actions{justify-content:flex-start}.wa-admin-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:18px 0}.wa-admin-metric{padding:12px}.wa-admin-metric strong{font-size:25px}.wa-admin-tabs{gap:2px;padding:4px}.wa-admin-tab{flex:1;min-width:0;white-space:normal;padding:9px 5px;line-height:1.2;font-size:12px;gap:4px}.wa-admin-company,.wa-admin-owner{padding:15px;gap:10px}.wa-admin-owner{flex-wrap:wrap}.wa-admin-owner .wa-admin-arrow{margin-left:auto}.wa-admin-local,.wa-admin-payment,.wa-admin-trial{padding:16px}.wa-admin-inline .btn{min-height:42px}.wa-admin-company-info h3{font-size:17px}}
+.wa-admin-confirm{width:min(92vw,470px);max-height:85vh;overflow:auto;background:#fff;color:#17334c;border:1px solid #cfdfe8;border-radius:17px;padding:23px;box-shadow:0 18px 60px #17334c40}
+.wa-admin-confirm::backdrop{background:#17334c80}
+.wa-admin-confirm h2{margin:0 0 10px;font-size:21px}.wa-admin-confirm p{color:#526d80;line-height:1.6;margin:0 0 19px}.wa-admin-confirm .actions{justify-content:flex-end}
