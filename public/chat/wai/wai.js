@@ -134,7 +134,13 @@ function renderAdminDashboard(mine){
   finally{loading=false;if(visible())paint();}
  }
  const mutate=(action)=>void reload(action);
- const confirmAction=(message,action)=>{if(confirm(message))mutate(action);};
+ const confirmation=node('dialog',{class:'wa-admin-confirm','aria-labelledby':'wa-admin-confirm-title'});
+ const closeConfirmation=()=>{if(typeof confirmation.close==='function')confirmation.close();else confirmation.removeAttribute('open');};
+ const confirmAction=(message,action)=>{
+  if(loading||!ready)return;
+  confirmation.replaceChildren(node('h2',{id:'wa-admin-confirm-title'},'Confirmar cambio'),node('p',{},message),node('div',{class:'actions'},button('Cancelar',closeConfirmation,'btn'),button('Confirmar',()=>{closeConfirmation();mutate(action);},'btn primary')));
+  if(typeof confirmation.showModal==='function'){if(!confirmation.open)confirmation.showModal();}else confirmation.setAttribute('open','');
+ };
  const disabled=()=>loading||!ready;
  const localHref=r=>valid(r.slug)?portalHref(r.slug):null;
  const orgAction=(r,action,extra={})=>rpc('wai_admin_organizacion',{p_accion:action,p_tenant:r.tenant,p_local:r.local_id,...extra});
@@ -211,7 +217,7 @@ function renderAdminDashboard(mine){
   alertBadge.textContent=healthKnown?String(noticed):'…';alertBadge.classList.toggle('warn',healthKnown&&noticed>0);
   if(tab==='locales')paintLocales();
  }
- dashboard.append(node('header',{class:'wa-admin-header'},brand('Panel de administración'),node('div',{class:'actions'},button('Actualizar',()=>void reload(),'btn'),node('a',{class:'btn',href:'/'},'GESTLOK'),button('Cerrar sesión',()=>void logout(),'btn'))),heading,summary,tabs,topNotice,localHost,trialHost,connectionHost);
+ dashboard.append(node('header',{class:'wa-admin-header'},brand('Panel de administración'),node('div',{class:'actions'},button('Actualizar',()=>void reload(),'btn'),node('a',{class:'btn',href:'/'},'GESTLOK'),button('Cerrar sesión',()=>void logout(),'btn'))),heading,summary,tabs,topNotice,localHost,trialHost,connectionHost,confirmation);
  root.replaceChildren(dashboard);
  startAdminHealth(health,mine,central,(data,ok)=>{
   if(!visible())return;healthKnown=ok;noticed=ok?data.filter(r=>r.habilitada&&r.estado!=='conectado').length:0;
