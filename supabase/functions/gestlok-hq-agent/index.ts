@@ -28,6 +28,8 @@ Deno.serve(async req=>{
  if(origin&&!allowed.has(origin))return reply({error:"Origen no autorizado"},403);
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers});
  if(req.method!=="POST")return reply({error:"Método inválido"},405);
+ const retired=true; // HQ retirado: rechazar incluso versiones antiguas y trabajos programados.
+ if(retired)return reply({error:"GESTLOK HQ fue retirado"},410);
  const token=req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
  if(!token)return reply({error:"Sesión requerida"},401);
  const db=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});

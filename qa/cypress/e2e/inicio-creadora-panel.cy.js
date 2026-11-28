@@ -35,41 +35,15 @@ describe('Inicio independiente de la creadora',()=>{
   // Seis grupos, incluida la nueva pestaña WAI, con las funciones originales en sus submenús.
   cy.get('.gl-ch-nav button').should('have.length',6);
   cy.get('.gl-ch-nav [data-ch-tab="wai"]').should('be.visible').and('contain.text','WAI');
-  cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
-  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
-  cy.get('[data-ch-hq-agent]').should('have.length',9);
-  // La oficina pixel art se monta en su lugar, anima en un lienzo y conserva el estado entre renders.
-  cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
-  cy.get('[data-hq-office-slot] canvas').should('be.visible').and(($canvas)=>{
-    expect($canvas[0].width).to.be.greaterThan(100);
-    expect($canvas[0].height).to.be.greaterThan(100);
-  });
-  cy.get('[data-hq-office-slot]').contains('button','Pausar').click();
-  cy.get('[data-hq-office-slot]').contains('button','Reanudar').click();
-  cy.get('[data-hq-office-slot] [data-hqo-tab="ideas"]').click();
-  cy.get('[data-hq-office-slot] [data-hqo-panel="ideas"]').should('be.visible').and('contain.text','Convertir en tarea');
-  cy.get('[data-hq-office-slot] [data-hqo-tab="oficina"]').click();
-  cy.get('[data-ch-hq-agent="testing"]').click();
-  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Testing');
-  cy.get('[data-ch-hq-github]').should('be.visible');
-  cy.get('[data-ch-hq-agent="difusion"]').click();
-  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing GESTLOK Chat');
-  cy.get('[data-ch-hq-agent="soporte_general"]').click();
-  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Soporte general');
-  cy.get('[data-ch-hq-agent="marketing"]').click();
-  cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
-  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
-  cy.get('[data-ch-hq-room="private"]').first().click();
-  cy.get('[aria-label="Oficina privada del empleado"]').should('contain.text','Oficina privada · Martina');
-  cy.get('[data-hq-office-slot]').should('have.attr','data-hq-focus','marketing');
-  cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
-  cy.get('[data-ch-hq-room="general"]').first().click();
-  cy.get('[data-ch-hq-agent]').should('have.length',9);
+  cy.get('[data-ch-tab="hq"],[data-hq-office-slot],[data-ch-hq-form]').should('not.exist');
+  cy.get('.gl-ch-nav [data-ch-tab="contacto"]').should('be.visible').and('contain.text','Comunicación').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="contacto"]').should('be.visible');
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="resenas"]').should('be.visible');
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
   cy.get('.gl-ch-section-tools:visible [data-ch-tab="chat-prueba"]').should('be.visible');
-  cy.get('.gl-ch-nav [data-ch-tab="hq"]').click();
+  cy.get('.gl-ch-nav [data-ch-tab="contacto"]').click();
   cy.get('.gl-ch-section-tools:visible [data-ch-tab="resenas"]').should('be.visible');
   cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').click();
   cy.get('.gl-ch-section-tools:visible [data-ch-tab="nfc"]').should('be.visible');
@@ -139,11 +113,9 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-profile-switch-logout').should('be.visible');
   cy.get('[data-roles-close]').click();
   cy.get('.gl-ch-main h1').should('be.visible');
-  cy.get('.gl-ch-nav [data-ch-tab="hq"]').click();
-  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible');
-  cy.get('[data-ch-hq-agent="datos"]').click();
-  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Data Analytics');
-  cy.get('#gl-hq-task').should('be.visible');
+  cy.get('[data-ch-tab="hq"],[data-hq-office-slot],[data-ch-hq-form]').should('not.exist');
+  cy.get('.gl-ch-nav [data-ch-tab="contacto"]').click();
+  cy.get('.gl-ch-section-tools:visible [data-ch-tab="resenas"]').should('be.visible');
   cy.get('.gl-ch').then($root=>{
    const r=$root[0].getBoundingClientRect();
    expect(r.left).to.be.at.least(0);
