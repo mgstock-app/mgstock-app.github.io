@@ -212,3 +212,6 @@ a{color:#087a98}
 .wai-health-row .actions{display:flex;flex-wrap:wrap;gap:6px}
 .wai-health-row small{overflow-wrap:anywhere}
 .top-actions a.toolbar-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+/* Aceptación del riesgo de la conexión no oficial, antes del QR. */
+.wai-riesgo-card{border-color:#f59e0b;background:#fffbeb}
+.wai-riesgo-card h3{margin-top:0}
