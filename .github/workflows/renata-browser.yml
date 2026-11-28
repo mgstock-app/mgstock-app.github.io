@@ -20,7 +20,7 @@ concurrency:
 jobs:
   browser:
     name: qa-${{ matrix.target }}-${{ matrix.device }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 6
     strategy:
       fail-fast: false
@@ -36,7 +36,7 @@ jobs:
           python-version: '3.12'
       - name: Preparar Chromium
         run: |
-          python -m pip install playwright==1.54.0
+          python -m pip install playwright==1.62.0
           python -m playwright install --with-deps chromium
       - name: Ejecutar navegador real
         id: browser
