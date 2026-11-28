@@ -15,7 +15,6 @@
     ['gestlok-chat', 'GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
     ['wai', 'WAI', '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M7 9l2 5 3-5 3 5 2-5"/>'],
     ['habilitacion', 'Habilitación', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="m8 12 3 3 5-6M8 3v4M16 3v4"/>'],
-    ['hq', 'GESTLOK HQ', '<path d="M3 20V5h18v15zM3 12h18M12 5v15"/>'],
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
@@ -29,10 +28,10 @@
     ['Comercios', 'locales', ['locales','empresas','usuarios','empleados']],
     ['GESTLOK Chat', 'gestlok-chat', ['gestlok-chat','habilitacion','chat-prueba']],
     ['WAI', 'wai', ['wai']],
-    ['Oficina', 'hq', ['hq','contacto','resenas']],
+    ['Comunicación', 'contacto', ['contacto','resenas']],
     ['Herramientas', 'herramientas', ['herramientas','nfc']]
   ]);
-  const ADMIN_LEAF_LABELS = Object.freeze({'gestlok-chat':'Panel y entornos','chat-prueba':'Demostración','hq':'Oficina virtual','resenas':'Reseñas','herramientas':'Configuración general'});
+  const ADMIN_LEAF_LABELS = Object.freeze({'gestlok-chat':'Panel y entornos','chat-prueba':'Demostración','resenas':'Reseñas','herramientas':'Configuración general'});
   function adminNavigation(cur,p) {
     const unread = num(window.GestLokContactoWeb?.unread?.());
     const pending = num(p.pending);
@@ -42,7 +41,7 @@
       const icon=TABS.find(t=>t[0]===id)[2];
       return '<button type="button" title="'+esc(label)+'" aria-label="'+esc(label)+'" data-ch-tab="'+id+'" data-ch-group="'+id+'"'+
         (active?' class="on" aria-current="'+(id===cur?'page':'true')+'"':'')+'>'+svg(icon,20)+'<span>'+esc(label)+'</span>'+
-        badge(id==='locales'?pending:id==='hq'?unread:0)+'</button>';
+        badge(id==='locales'?pending:id==='contacto'?unread:0)+'</button>';
     }).join('');
     const tools=ADMIN_GROUPS.filter(g=>g[2].length>1).map(([label,id,children])=>
       '<nav class="gl-ch-section-tools" aria-label="Secciones de '+esc(label)+'"'+(children.includes(cur)?'':' hidden')+'>'+
@@ -62,7 +61,6 @@
       ['wai','GESTLOK WAI','Administrá locales, rubros, números y vinculación.'],
       ['usuarios','Usuarios y accesos',num(p.pending)+' solicitudes pendientes.'],
       ['contacto','Mensajes web',num(window.GestLokContactoWeb?.unread?.())+' mensajes sin leer.'],
-      ['hq','Oficina virtual','Áreas, tareas y asistencia.'],
       ['herramientas','Configuración general','Ajustes administrativos y herramientas.']
     ];
     return '<section class="gl-ch-admin-summary" aria-label="Resumen de administración">'+
@@ -1252,7 +1250,6 @@
     }catch{if(epoch===hqEpoch){hqAIReady=false;hqAIStatusError='No se pudo verificar la conexión con Groq. Volvé a comprobar.';}}
     finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!hqEditing())api?.render();}}
   }
-  setInterval(()=>{void hqCheckConnection();},2000);
   // Límites diarios para no salir nunca del plan gratuito de Groq (openai/gpt-oss-20b Free:
   // 1.000 solicitudes y 200.000 tokens por día). El servidor aplica los mismos topes y además cuenta tokens reales.
   const HQ_DAILY_LIMIT=30,HQ_AGENT_LIMIT=4,HQ_LEADER_LIMIT=8,HQ_TOKENS_LIMIT=150000;
@@ -1274,7 +1271,6 @@
     catch{/* keep last observed data */}
     finally{if(epoch===hqEpoch)hqSupportBusy=false;}
   }
-  setInterval(()=>{void hqReadSupport();},60000);
   function hqSupportView(){
     const latest=hqSupport?.checks?.[0],worker=hqSupport?.worker;
     const when=x=>x?new Date(x).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'Sin registro';
@@ -1457,6 +1453,7 @@
     finally{hqPushBusy=false;if(hqAllowed())api?.render();}
   }
   window.GestLokHQPushLogout=async()=>{
+    if(!hqAllowed())return;
     try{
       const reg=await navigator.serviceWorker?.getRegistration();
       const sub=await reg?.pushManager?.getSubscription();if(!sub)return;
@@ -1547,7 +1544,8 @@
   }
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
-  const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
+  // HQ retirado: mantener el código histórico inerte, sin acceso ni llamadas de red.
+  const hqAllowed=()=>false;
   function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqMeetingRoom=false;hqMeetingRecipient='lider';hqChatDrafts={};hqChatError='';hqChatBusy=false;hqOfficeMod?.reset?.();hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
@@ -1567,7 +1565,6 @@
     }catch{if(epoch===hqEpoch&&hqAllowed()&&!hqSyncError){hqSyncError='Sincronización interrumpida. Se volverá a consultar.';if(!hqEditing())api?.render();}}
     finally{if(epoch===hqEpoch)hqSyncBusy=false;}
   }
-  setInterval(()=>{void hqSync();},4000);
   async function hqRequest(fn,args){
     if(!hqAllowed()||hqBusy||hqAIBusy||hqChatBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
@@ -1614,7 +1611,6 @@
     }catch{if(epoch===hqEpoch){hqPulseError='No se pudo leer el pulso de los locales.';hqOfficeSync();}}
     finally{if(epoch===hqEpoch)hqPulseBusy=false;}
   }
-  setInterval(()=>{void hqReadPulse();},30000);
   let hqOfficeMod=null,hqOfficeLoading=false;
   const hqMeetingActive=()=>hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqOperationalTasks().some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
   function hqOfficeModel(){
@@ -1701,13 +1697,13 @@
 
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
-    const cur = validTab(tab) && (!['gestlok-chat','habilitacion','hq','wai'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
+    const cur = validTab(tab) && (!['gestlok-chat','habilitacion','wai'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
     void window.GestLokContactoWeb?.prefetch?.();
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
     const groupedNav=premium?adminNavigation(cur,p):null;
-    const nav = premium?groupedNav.main:TABS.filter(t=>!['gestlok-chat','habilitacion','hq','wai'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const nav = premium?groupedNav.main:TABS.filter(t=>!['gestlok-chat','habilitacion','wai'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
       (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -1719,7 +1715,6 @@
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+'</div>';
     else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+chatAdminView()+'</div>';
-    else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
@@ -1728,7 +1723,6 @@
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? (premium?'Panel de administración':'¡Hola!') : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
-      cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
       cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
       cur === 'habilitacion' ? 'Habilitación de GESTLOK Chat, números y configuración por local.' :
@@ -1754,9 +1748,9 @@
       '<p><a class="btn primary" href="empleados/">Abrir Administración de empleados →</a></p></section>';
   }
   function goTab(v) {
-    if (!validTab(v) || (['gestlok-chat','habilitacion','hq','wai'].includes(v)&&!premiumAdmin())) return;
+    if (!validTab(v) || (['gestlok-chat','habilitacion','wai'].includes(v)&&!premiumAdmin())) return;
     if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';premiumWAProvider='sin_consultar';}
-    if(v !== 'hq') hqReset();
+    hqReset();
     if(v!=='usuarios')waiReset();
     if(v!=='wai')waiCommercialReset();
     if(v === 'chat-prueba' && tab !== v) showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
@@ -1766,7 +1760,6 @@
     if(v!=='habilitacion'){premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;premiumWATried=false;premiumWAProvider='sin_consultar';}
     tab = v; store.set(v);
     api?.render();
-    if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest().then(()=>hqReadSupport());
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
   document.addEventListener('change',ev=>{
@@ -1788,7 +1781,7 @@
     if(ev.target?.matches?.('[data-hq-chat-form]')){ev.preventDefault();void hqChatSend(ev.target.querySelector('textarea')?.value);return;}
     if(ev.target?.matches?.('[data-ch-local-plan]')){ev.preventDefault();void saveLocalChatPlan(ev.target);return;}
     if(ev.target?.matches?.('[data-ch-hq-form]')){
-      ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
+      ev.preventDefault();if(!hqAllowed())return;
       const input=ev.target.querySelector('textarea');const feedback=ev.target.querySelector('[data-ch-hq-feedback]');
       hqDraft=String(input?.value||'').trim().slice(0,4000);if(!hqDraft)return;
       if(ev.submitter?.dataset?.hqAction!=='copy'){if(hqAgent==='lider')hqScope=ev.target.querySelector('#gl-hq-scope')?.value||hqScope;void hqRequest('gestlok_hq_add_task',{p_agent:hqAgent,p_instruction:hqAgent==='lider'?('Alcance: '+hqScope+'\nContexto y objetivo: '+hqDraft).slice(0,4000):hqDraft});return;}
@@ -1817,7 +1810,7 @@
     const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';hqMeetingRoom=false;api?.render();}return;}
     const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;hqMeetingRoom=false;api?.render();}return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
-    if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
+    if(hq){ev.preventDefault();if(!hqAllowed()||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
       if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
     const localWA=ev.target.closest?.('[data-ch-local-wa]');if(localWA){ev.preventDefault();openLocalWhatsApp(localWA.dataset.chLocalWa);return;}
     const localRefresh=ev.target.closest?.('[data-ch-local-plans-refresh]');if(localRefresh){ev.preventDefault();if(tab==='locales')void loadLocalPlans();return;}
@@ -1913,7 +1906,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){waiCommercialReset();waiReset();hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){waiCommercialReset();waiReset();hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';premiumWAProvider='sin_consultar';premiumWAConnections={};premiumWALink=null;premiumWAReady=false;premiumWAManualReady=false;localPlans=null;localPlansTried=false;localPlanDraft.clear();localPlanOpen.clear();} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; if(s==='hq')store.set('inicio'); },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
