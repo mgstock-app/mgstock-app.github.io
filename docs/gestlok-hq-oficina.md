@@ -1,5 +1,7 @@
 # GESTLOK HQ · La Oficina (versión 4)
 
+> **ARCHIVO HISTÓRICO (28/11/2026): GESTLOK HQ fue retirado.** La oficina no está disponible, el worker está pausado y las funciones rechazan solicitudes. No seguir las instrucciones de activación ni volver a programar HQ. El historial se conserva; GESTLOK Chat, WAI y Renata QA son independientes.
+
 Oficina pixel art animada para el panel de la creadora (pestaña **GESTLOK HQ**), inspirada en el formato de
 Pixel Agents, OpenClawfice y Pixel Office: un plano visto desde arriba con salas, escritorios, sala de reuniones,
 café, pizarra de ideas y tablero de proyectos, donde cada empleado de IA es un personaje animado.
