@@ -1,0 +1,54 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+const sql=readFileSync('entornos/sql/wai-admin-cuotas.sql','utf8');
+const src=readFileSync('public/chat/wai/wai.js','utf8');
+const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',U='33333333-3333-4333-8333-333333333333';
+test('cuotas privadas por empresa y dueño: pausa selectiva, protección de activación y reasignación',async()=>{
+ const db=new PGlite();
+ try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create schema gestlok_chat_private;create schema gestlok_platform;create schema gestlok_tenancy;
+ create table gestlok_tenancy.tenants(id uuid primary key);
+ create table public.docs(tenant_id uuid,col text,id text,data jsonb,primary key(tenant_id,col,id));
+ create table gestlok_chat_private.suscripciones(tenant_id uuid primary key,requiere_cobro boolean);
+ create table gestlok_chat_private.sucursales(id uuid primary key,tenant_id uuid,local_id text);
+ create table gestlok_chat_private.wai_comercios(sucursal_id uuid primary key,activo boolean,rubro text);
+ create table gestlok_chat_private.wai_responsables(tenant_id uuid,local_id text,equipo_id text,primary key(tenant_id,local_id));
+ create function auth.uid() returns uuid language sql as $$select '${U}'::uuid$$;
+ create function gestlok_chat_private.es_creadora_chat() returns boolean language sql as $$select coalesce(current_setting('test.role',true)='admin',false)$$;
+ create function gestlok_platform.require_admin() returns uuid language plpgsql as $$begin if current_setting('test.role',true) is distinct from 'admin' then raise exception 'Sin acceso' using errcode='42501';end if;return '${U}';end$$;
+ create function public.gestlok_chat_wai_admin_comercial(a text,t uuid,l text,n text,i uuid,b boolean,r text) returns jsonb language plpgsql as $$begin update gestlok_chat_private.wai_comercios set activo=b where sucursal_id in(select id from gestlok_chat_private.sucursales where tenant_id=t and local_id=l);return '[]';end$$;
+ insert into gestlok_tenancy.tenants values ('${A}'),('${B}');
+ insert into gestlok_chat_private.suscripciones values ('${A}',false);
+ insert into public.docs values ('${A}','equipo','g','{"rol":"dueno","locales":["uno","dos"]}'),('${A}','equipo','h','{"rol":"dueno","locales":["tres"]}'),('${B}','equipo','g','{"rol":"dueno","locales":["uno"]}');
+ insert into gestlok_chat_private.sucursales values ('aaaaaaaa-0000-4000-8000-000000000001','${A}','uno'),('aaaaaaaa-0000-4000-8000-000000000002','${A}','dos'),('aaaaaaaa-0000-4000-8000-000000000003','${A}','tres'),('bbbbbbbb-0000-4000-8000-000000000001','${B}','uno');
+ insert into gestlok_chat_private.wai_comercios select id,true,'gastronomia' from gestlok_chat_private.sucursales;
+ insert into gestlok_chat_private.wai_responsables values ('${A}','uno','g'),('${A}','dos','g'),('${A}','tres','h');`);
+ await db.exec(sql);await db.exec(sql);
+ const call=async(a='listar',t=null,o=null,h=null)=>(await db.query('select public.gestlok_chat_wai_admin_cuotas($1,$2,$3,$4) as r',[a,t,o,h])).rows[0].r;
+ await db.exec("set role anon");await assert.rejects(call(),/permission denied/);
+ await db.exec("reset role;set role authenticated;set test.role='owner'");await assert.rejects(call(),/Solo administradora/);
+ await db.exec("set test.role='admin'");let rows=await call();assert.equal(rows.find(r=>r.tenant===A&&r.owner==='g').estado,'exento');assert.equal(rows.find(r=>r.tenant===B).estado,'sin_registrar');
+ await assert.rejects(call('impago',B,'h'),/Dueño inexistente/);
+ rows=await call('impago',A,'g');assert.equal(rows.find(r=>r.tenant===A&&r.owner==='g').estado,'impago');assert.equal(rows.find(r=>r.tenant===B).estado,'sin_registrar');
+ await db.exec('reset role');const states=()=>db.query('select s.tenant_id,s.local_id,c.activo from gestlok_chat_private.sucursales s join gestlok_chat_private.wai_comercios c on c.sucursal_id=s.id order by s.tenant_id,s.id');
+ assert.deepEqual((await states()).rows.map(r=>r.activo),[false,false,true,true]);
+ await assert.rejects(db.exec("update gestlok_chat_private.wai_comercios set activo=true where sucursal_id='aaaaaaaa-0000-4000-8000-000000000001'"),/Registrá el pago/);
+ await assert.rejects(db.exec(`update gestlok_chat_private.wai_responsables set equipo_id='g' where tenant_id='${A}' and local_id='tres'`),/Pausá el local/);
+ await db.exec('set role authenticated');await assert.rejects(call('al_dia',A,'g','2000-01-01'),/vigente/);
+ await call('al_dia',A,'g','2099-12-31');await db.exec('reset role');assert.deepEqual((await states()).rows.map(r=>r.activo),[false,false,true,true]);
+ await db.exec("update gestlok_chat_private.wai_comercios set activo=true where sucursal_id='aaaaaaaa-0000-4000-8000-000000000001'");
+ assert.deepEqual((await states()).rows.map(r=>r.activo),[true,false,true,true]);
+ }finally{await db.close()}
+});
+test('el inicio admin se limita a producción y mantiene laboratorio, estado real y operaciones privadas',()=>{
+ assert.match(src,/result\.administradora===true&&!trialEnvironment\(\)\)\{renderAdminDashboard\(mine\)/);
+ assert.match(src,/button\('Locales'/);assert.match(src,/button\('Prueba'/);assert.match(src,/button\('Conexiones y avisos'/);
+ assert.match(src,/href:'\/chat\/wai\/prueba\/'/);
+ assert.match(src,/rpc\('wai_admin_cuotas',\{p_accion:a,p_tenant:g.id,p_owner:o.id,p_hasta:h\}/);
+ assert.match(src,/p_tenant:r.tenant,p_local:r.local_id/);
+ assert.match(src,/data.filter\(r=>r.habilitada&&r.estado!=='conectado'\)/);
+ assert.match(src,/rpc\('wai_conexiones',\{p_accion:'reconectar',p_id:r.id\}/);
+ assert.doesNotMatch(sql,/net\.http|whatsapp\.send/);
+});
