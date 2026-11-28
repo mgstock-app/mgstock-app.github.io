@@ -24,24 +24,28 @@ export function selectionFromVote(options,vote,multiple=false){
  }
  return multiple?chosen.sort().join(','):chosen[0];
 }
-export function createPollStore(dir,{now=Date.now}={}){
+// kv (opcional): guarda las encuestas cifradas en GESTLOK para que el equipo de respaldo
+// pueda leer los votos de encuestas enviadas por el otro equipo.
+export function createPollStore(dir,{now=Date.now,kv=null}={}){
  const path=id=>join(dir,'wai-poll-'+id+'.json');
+ const save=async(id,text)=>kv?kv.set(id,text):writeFile(path(id),text,{flag:'wx',mode:0o600});
+ const load=async id=>kv?(await kv.get(id))??Promise.reject(Error('Sin encuesta')):readFile(path(id),'utf8');
  async function create(id,route,canonical,grant,definition){
   const spec=normalizePoll(definition);
   if(!idOk(id)||!grant?.id||phone(canonical)!==phoneKey(grant.tester)||!spec||!Number.isFinite(Date.parse(grant.vence_at)))throw Error('Encuesta inválida');
   const record={id,route,canonical,pilot:grant.id,expires:Date.parse(grant.vence_at),...spec,secret:randomBytes(32).toString('base64')};
   // Persist before granting the network send, so a reconnect can decrypt a vote.
-  await writeFile(path(id),JSON.stringify(record),{flag:'wx',mode:0o600});
+  await save(id,JSON.stringify(record));
   return {poll:{name:spec.pregunta,values:spec.opciones.map(o=>o.label),selectableCount:spec.multiple?0:1,messageSecret:Buffer.from(record.secret,'base64')}};
  }
  async function get(id,grant,route,canonical,currentTime=now(),verifiedRoute=false){
   if(!idOk(id)||!grant?.id||phone(canonical)!==phoneKey(grant.tester))return null;
   try{
-   const record=JSON.parse(await readFile(path(id),'utf8'));
+   const record=JSON.parse(await load(id));
    if(record.id!==id||record.pilot!==grant.id||record.expires<=currentTime||Date.parse(grant.vence_at)<=currentTime||phone(record.canonical)!==phone(canonical)||!normalizePoll(record)||!(route===record.route||phone(route)===phone(canonical)||route===canonical||verifiedRoute&&/^\d{1,20}@lid$/.test(route))||Buffer.from(record.secret,'base64').length!==32)return null;
    return record;
   }catch{return null;}
  }
- async function prune(){for(const file of await readdir(dir).catch(()=>[])){if(!/^wai-poll-[A-Za-z0-9_-]{1,200}\.json$/.test(file))continue;try{const r=JSON.parse(await readFile(join(dir,file),'utf8'));if(Number.isFinite(r.expires)&&r.expires<now()-86400000)await unlink(join(dir,file));}catch{/* no unrelated files touched */}}}
+ async function prune(){if(kv)return;for(const file of await readdir(dir).catch(()=>[])){if(!/^wai-poll-[A-Za-z0-9_-]{1,200}\.json$/.test(file))continue;try{const r=JSON.parse(await readFile(join(dir,file),'utf8'));if(Number.isFinite(r.expires)&&r.expires<now()-86400000)await unlink(join(dir,file));}catch{/* no unrelated files touched */}}}
  return {create,get,prune};
 }

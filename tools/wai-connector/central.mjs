@@ -14,7 +14,7 @@ export function validInventory(data){
  return data.sessions;
 }
 export function createCentral({inventory,create,log=()=>{},concurrency=8}){
- const workers=new Map();let working=false,stopped=false,syncing=null;
+ const workers=new Map();let working=false,stopped=false,syncing=null,standby=false;
  async function remove(id,worker){workers.delete(id);await worker.session.close();}
  async function clear(){await Promise.allSettled([...workers].map(([id,w])=>remove(id,w)));}
  async function sync(){
@@ -25,6 +25,9 @@ export function createCentral({inventory,create,log=()=>{},concurrency=8}){
     const data=await inventory('sincronizar');
     if(stopped)return false;
     const lines=validInventory(data);
+    // Otro equipo (PC o teléfono) tiene el turno: este queda de respaldo y lo toma si el otro deja de dar señal.
+    if(!lines&&data?.ocupado===true&&!standby){standby=true;log('Respaldo en espera: otro equipo está atendiendo. Si deja de dar señal, este equipo toma la atención en menos de un minuto.');}
+    if(lines&&standby){standby=false;log('Este equipo tomó la atención de WAI.');}
     if(!lines){if(workers.size)log('Servidor central sin autorización o instancia ocupada. Conexiones pausadas.');await clear();return false;}
     const wanted=new Map(lines.map(line=>[line.id,line]));
     for(const [id,w] of workers){

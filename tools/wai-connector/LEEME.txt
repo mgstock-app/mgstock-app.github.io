@@ -1,3 +1,21 @@
+RESPALDO CON TU TELÉFONO ANDROID (si la PC se apaga o se queda sin wifi)
+==========================================================================
+La sesión de WhatsApp de cada local se guarda CIFRADA en GESTLOK (no solo en la PC).
+Los dos equipos usan el mismo archivo gestlok-wai-produccion.json. Mientras la PC
+atiende, el teléfono queda «en espera». Si la PC deja de dar señal, en menos de un
+minuto atiende el teléfono con la misma vinculación: los comercios NO escanean QR.
+1. En el teléfono instalá Termux desde F-Droid (la versión de Play Store está vieja).
+2. Pasá al teléfono esta carpeta (ZIP) y el archivo gestlok-wai-produccion.json
+   (por cable o Drive; no lo mandes por chats). En Termux: termux-setup-storage
+3. cd a la carpeta y ejecutá:
+   bash INSTALAR-WAI-TELEFONO.sh ~/storage/downloads/gestlok-wai-produccion.json
+4. Iniciá: bash INICIAR-WAI-TELEFONO.sh  (dejá Termux abierto; en Ajustes de Android
+   quitá la optimización de batería para Termux y dejalo cargando con wifi).
+Para que vuelva a atender la PC: cerrá el conector del teléfono (Ctrl+C); la PC toma
+la atención en segundos. Si el equipo que atiende se apaga, el otro la toma solo.
+Importante: si alguna vez tocás «Recuperar configuración central», hay que volver a
+vincular por QR, porque cambia la clave que cifra las sesiones.
+
 GESTLOK WAI · PRODUCCIÓN (gestlok.com.ar)
 =========================================
 Mismo funcionamiento que Prueba, con un servidor central en tu PC.
