@@ -1,0 +1,58 @@
+name: Renata navegador público
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+  pull_request:
+    paths:
+      - '.github/workflows/renata-browser.yml'
+      - 'qa/scripts/renata-browser.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/renata-browser.yml'
+      - 'qa/scripts/renata-browser.py'
+permissions:
+  contents: read
+concurrency:
+  group: renata-browser-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  browser:
+    name: qa-${{ matrix.target }}-${{ matrix.device }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [production, test]
+        device: [mobile, desktop]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preparar Chromium
+        run: |
+          python -m pip install playwright==1.54.0
+          python -m playwright install --with-deps chromium
+      - name: Ejecutar navegador real
+        id: browser
+        run: python qa/scripts/renata-browser.py ${{ matrix.target }} ${{ matrix.device }} "$RUNNER_TEMP/renata-result.json"
+      - name: QA navegacion
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' && steps.browser.outputs.navigation != 'not_run' }}
+        run: python qa/scripts/renata-browser.py gate "$RUNNER_TEMP/renata-result.json" navigation
+      - name: QA JavaScript
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' && steps.browser.outputs.javascript != 'not_run' }}
+        run: python qa/scripts/renata-browser.py gate "$RUNNER_TEMP/renata-result.json" javascript
+      - name: QA responsive
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' && steps.browser.outputs.responsive != 'not_run' }}
+        run: python qa/scripts/renata-browser.py gate "$RUNNER_TEMP/renata-result.json" responsive
+      - name: QA recursos
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' && steps.browser.outputs.resources != 'not_run' }}
+        run: python qa/scripts/renata-browser.py gate "$RUNNER_TEMP/renata-result.json" resources
+      - name: QA captura
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' && steps.browser.outputs.capture != 'not_run' }}
+        run: python qa/scripts/renata-browser.py gate "$RUNNER_TEMP/renata-result.json" capture
