@@ -35,7 +35,8 @@ begin
   if exists(select 1 from unnest(prods) x where not exists(select 1 from gestlok_chat_private.productos p join gestlok_chat_private.categorias c on c.id=p.categoria_id where p.sucursal_id=p_sucursal and c.sucursal_id=p_sucursal and p.nombre=x and c.nombre=any(cats)) and not (x=any(coalesce(anterior.productos_nombres,'{}')))) then raise exception 'Producto ajeno a las categorías del local';end if;
   detalle=nullif(p_cambio->>'detalle_clave','');grupo=nullif(btrim(p_cambio->>'detalle_grupo'),'');
   if (detalle is null)<>(grupo is null) or (grupo is not null and length(grupo)>120) or (detalle is not null and (detalle=k or not exists(select 1 from gestlok_chat_private.wai_carta_paginas w where w.sucursal_id=p_sucursal and w.clave=detalle))) then raise exception 'Revisá la foto de detalle y el grupo de opciones';end if;
-  if activo and foto='' and cardinality(cats)=0 then raise exception 'Una opción activa necesita una foto o categorías';end if;
+  if activo and not coalesce(gestlok_chat_private.wai_imagen_permitida(p_sucursal,foto),false) then raise exception 'Una opción visual activa necesita una foto autorizada';end if;
+  if activo and not coalesce(anterior.activa,false) and (select count(*) from gestlok_chat_private.wai_carta_paginas w where w.sucursal_id=p_sucursal and w.activa)>=6 then raise exception 'Máximo 6 botones visuales activos; archivá uno para habilitar otro';end if;
   if activo and exists(select 1 from gestlok_chat_private.wai_carta_paginas w where w.sucursal_id=p_sucursal and w.clave<>k and w.activa and lower(w.titulo)=lower(titulo_n)) then raise exception 'Ya existe una opción activa con ese nombre';end if;
   insert into gestlok_chat_private.wai_carta_paginas(sucursal_id,clave,titulo,imagen_url,orden,categorias,productos_nombres,detalle_clave,detalle_grupo,activa,editada_at)
   values(p_sucursal,k,titulo_n,foto,orden_n,cats,prods,detalle,grupo,activo,clock_timestamp())
