@@ -206,6 +206,7 @@ export function GestlokHome() {
           <nav className="glh-nav" aria-label="Secciones">
             <a href="#como-funciona">Cómo funciona</a>
             <a href="/demo/">Demo</a>
+            <a href="/wai/">GESTLOK WAI</a>
             <a href="#contacto">Contacto</a>
           </nav>
           <a className="glh-marca" href="#inicio" aria-label="GESTLOK, volver al inicio">

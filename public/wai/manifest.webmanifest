@@ -1,0 +1,18 @@
+{
+  "id": "/wai/",
+  "name": "GESTLOK WAI",
+  "short_name": "GESTLOK WAI",
+  "description": "Atención por WhatsApp para tu comercio: conversaciones, pedidos y vinculación por local.",
+  "lang": "es-AR",
+  "start_url": "/wai/",
+  "scope": "/wai/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#142d44",
+  "theme_color": "#142d44",
+  "icons": [
+    {"src": "/icons/gestlok-app-v2-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/gestlok-app-v2-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/gestlok-maskable-v2-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
