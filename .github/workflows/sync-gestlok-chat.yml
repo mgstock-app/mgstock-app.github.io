@@ -9,6 +9,7 @@ on:
       - 'supabase/functions/gestlok-chat-push/**'
       - 'supabase/migrations/*_gestlok_chat_*.sql'
       - 'entornos/sql.txt'
+      - 'entornos/sql/*-base-pruebas.sql'
       - 'entornos/backend.mjs'
       - 'entornos/entornos.json'
       - 'vercel.json'
@@ -75,6 +76,7 @@ jobs:
             git -C "$folder" add -A -- public/chat public/icons public/img public/vendor \
               supabase/functions/gestlok-chat supabase/functions/gestlok-chat-push \
               supabase/migrations entornos/backend.mjs entornos/entornos.json entornos/sql.txt \
+              entornos/sql/registro-base-pruebas.sql entornos/sql/marca-base-pruebas.sql \
               vercel.json scripts/vercel-ignore-entornos.mjs
             if git -C "$folder" diff --cached --quiet; then
               echo "### $branch: ya estaba sincronizado" >> "$GITHUB_STEP_SUMMARY"
