@@ -261,7 +261,7 @@ function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
  const latencyBox=node('section',{class:'connection-card','aria-live':'polite'});
  const paintLatency=(data,rows)=>{
   const heading=node('h3',{},'Tiempo de respuesta · últimos 15 minutos');
-  const info=node('p',{class:'hint'},'Objetivo: máximo 5 s. Entre 5 y 10 s aceptable; 10 a 20 s demora; más de 20 s alerta. Se mide hasta la confirmación registrada de WhatsApp, no garantiza entrega instantánea.');
+  const info=node('p',{class:'hint'},'Las respuestas automáticas esperan 5 s antes de poder enviarse. Confirmación hasta 10 s: objetivo; 10 a 20 s: demora; más de 20 s: alerta. Se mide hasta la confirmación registrada de WhatsApp, no garantiza entrega instantánea.');
   if(!Array.isArray(rows)){latencyBox.replaceChildren(heading,info,node('p',{class:'hint'},'Medición no disponible. No se asume una entrega correcta.'));return;}
   const byId=new Map(rows.map(r=>[r.id,r]));
   const items=data.filter(r=>r.habilitada).map(r=>{
@@ -348,7 +348,7 @@ function clearPrivate(){
 }
 async function logout(){clearPrivate();await sb.auth.signOut();login();}
 function renderShell(){
- const label=sessionLocal.empresa+' · '+sessionLocal.nombre;
+ const label=trialPanel?'Mi Gusto (Prueba)':sessionLocal.empresa+' · '+sessionLocal.nombre;
  document.title=label+' · GESTLOK WAI';
  notice=node('div',{class:'notice',role:'status'},'Verificando WhatsApp…');
  search=node('input',{class:'search',type:'search',placeholder:'Buscar conversación', 'aria-label':'Buscar conversación',oninput:()=>renderList()});
@@ -362,7 +362,7 @@ function renderShell(){
  compose=node('form',{class:'compose',hidden:true,onsubmit:async e=>{e.preventDefault();await respond();}},textarea,send);
  drawerBody=node('div',{class:'drawer-body'});drawerTitle=node('h2');drawerStatus=node('p',{role:'status',class:'hint'});
  overlay=node('div',{class:'overlay',hidden:true},node('section',{class:'drawer',role:'dialog','aria-modal':'true','aria-label':'Herramientas del local'},node('header',{class:'drawer-head'},drawerTitle,button('×',closeDrawer,'icon-btn',{'aria-label':'Cerrar'})),drawerBody));
- shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(trialPanel?'PRUEBA · '+label:label),node('div',{class:'top-actions'},
+ shell=node('main',{class:'shell'},node('header',{class:'topbar'},brand(label),node('div',{class:'top-actions'},
   portal?.administradora?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Ver el estado de todos los locales'},'Conexiones'):(portal?.locales||[]).filter(l=>['gestionar','configurar'].includes(l.nivel)).length>1?node('a',{class:'toolbar-btn',href:hostSlug?'https://gestlok.com.ar/wai/':portalBase,title:'Cambiar de local'},'Mis locales'):null,
   button('📱 Vincular',()=>openDrawer('conexion'),'toolbar-btn',{'aria-label':'Vincular WhatsApp'}),
   button('⚙',()=>openDrawer('config'),'icon-btn',{'aria-label':'Configuración del local',title:'Configuración'}),

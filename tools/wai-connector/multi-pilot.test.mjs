@@ -66,7 +66,7 @@ test('un envío lento de un contacto nuevo no bloquea la atención de otro clien
  const received=[];let release,started;
  const slow=new Promise(r=>{release=r}),began=new Promise(r=>{started=r});
  const multi=multiPilotTransport({active:()=>true,initialOpen:true,initialRevision:'r',initialGrants:[grant(0)],now:()=>t,socket:{},
-  workerFactory:({initialGrant:p})=>({receive:async e=>{received.push(p.id);if(p.id==='p1'){started();await slow;}},tick:async()=>{},reset(){},receipt:async()=>{},contacts:async()=>{}}),
+  workerFactory:({initialGrant:p})=>({receive:async()=>{received.push(p.id);if(p.id==='p1'){started();await slow;}},tick:async()=>{},reset(){},receipt:async()=>{},contacts:async()=>{}}),
   rpc:async(name)=>name==='gestlok_chat_wai_admitir_entrada'?grant(1):null});
  const msg=(i)=>({key:{remoteJid:jids[i],id:'m'+i,fromMe:false},message:{conversation:'Hola'},messageTimestamp:Math.floor(t/1000)});
  const pending=multi.receive({type:'notify',messages:[msg(1),msg(0)]});
