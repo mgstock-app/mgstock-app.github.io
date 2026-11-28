@@ -772,6 +772,7 @@ async function renderCartaEditor(host){
    const save=node('button',{type:'submit',class:'btn primary'},'Guardar botón');
    const form=node('form',{class:'wai-settings',onsubmit:async e=>{
     e.preventDefault();if(photo.busy()||!alive()||save.disabled)return;
+    if(enabled.checked&&!photo.value()){status.textContent='Subí una foto para activar esta opción visual.';return;}
     const selected=catFields.filter(x=>x.field.checked).map(x=>x.n);
     const names=all.checked?[]:products.filter(x=>x.field.checked&&(x.c===null||selected.includes(x.c))).map(x=>x.n);
     if(!all.checked&&!names.length){status.textContent='Elegí productos o activá Todos los productos.';return;}
@@ -782,7 +783,7 @@ async function renderCartaEditor(host){
    }},node('h3',{},p?'Editar opción':'Nueva opción'),node('label',{},'Nombre que ve el cliente',title),node('label',{class:'wai-check'},enabled,'Opción activa (destildá para archivar)'),node('label',{},'Orden',order),node('h4',{},'Foto asociada'),photo.view,node('h4',{},'Categorías de la carta'),catList,node('label',{class:'wai-check'},all,'Todos los productos de las categorías elegidas'),productList,node('details',{},node('summary',{},'Foto adicional para elegir gustos u opciones'),node('label',{},'Otra foto de carta',detail),node('label',{},'ID del grupo de opciones del producto',group),node('p',{class:'hint'},'Opcional: conservá el vínculo existente o dejalo vacío. El grupo debe coincidir con el configurado en Carta y precios.')),save,button('Cancelar',()=>{status.textContent='';show();},'btn'));
    list.replaceChildren(form);status.textContent='';
   }
-  host.replaceChildren(node('h2',{},'Botones y respuestas'),node('p',{class:'hint'},'Cada comercio edita su propia carta visual. El nombre será la opción que recibe el cliente; podés asociar una foto, elegir productos, ordenar o archivar. Los precios se toman del catálogo del local. Para consultas o servicios sin pedido, usá Editar respuestas de atención.'),header,status,list);show();
+  host.replaceChildren(node('h2',{},'Botones y respuestas'),node('p',{class:'hint'},'Cada comercio edita su propia carta visual (hasta 6 botones activos). El nombre será la opción que recibe el cliente; podés asociar una foto, elegir productos, ordenar o archivar. Los precios se toman del catálogo del local. Para consultas o servicios sin pedido, usá Editar respuestas de atención.'),header,status,list);show();
  }catch(err){if(alive())host.replaceChildren(node('p',{class:'error'},err.message));}
 }
 async function renderAttentionSettings(host){

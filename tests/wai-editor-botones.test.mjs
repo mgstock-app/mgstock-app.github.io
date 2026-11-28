@@ -33,8 +33,13 @@ const orig=await call(A);assert.equal(orig.paginas.length,1);assert.equal(orig.p
 const row=orig.paginas[0];await assert.rejects(call(A,{...row,titulo:'Cambio',categorias:['Categoría B']}),/ajena/);await assert.rejects(call(A,{...row,titulo:'Cambio',imagen_url:'https://otro.example/test.jpg'}),/imagen autorizada/);
 const updated=await call(A,{...row,titulo:'Nuevo nombre',activa:false});assert.equal(updated.paginas[0].titulo,'Nuevo nombre');assert.equal(updated.paginas[0].activa,false);assert.equal(updated.paginas[0].imagen_url,row.imagen_url);
 await assert.rejects(call(A,row),/cambió/);
-const added=await call(A,{clave:null,titulo:'Nuevo botón',activa:true,imagen_url:'',orden:2,categorias:['Categoría A'],productos_nombres:['Producto A'],detalle_clave:null,detalle_grupo:null});assert.equal(added.paginas.length,2);
-await db.exec('reset role');const m=(await db.query('select gestlok_chat_private.wai_menu_paginas($1::uuid) as x',[A])).rows[0].x;assert.deepEqual(m,[]);
+const change={clave:null,titulo:'Nuevo botón',activa:true,imagen_url:'',orden:2,categorias:['Categoría A'],productos_nombres:['Producto A'],detalle_clave:null,detalle_grupo:null};
+await assert.rejects(call(A,change),/necesita una foto/);
+change.imagen_url='https://storage.example/storage/v1/object/public/gestlok-chat-cartas/'+A+'/test.jpg';
+const added=await call(A,change);assert.equal(added.paginas.length,2);
+for(let i=0;i<5;i++)await call(A,{...change,titulo:'Botón '+i});
+await assert.rejects(call(A,{...change,titulo:'Séptimo'}),/Máximo 6/);
+await db.exec('reset role');const m=(await db.query('select gestlok_chat_private.wai_menu_paginas($1::uuid) as x',[A])).rows[0].x;assert.equal(m.length,6);assert.ok(m.every(x=>x.id!=='carta_previa'));
 const offerings=(await db.query("select count(*)::int as n from gestlok_chat_private.wai_ofertas($1::uuid,'carta_previa')",[A])).rows[0].n;assert.equal(offerings,0);
 
 }finally{await db.close();}
