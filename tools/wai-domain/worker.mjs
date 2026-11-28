@@ -2,7 +2,7 @@
 // Exact custom domains are provisioned separately on Cloudflare.
 const ORIGIN='https://gestlok.com.ar';
 const hostPattern=/^wai-([a-z0-9]+(?:-[a-z0-9]+)*)\.gestlok\.com\.ar$/;
-const assetPath=/^\/(?:chat\/(?:wai\/|panel\/|carta-wai\/|config\.js$|gestlok-monograma\.svg$|wallpaper-gestlok\.svg$)|vendor\/|icons\/|img\/)/;
+const assetPath=/^\/(?:chat\/(?:wai\/|panel\/|carta-wai\/|config\.js$|motor\.js$|gestlok-monograma\.svg$|wallpaper-gestlok\.svg$)|vendor\/|icons\/|img\/)/;
 export async function handle(request,fetcher=fetch){
  const url=new URL(request.url),slug=hostPattern.exec(url.hostname)?.[1];
  if(!slug||slug.length<3||slug.length>60||url.protocol!=='https:')return new Response('Dominio WAI inválido',{status:404});

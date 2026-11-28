@@ -303,6 +303,8 @@
 
   // Comercial WAI is independent of legacy Premium and laboratory connections.
   let waiCommercialRows=null,waiOrgRows=[],waiCommercialBusy=false,waiCommercialError='',waiOrgError='',waiCommercialEpoch=0;
+  // Subdominios ya agregados en Cloudflare (Worker gestlok-wai-dominios). Sumar aquí cada local nuevo.
+  const waiSubdominiosActivos=new Set(['mi-gusto-munro','mi-gusto-torcuato']);
   const waiRubros=Object.freeze({gastronomia:'Gastronomía',cafeteria:'Cafetería o panadería',almacen:'Almacén o kiosco',perfumeria:'Perfumería o cosmética',ferreteria:'Ferretería',mascotas:'Pet shop',servicios:'Servicios',otro:'Otro rubro'});
   function waiCommercialReset(){waiCommercialEpoch++;waiCommercialRows=null;waiOrgRows=[];waiCommercialBusy=false;waiCommercialError='';waiOrgError='';}
   async function waiCommercialRequest(args={p_accion:'listar'},orgAction=false){
@@ -335,17 +337,17 @@
       const ownerOptions=owners.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===o.responsable_id?' selected':'')+'>'+esc(x.nombre)+'</option>').join('');
       const ownerForm=owners.length?'<form data-wai-owner-form data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><label>Dueño responsable <select name="owner"'+disable+'><option value="">Sin asignar</option>'+ownerOptions+'</select></label><button class="btn" type="submit"'+disable+'>Guardar responsable</button></form>':'';
       const numbers=Array.isArray(r.numeros)?r.numeros:[],enabled=!!r.activo;
-      const rubro=o.rubro||r.rubro||'',motorDisponible=rubro==='gastronomia';
+      const rubro=o.rubro||r.rubro||'',motorDisponible=Object.hasOwn(waiRubros,rubro);
       const rubroOptions=Object.entries(waiRubros).map(([k,t])=>'<option value="'+esc(k)+'"'+(k===rubro?' selected':'')+'>'+esc(t)+'</option>').join('');
       const rubroForm='<form data-wai-rubro-form data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><label>Rubro <select name="rubro" required'+(disable||(enabled?' disabled':''))+'><option value="">Elegir rubro</option>'+rubroOptions+'</select></label><button class="btn" type="submit"'+(disable||(enabled?' disabled':''))+'>Guardar rubro</button></form>';
-      const rubroNote=rubro&&!motorDisponible?'<p><small>Rubro registrado · motor específico en preparación. No se conectará WhatsApp ni se utilizará la carta gastronómica.</small></p>':'';
+      const rubroNote=!rubro?'<p><small>Elegí el rubro para poder activar WAI en este local.</small></p>':'';
       const registered=numbers.filter(n=>n.registrado);
       const numberRows=registered.map((n,j)=>'<div class="gl-ch-chat-row"><div><b>'+esc(n.numero)+'</b><p>'+esc(waiLabels[n.estado]||'Estado no comprobado')+'</p></div><button type="button" class="btn" data-wai-commercial="numero" data-row="'+i+'" data-number="'+j+'"'+(disable||(!enabled&&!n.activo?' disabled':''))+'>'+ (n.activo?'Desactivar número':'Activar número')+'</button></div>').join('');
       const href=safeSlug(r.slug)?'/chat/wai/?local='+encodeURIComponent(r.slug):'';
       return '<article class="gl-ch-chat-row"><div style="width:100%"><h4>'+esc(r.nombre)+'</h4><p><strong>'+ (enabled?'🟢 Activo':'⚪ Inactivo')+'</strong> · '+(enabled?registered.filter(n=>n.activo).length:0)+' número(s) activo(s)</p>'+
         '<p>Rubro: '+esc(waiRubros[rubro]||'Sin asignar')+' · '+(o.plantilla?'Configuración base de empresa':'Configuración independiente')+'</p>'+rubroForm+rubroNote+ownerForm+
-        (safeSlug(r.slug)?'<p><small>Subdominio previsto: '+'wai-'+esc(r.slug)+'.gestlok.com.ar (pendiente de verificación DNS)</small></p>':'')+
-        '<div class="gl-ch-chat-actions"><button type="button" class="btn '+(!enabled?'primary':'')+'" data-wai-commercial="local" data-row="'+i+'"'+(disable||(!enabled&&!motorDisponible?' disabled':''))+'>'+(enabled?'Desactivar local':motorDisponible?'Activar gastronomía':'Activación no disponible')+'</button>'+
+        (safeSlug(r.slug)?(waiSubdominiosActivos.has(r.slug)?'<p><small>Espacio del local: <a href="https://wai-'+esc(r.slug)+'.gestlok.com.ar/" target="_blank" rel="noopener">wai-'+esc(r.slug)+'.gestlok.com.ar</a></small></p>':'<p><small>Subdominio wai-'+esc(r.slug)+'.gestlok.com.ar: agregalo en Cloudflare → Worker gestlok-wai-dominios → Domains. Mientras tanto el local entra por gestlok.com.ar/chat/wai/.</small></p>'):'')+
+        '<div class="gl-ch-chat-actions"><button type="button" class="btn '+(!enabled?'primary':'')+'" data-wai-commercial="local" data-row="'+i+'"'+(disable||(!enabled&&!motorDisponible?' disabled':''))+'>'+(enabled?'Desactivar local':motorDisponible?'Activar WAI':'Elegí el rubro')+'</button>'+
         (enabled&&href?'<a class="btn" href="'+esc(href)+'" target="_blank" rel="noopener">Abrir local · ajustes y QR</a>':'')+(r.id&&motorDisponible?'<button class="btn" type="button" data-wai-commercial="plantilla" data-row="'+i+'"'+disable+'>Usar carta como base de empresa</button>':'')+'</div>'+
         numberRows+(enabled?'<form data-wai-commercial-register data-row="'+i+'" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><label>Número internacional <input type="tel" name="numero" placeholder="+54911…" required autocomplete="off"'+disable+'></label><button class="btn primary" type="submit"'+disable+'>Agregar número</button></form>':'')+
         '</div></article>';
@@ -359,7 +361,7 @@
       (waiCommercialRows?'<p><b>'+rows.filter(r=>r.activo).length+' activos · '+rows.filter(r=>!r.activo).length+' inactivos</b></p>':'')+
       (waiCommercialError?'<p role="alert" class="gl-wa-error">'+esc(waiCommercialError)+'</p>':'')+(waiOrgError?'<p role="alert">'+esc(waiOrgError)+'</p>':'')+
       (waiCommercialBusy?'<p role="status">Consultando…</p>':'')+
-      '<p><small>Podés registrar todos los rubros. Solo Gastronomía dispone hoy de motor WAI; los demás quedan en preparación, sin números activos ni cobros.</small></p>'+
+      '<p><small>Todos los rubros usan el mismo motor de atención y pedidos; el rubro define la atención inicial y las palabras (carta o catálogo). Antes de vincular, el dueño acepta el riesgo de la conexión no oficial. <a href="/chat/wai/" target="_blank" rel="noopener">Servidor central y espacios WAI</a></small></p>'+
       '<div class="gl-ch-chat-list">'+(grouped||(waiCommercialRows?'<p>Sin locales registrados.</p>':''))+'</div></section>';
   }
   function waiCommercialAct(btn){
@@ -371,9 +373,9 @@
     const base={p_accion:action,p_tenant:r.tenant,p_local:r.local_id};
     if(action==='local'){
       const rubro=waiOrgRows.find(o=>o.tenant===r.tenant&&o.local_id===r.local_id)?.rubro||r.rubro;
-      if(!r.activo&&rubro!=='gastronomia')return;
-      if(!window.confirm(r.activo?'¿Pausar WAI de este local? Se conserva el historial.':'¿Habilitar WAI para este local gastronómico?'))return;
-      void waiCommercialRequest({...base,p_activo:!r.activo,p_rubro:'gastronomia'});
+      if(!r.activo&&!Object.hasOwn(waiRubros,rubro||''))return;
+      if(!window.confirm(r.activo?'¿Pausar WAI de este local? Se conserva el historial.':'¿Habilitar WAI para este local ('+waiRubros[rubro]+')?'))return;
+      void waiCommercialRequest({...base,p_activo:!r.activo,p_rubro:rubro||r.rubro});
     }else if(action==='plantilla'){
       if(!window.confirm('¿Usar la carta y ajustes comunes de '+r.nombre+' como base para futuros locales de esta empresa? No cambia los locales existentes.'))return;
       void waiCommercialRequest(base,true);
@@ -456,9 +458,9 @@
        '<small>Última señal: '+esc(r.senal_at?new Date(r.senal_at).toLocaleString('es-AR'):'Nunca')+'</small>'+
        (signal?waiQR(r):'')+
        (waiPrepared?.id===r.id?'<p><b>Clave privada del conector (solo esta vez)</b></p><code style="overflow-wrap:anywhere;user-select:all">'+esc(waiPrepared.clave)+'</code><p><small>Guardala en el dispositivo autorizado. No la envíes por mensajes ni la publiques. ID: '+esc(r.id)+'</small></p><button type="button" class="btn" data-wai-hide-key>Ocultar clave</button>':'')+'</div><div class="gl-ch-chat-actions">'+
-       (!r.preparada&&r.habilitada?'<button type="button" class="btn" data-wai-support="preparar" data-id="'+esc(r.id)+'"'+(waiBusy?' disabled':'')+'>Preparar conector</button>':'')+
+       (!r.preparada&&r.habilitada?'<small>La conecta el servidor central (INICIAR-WAI-PRODUCCION) cuando el dueño acepta el riesgo en Vincular.</small>':'')+
        (r.preparada&&r.habilitada?'<button type="button" class="btn" data-wai-support="reconectar" data-id="'+esc(r.id)+'"'+(!canRecover||waiBusy?' disabled':'')+'>Restablecer señal</button><button type="button" class="btn" data-wai-support="qr" data-id="'+esc(r.id)+'"'+(!canRecover||waiBusy?' disabled':'')+'>Generar nuevo QR</button>':'')+
-       (r.preparada&&r.habilitada&&!signal?'<small>Revisá el dispositivo del conector. Sin internet no se puede recuperar a distancia.</small><button type="button" class="btn" data-wai-support="rotar_clave" data-id="'+esc(r.id)+'"'+(waiBusy?' disabled':'')+'>Reemplazar clave del conector</button>':'')+'</div></article>';
+       (r.preparada&&r.habilitada&&!signal?'<small>Revisá que INICIAR-WAI-PRODUCCION esté abierto en la PC y con internet. Sin internet no se puede recuperar a distancia.</small>':'')+'</div></article>';
     }).join('');
     return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Centro de conexiones GESTLOK WAI"><header><h2>GESTLOK WAI · Conexiones por usuario y local</h2><button type="button" class="btn" data-wai-support="listar"'+(waiBusy?' disabled':'')+'>Actualizar estado</button></header>'+
       '<p><a class="btn" href="/chat/wai/" target="_blank" rel="noopener">Abrir espacios WAI de los locales</a></p><p>Incidencias de todos los comercios y recuperación de sesiones. No requieren contratar YCloud. El estado de sesión no confirma que la IA esté respondiendo.</p>'+

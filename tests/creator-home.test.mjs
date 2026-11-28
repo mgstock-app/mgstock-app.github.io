@@ -867,19 +867,17 @@ test('WAI comercial: panel exclusivo, lectura real y controles por empresa y loc
  const other=load(async()=>({data:DASH}),{email:'other@example.com'});other.h.mode();await tick();other.h.setTab('wai');assert.notEqual(other.h.tab(),'wai');assert.doesNotMatch(other.h.view({parts:{}}),/data-ch-tab="wai"/);
 });
 
-test('WAI: rubro declarado por local, herencia visible y motor no gastronómico en preparación',async()=>{
+test('WAI: rubro declarado por local, herencia visible y motor disponible para todos los rubros',async()=>{
  const data=[{tenant:'a',local_id:'uno',slug:'a-uno',empresa:'A',nombre:'Munro',rubro:'gastronomia',activo:true,numeros:[]},{tenant:'b',local_id:'uno',slug:'b-uno',empresa:'B',nombre:'Tienda',activo:false,numeros:[]}];
  const org=[{tenant:'a',local_id:'uno',rubro:'gastronomia',duenos:[]},{tenant:'b',local_id:'uno',rubro:'perfumeria',duenos:[]}];
  const r=load(async(fn,args)=>{if(fn==='gestlok_chat_wai_admin_rubro'){org[1].rubro=args.p_rubro;return {data:args.p_rubro};}return {data:fn==='gestlok_creator_dashboard'?DASH:fn==='gestlok_chat_wai_admin_organizacion'?org:data};});
  r.h.mode();await tick();await tick();r.h.setTab('wai');r.h.view({parts:{}});await tick();
  let html=r.h.view({parts:{}});
  assert.match(html,/Perfumería o cosmética/);
- assert.match(html,/motor específico en preparación/);
- assert.match(html,/data-row="1" disabled>Activación no disponible/);
- assert.doesNotMatch(html,/data-wai-commercial-register data-row="1"/);
- const before=r.calls.length;
- r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-wai-commercial]'?{dataset:{waiCommercial:'local',row:'1'}}:null}});await tick();
- assert.equal(r.calls.length,before,'un rubro sin motor no puede activar WAI');
+ assert.match(html,/data-row="1">Activar WAI/);
+ assert.doesNotMatch(html,/motor específico en preparación/);
+ assert.doesNotMatch(html,/data-wai-commercial-register data-row="1"/,'sin activar no se registran números');
+ assert.match(html,/wai-a-uno\.gestlok\.com\.ar: agregalo en Cloudflare/);
  r.listeners.submit({preventDefault(){},target:{matches:s=>s==='[data-wai-rubro-form]',dataset:{row:'1'},elements:{rubro:{value:'servicios'}}}});await tick();await tick();
  const i=r.calls.lastIndexOf('gestlok_chat_wai_admin_rubro');assert.ok(i>=0);
  assert.deepEqual(JSON.parse(JSON.stringify(r.argsLog[i])),{p_tenant:'b',p_local:'uno',p_rubro:'servicios'});
