@@ -72,30 +72,46 @@ async function init(){
   clearInterval(navigatorTimer);navigatorTimer=setInterval(()=>{if(!document.hidden)void refresh();},5000);
  }catch{if(mine===generation)access('No pudimos abrir WAI','Revisá la conexión o volvé a ingresar. Este espacio puede estar pendiente de publicación.',button('Reintentar',()=>void init()));}
 }
+// El archivo queda disponible en la tarjeta: si el navegador no lo descarga solo
+// (por ejemplo, el navegador integrado de Claude), se toca el enlace o se copia.
+let centralFile=null;
 function downloadCentralConfig(key){
  if(!/^[a-f0-9]{64}$/.test(key||''))throw Error('Configuración central inválida.');
  // Producción y Prueba usan archivos distintos: el conector los guarda en carpetas privadas separadas.
  const C=window.GESTLOK_CHAT_CONFIG,prod=!trialEnvironment();
  const config=prod?{entorno:'produccion',url:C.url,anonKey:C.key,central:true,centralKey:key,sessions:[]}:{entorno:'prueba',url:C.url,anonKey:C.key,testOnly:true,enableTestMessages:true,central:true,centralKey:key,sessions:[]};
- const url=URL.createObjectURL(new Blob([JSON.stringify(config,null,2)],{type:'application/json'}));
- const a=node('a',{href:url,download:prod?'gestlok-wai-produccion.json':'gestlok-wai-servidor-central.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ const text=JSON.stringify(config,null,2),name=prod?'gestlok-wai-produccion.json':'gestlok-wai-servidor-central.json';
+ if(centralFile)URL.revokeObjectURL(centralFile.url);
+ centralFile={name,text,url:URL.createObjectURL(new Blob([text],{type:'application/json'}))};
+ try{const a=node('a',{href:centralFile.url,download:name});document.body.append(a);a.click();a.remove();}catch{/* queda el enlace visible */}
+ return centralFile;
 }
 function startAdminHealth(host,mine,central){
- let centralBusy=false,centralSignature='';
+ let centralBusy=false,centralSignature='',centralAsk='',centralMsg='';
  const paintCentral=d=>{
   if(!central||centralBusy)return;
-  const signature=JSON.stringify(d);
+  const signature=JSON.stringify(d)+'|'+centralAsk+'|'+centralMsg+'|'+(centralFile?.url||'');
   if(signature===centralSignature)return;centralSignature=signature;
-  const status=node('p',{role:'status',class:'hint'});
+  const status=node('p',{role:'status',class:'hint'},centralMsg),prod=!trialEnvironment();
+  // Confirmación dentro de la tarjeta: los cuadros del navegador (confirm) no aparecen en todos los navegadores.
+  const ask=action=>{centralAsk=action;paintCentral(d);};
   const take=async(action)=>{
    if(centralBusy)return;
-   const prod=!trialEnvironment();
-   if(!confirm(action==='rotar'?'¿Reemplazar la configuración privada del servidor central'+(prod?' de PRODUCCIÓN':'')+'? Solo si perdiste la anterior y el servicio está detenido.':prod?'¿Preparar el servidor central de PRODUCCIÓN una única vez? Va a atender los locales WAI activos de gestlok.com.ar cuyos dueños aceptaron el riesgo.':'¿Preparar el servidor central una única vez? Detené el conector anterior antes de importarlo. El servicio administrará todos los locales de ensayo habilitados.'))return;
-   centralBusy=true;status.textContent='Preparando configuración privada…';
-   try{const r=await rpc('wai_central_admin',{p_accion:action});downloadCentralConfig(r.clave);status.textContent=trialEnvironment()?'Importá este único archivo con CONFIGURAR-WAI y luego iniciá el servicio. No descargues archivos por local.':'Abrí CONFIGURAR-WAI, arrastrá este archivo y después abrí INICIAR-WAI-PRODUCCION. Dejá la PC encendida. No compartas el archivo.';centralSignature='';}
-   catch(e){status.textContent=e.message;}finally{centralBusy=false;}
+   centralBusy=true;centralAsk='';status.textContent='Preparando configuración privada…';
+   let next=d;
+   try{const r=await rpc('wai_central_admin',{p_accion:action});downloadCentralConfig(r.clave);centralMsg='';next={...(d||{}),preparado:true,activo:false};}
+   catch(e){centralMsg=e.message;}finally{centralBusy=false;}
+   paintCentral(next);
   };
-  central.replaceChildren(node('h2',{},trialEnvironment()?'Servidor central WAI':'Servidor central WAI · producción'),node('strong',{class:d?.activo?'wai-health-ok':'wai-health-warn'},d?.activo?'● Servicio central en línea':d?.preparado?'⚠ Servidor preparado · sin señal':'Pendiente de instalación única'),node('p',{class:'hint'},'Una sola instancia de Node.js administra todas las líneas habilitadas. Nuevas altas, pausas y QR desde GESTLOK, sin otra consola.'),node('p',{class:'hint'},(d?.lineas||0)+' líneas habilitadas · '+(d?.senal_at?'Última señal: '+scheduledLabel(d.senal_at):'Sin señal todavía')),!d?.preparado?button('Preparar servidor central (una sola vez)',()=>void take('preparar'),'btn primary'):!d?.activo?button('Recuperar configuración central',()=>void take('rotar'),'btn'):null,status);
+  const question=centralAsk==='rotar'?'¿Reemplazar la configuración privada del servidor central'+(prod?' de PRODUCCIÓN':'')+'? Solo si perdiste la anterior y el servicio está detenido.':prod?'¿Preparar el servidor central de PRODUCCIÓN? Va a atender los locales WAI activos de gestlok.com.ar cuyos dueños aceptaron el riesgo. Se hace una sola vez.':'¿Preparar el servidor central una única vez? Detené el conector anterior antes de importarlo.';
+  const confirmBox=centralAsk?node('div',{class:'wai-central-confirm'},node('p',{},question),button(centralAsk==='rotar'?'Sí, reemplazar':'Sí, preparar',()=>void take(centralAsk),'btn primary'),button('Cancelar',()=>{centralAsk='';paintCentral(d);},'btn')):null;
+  const fileBox=centralFile?node('div',{class:'wai-central-file'},
+   node('p',{},node('strong',{},'Archivo listo: '+centralFile.name)),
+   node('p',{class:'hint'},'Si no se descargó solo, tocá «Descargar archivo». Después abrí CONFIGURAR-WAI, arrastrá el archivo y presioná Enter; por último abrí '+(prod?'INICIAR-WAI-PRODUCCION':'INICIAR-WAI')+'. No compartas este archivo.'),
+   node('a',{class:'btn primary',href:centralFile.url,download:centralFile.name},'Descargar archivo'),
+   button('Copiar contenido',async()=>{try{await navigator.clipboard.writeText(centralFile.text);centralMsg='Contenido copiado. Pegalo en un archivo llamado '+centralFile.name+'.';}catch{centralMsg='No se pudo copiar. Usá «Descargar archivo».';}paintCentral(d);},'btn')):null;
+  const action=!d?.preparado?button('Preparar servidor central (una sola vez)',()=>ask('preparar'),'btn primary'):!d?.activo&&!centralFile?button('Recuperar configuración central',()=>ask('rotar'),'btn'):null;
+  central.replaceChildren(node('h2',{},prod?'Servidor central WAI · producción':'Servidor central WAI'),node('strong',{class:d?.activo?'wai-health-ok':'wai-health-warn'},d?.activo?'● Servicio central en línea':d?.preparado?'⚠ Servidor preparado · sin señal':'Pendiente de instalación única'),node('p',{class:'hint'},'Una sola instancia de Node.js administra todas las líneas habilitadas. Nuevas altas, pausas y QR desde GESTLOK, sin otra consola.'),node('p',{class:'hint'},(d?.lineas||0)+' líneas habilitadas · '+(d?.senal_at?'Última señal: '+scheduledLabel(d.senal_at):'Sin señal todavía')),confirmBox||action,fileBox,status);
  };
  let busy=false,actionBusy=false,last='',fail=false;
  const visible=()=>mine===generation&&host.isConnected&&!destroyed;
