@@ -303,6 +303,9 @@ exception when invalid_text_representation or insufficient_privilege then return
 end $$;
 revoke all on function public.gestlok_chat_puede_subir_carta(text) from public,anon,authenticated;
 grant execute on function public.gestlok_chat_puede_subir_carta(text) to authenticated;
+-- La política puede existir si la configuración comercial se aplicó previamente.
+-- Reaplicar exactamente la misma autorización dentro de esta migración.
+drop policy if exists gestlok_chat_cartas_subir on storage.objects;
 create policy gestlok_chat_cartas_subir on storage.objects for insert to authenticated
  with check(bucket_id='gestlok-chat-cartas' and public.gestlok_chat_puede_subir_carta(name));
 
