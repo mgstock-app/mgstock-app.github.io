@@ -59,6 +59,7 @@ async function init(){
   if(mine!==generation)return;
   portal=result;if(trialPanel&&result?.administradora!==true){access('Acceso exclusivo de administración','Este laboratorio está reservado a la administradora de GESTLOK.',button('Cerrar sesión',()=>void logout()),node('a',{href:'/login/'},'Volver al panel'));return;}const locals=Array.isArray(result?.locales)?result.locales:[];
   if(!slug){
+   if(result.administradora===true&&!trialEnvironment()){renderAdminDashboard(mine);return;}
    // Un solo local autorizado: entra directo. Con varios locales, elige de la lista.
    const propios=locals.filter(s=>['gestionar','configurar'].includes(s.nivel));
    if(result.administradora!==true&&propios.length===1&&valid(propios[0].slug)){location.replace(portalHref(propios[0].slug));return;}
@@ -66,7 +67,7 @@ async function init(){
    const setupBox=trialEnvironment()&&result.administradora===true?node('section',{class:'connection-card'},node('h2',{},'Comercios WAI'),node('p',{class:'hint'},'Habilitación exclusiva de la administración. El rubro de cada local se define en Comercios → WAI. En Prueba, usá únicamente líneas de ensayo autorizadas.'),button('Administrar rubro y habilitación',()=>void configureCommerce(setupBox),'btn primary'),button('Registrar número de ensayo',()=>void registerTrial(setupBox),'btn')):null;
    const central=result.administradora===true?node('section',{class:'connection-card'}):null;
    const health=result.administradora===true?node('section',{class:'wai-admin-health connection-card'}):null;
-   access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/login/'},'Volver a administración de GESTLOK'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
+   access(trialPanel?'GESTLOK WAI · Prueba':'Elegí tu local',trialPanel?'Laboratorio privado · Gastronomía · Mi Gusto (prueba). Los números, chats y pedidos no pertenecen a producción. Activá o pausá líneas de ensayo desde aquí.':links.length?'Tus espacios WAI autorizados.':'No tenés un espacio WAI habilitado en la empresa activa.',trialPanel?node('a',{class:'btn',href:'/wai/'},'Volver al panel WAI de producción'):null,...links,central,health,setupBox,button('Cerrar sesión',()=>void logout()),node('a',{href:hostSlug?'https://gestlok.com.ar/':'/'},'Volver a GESTLOK'));
    if(health){startAdminHealth(health,mine,central);}
    return;
   }
@@ -91,7 +92,143 @@ function downloadCentralConfig(key){
  try{const a=node('a',{href:centralFile.url,download:name});document.body.append(a);a.click();a.remove();}catch{/* queda el enlace visible */}
  return centralFile;
 }
-function startAdminHealth(host,mine,central){
+// Inicio exclusivo de la administradora en producción. Todas las acciones usan
+// RPC privadas y el identificador de empresa/local, nunca el nombre visible.
+function renderAdminDashboard(mine){
+ const RUBROS={gastronomia:'Gastronomía',cafeteria:'Cafetería o panadería',almacen:'Almacén o kiosco',perfumeria:'Perfumería o cosmética',ferreteria:'Ferretería',mascotas:'Pet shop',servicios:'Servicios',otro:'Otro rubro'};
+ const CUOTAS={al_dia:['Activo · al día','ok'],exento:['Activo · sin cargo','ok'],impago:['Inactivo · cuota impaga','bad'],vencida:['Cuota vencida · revisar','bad'],sin_registrar:['Cuota sin registrar','neutral']};
+ const visible=()=>mine===generation&&!destroyed&&dashboard.isConnected;
+ let tab='locales',company=null,owner=null,filter='',commercial=[],organization=[],cuotas=[],loading=false,ready=false,error='',noticeText='',noticed=0,healthKnown=false;
+ const state=(text,kind='neutral')=>node('span',{class:'wa-admin-badge '+kind},node('i',{'aria-hidden':'true'}),text);
+ const dateLabel=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR'):'';
+ const cuotaFor=(t,id)=>cuotas.find(c=>c.tenant===t&&c.owner===id)||{estado:'sin_registrar'};
+ const cuotaBadge=(t,id)=>{const c=cuotaFor(t,id),[label,kind]=CUOTAS[c.estado]||CUOTAS.sin_registrar;return state(label,kind);};
+ const orgFor=r=>organization.find(o=>o.tenant===r.tenant&&o.local_id===r.local_id)||{};
+ const responsable=r=>{const o=orgFor(r),ds=Array.isArray(o.duenos)?o.duenos:[];return o.responsable_id?{id:o.responsable_id,nombre:o.responsable||'Dueño'}:ds.length===1?ds[0]:{id:'',nombre:'Sin responsable asignado'};};
+ const registered=r=>Array.isArray(r.numeros)?r.numeros.filter(n=>n.registrado):[];
+ function groups(){
+  const map=new Map();
+  for(const r of commercial){
+   if(!map.has(r.tenant))map.set(r.tenant,{id:r.tenant,nombre:r.empresa||'Empresa',owners:new Map(),locals:[]});
+   const g=map.get(r.tenant),o=orgFor(r),own=responsable(r);
+   g.locals.push(r);
+   for(const d of (Array.isArray(o.duenos)?o.duenos:[])){
+    if(!g.owners.has(d.id))g.owners.set(d.id,{id:d.id,nombre:d.nombre,locals:[],authorized:[]});
+    g.owners.get(d.id).authorized.push(r);
+   }
+   if(!g.owners.has(own.id))g.owners.set(own.id,{...own,locals:[],authorized:[]});
+   g.owners.get(own.id).locals.push(r);
+  }
+  return [...map.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+ }
+ async function reload(action){
+  if(loading||!visible())return;
+  loading=true;error='';noticeText=action?'Guardando cambios…':'Actualizando información…';paint();
+  try{
+   if(action)await action();
+   const [cr,or,cu]=await Promise.all([rpc('wai_admin_comercial'),rpc('wai_admin_organizacion'),rpc('wai_admin_cuotas')]);
+   if(!visible())return;
+   if(![cr,or,cu].every(Array.isArray))throw Error('Respuesta de administración incompleta.');
+   commercial=cr;organization=or;cuotas=cu;ready=true;noticeText=action?'Cambios guardados.':'';
+  }catch(e){if(visible()){error=e.message||'No se pudo consultar el panel.';noticeText='';ready=false;}}
+  finally{loading=false;if(visible())paint();}
+ }
+ const mutate=(action)=>void reload(action);
+ const confirmation=node('dialog',{class:'wa-admin-confirm','aria-labelledby':'wa-admin-confirm-title'});
+ const closeConfirmation=()=>{if(typeof confirmation.close==='function')confirmation.close();else confirmation.removeAttribute('open');};
+ const confirmAction=(message,action)=>{
+  if(loading||!ready)return;
+  confirmation.replaceChildren(node('h2',{id:'wa-admin-confirm-title'},'Confirmar cambio'),node('p',{},message),node('div',{class:'actions'},button('Cancelar',closeConfirmation,'btn'),button('Confirmar',()=>{closeConfirmation();mutate(action);},'btn primary')));
+  if(typeof confirmation.showModal==='function'){if(!confirmation.open)confirmation.showModal();}else confirmation.setAttribute('open','');
+ };
+ const disabled=()=>loading||!ready;
+ const localHref=r=>valid(r.slug)?portalHref(r.slug):null;
+ const orgAction=(r,action,extra={})=>rpc('wai_admin_organizacion',{p_accion:action,p_tenant:r.tenant,p_local:r.local_id,...extra});
+ const commercialAction=(r,action,extra={})=>rpc('wai_admin_comercial',{p_accion:action,p_tenant:r.tenant,p_local:r.local_id,...extra});
+ function localCard(r,own){
+  const o=orgFor(r),rub=o.rubro||r.rubro||'',numbers=registered(r),pay=cuotaFor(r.tenant,own.id),blocked=pay.estado==='impago';
+  const rubro=node('select',{required:true,disabled:disabled()||r.activo,'aria-label':'Rubro de '+r.nombre},node('option',{value:''},'Elegí el rubro'),...Object.entries(RUBROS).map(([k,v])=>node('option',{value:k,selected:k===rub},v)));
+  const ownerSelect=node('select',{'aria-label':'Responsable de '+r.nombre,disabled:disabled()},node('option',{value:''},'Sin asignar'),...(o.duenos||[]).map(d=>node('option',{value:d.id,selected:d.id===o.responsable_id},d.nombre)));
+  const ownerForm=node('form',{class:'wa-admin-inline',onsubmit:e=>{e.preventDefault();if(r.activo&&cuotaFor(r.tenant,ownerSelect.value).estado==='impago'){alert('Pausá el local antes de asignar un responsable con cuota impaga.');return;}mutate(()=>orgAction(r,'responsable',{p_owner:ownerSelect.value}));}},node('label',{},'Responsable',ownerSelect),node('button',{type:'submit',class:'btn',disabled:disabled()},'Guardar'));
+  const rubroForm=node('form',{class:'wa-admin-inline',onsubmit:e=>{e.preventDefault();if(!Object.hasOwn(RUBROS,rubro.value))return;mutate(()=>rpc('wai_admin_rubro',{p_tenant:r.tenant,p_local:r.local_id,p_rubro:rubro.value}));}},node('label',{},'Rubro',rubro),node('button',{type:'submit',class:'btn',disabled:disabled()||r.activo},'Guardar'));
+  const phone=node('input',{type:'tel',name:'numero',placeholder:'+54911…',autocomplete:'off',required:true,disabled:disabled()||blocked});
+  const register=node('form',{class:'wa-admin-inline wa-admin-phone-form',onsubmit:e=>{
+   e.preventDefault();const n=phone.value.trim().replace(/[ ()-]/g,'');
+   if(!/^\+[1-9]\d{7,14}$/.test(n)){alert('Ingresá el número completo con código de país.');return;}
+   confirmAction('¿Registrar este número únicamente en '+r.nombre+'? La vinculación requiere la aceptación del titular.',()=>commercialAction(r,'registrar',{p_numero:n,p_activo:true}));
+  }},node('label',{},'Número internacional privado',phone),node('button',{type:'submit',class:'btn primary',disabled:disabled()||blocked},'Asignar número'));
+  const href=localHref(r);
+  const rows=numbers.map(n=>node('div',{class:'wa-admin-phone'},node('div',{},node('strong',{},n.numero),state(labels[n.estado]||'Sin señal comprobada',n.estado==='conectado'?'ok':n.activo?'bad':'neutral')),node('div',{class:'actions'},button(n.activo?'Pausar':'Habilitar',()=>confirmAction((n.activo?'¿Pausar ':'¿Habilitar ')+n.numero+' en este local?',()=>commercialAction(r,'numero',{p_id:n.id,p_activo:!n.activo})), 'btn',{disabled:disabled()||(!n.activo&&(!r.activo||blocked))}),href&&r.activo?node('a',{class:'btn',href:href+'&vincular=1'},'Conexión / QR'):null)));
+  return node('article',{class:'wa-admin-local'},node('div',{class:'wa-admin-card-head'},node('div',{},node('small',{class:'hint'},RUBROS[rub]||'Rubro sin asignar'),node('h3',{},r.nombre)),state(r.activo?'WAI habilitado':'WAI inactivo',r.activo?'ok':'bad')),
+   node('p',{class:'hint'},numbers.length+' número(s) registrado(s) · '+(o.plantilla?'Configuración base de la empresa':'Configuración independiente')),
+   blocked?node('p',{class:'wa-admin-warning'},'Cuota impaga. Registrá el pago antes de reactivar el local.'):null,
+   node('div',{class:'actions'},button(r.activo?'Pausar local':'Habilitar local',()=>confirmAction(r.activo?'¿Pausar WAI en '+r.nombre+'? Se conserva toda la configuración.':'¿Habilitar WAI en '+r.nombre+'?',()=>commercialAction(r,'local',{p_activo:!r.activo,p_rubro:rub})),r.activo?'btn':'btn primary',{disabled:disabled()||(!r.activo&&(!Object.hasOwn(RUBROS,rub)||blocked))}),href&&r.activo?node('a',{class:'btn',href},'Abrir espacio de atención'):null),
+   node('details',{class:'wa-admin-config'},node('summary',{},'Configuración del local y responsable'),rubroForm,ownerForm,r.id&&rub?button('Usar configuración como base de la empresa',()=>confirmAction('¿Usar los ajustes de este local como base para futuros locales?',()=>orgAction(r,'plantilla')),'btn',{disabled:disabled()}):null),
+   node('h4',{},'WhatsApp del local'),...rows,rows.length?null:node('p',{class:'hint'},'Todavía no hay un número asignado.'),r.activo&&!blocked?register:null);
+ }
+ const dashboard=node('main',{class:'wa-admin-dashboard'}),summary=node('div',{class:'wa-admin-metrics'}),tabs=node('nav',{class:'wa-admin-tabs','aria-label':'Administración WAI'}),topNotice=node('p',{class:'wa-admin-status',role:'status','aria-live':'polite'}),localHost=node('section',{class:'wa-admin-content'}),connectionHost=node('section',{class:'wa-admin-content',hidden:true}),trialHost=node('section',{class:'wa-admin-content',hidden:true}),central=node('section',{class:'connection-card wa-admin-central'}),health=node('section',{class:'wai-admin-health connection-card wa-admin-health-card'}),alertBadge=node('span',{class:'wa-admin-counter','aria-live':'polite'},'…');
+ const heading=node('div',{class:'wa-admin-title'},node('div',{},node('div',{class:'wa-admin-kicker'},'ADMINISTRACIÓN · PRODUCCIÓN'),node('h1',{},'Panel de GESTLOK WAI'),node('p',{},'Gestioná empresas, cuotas y números desde un solo lugar.')));
+ function setTab(t){tab=t;paint();}
+ const tabButtons={locales:button('Locales',()=>setTab('locales'),'wa-admin-tab'),prueba:button('Prueba',()=>setTab('prueba'),'wa-admin-tab'),avisos:button('Conexiones y avisos',()=>setTab('avisos'),'wa-admin-tab')};
+ tabButtons.avisos.append(alertBadge);tabs.append(...Object.values(tabButtons));
+ connectionHost.append(node('div',{class:'wa-admin-section-heading'},node('h2',{},'Conexiones y avisos'),node('p',{},'Los avisos se actualizan dentro de este panel cada 10 segundos. Las sesiones guardadas se recuperan sin QR cuando WhatsApp todavía las acepta.')),health,central);
+ trialHost.append(node('div',{class:'wa-admin-section-heading'},node('h2',{},'Tu laboratorio privado'),node('p',{},'Probá la misma experiencia de gastronomía de Mi Gusto con tu celular, sin afectar números, chats ni pedidos comerciales.')),node('article',{class:'wa-admin-trial'},node('div',{class:'wa-admin-trial-icon','aria-hidden':'true'},'↗'),node('h3',{},'GESTLOK WAI · Prueba'),state('Base independiente','ok'),node('p',{},'Controlá tu línea de ensayo, la vinculación por QR, el menú, las conversaciones y los pedidos. La sesión se valida contra la base de Prueba, nunca contra producción.'),node('div',{class:'actions'},node('a',{class:'btn primary',href:'/chat/wai/prueba/'},'Abrir laboratorio privado'),node('a',{class:'btn',href:'/chat/wai/prueba/?local=mi-gusto-munro'},'Probar Munro'),node('a',{class:'btn',href:'/chat/wai/prueba/?local=mi-gusto-torcuato'},'Probar Don Torcuato'))));
+ function paymentPanel(g,o){
+  if(!o.id)return node('p',{class:'wa-admin-warning'},'Asigná un responsable al local para administrar su cuota.');
+  const c=cuotaFor(g.id,o.id),until=node('input',{type:'date',required:true,value:c.hasta||'',disabled:disabled(),'aria-label':'Cuota cubierta hasta'});
+  const save=(a,h=null)=>rpc('wai_admin_cuotas',{p_accion:a,p_tenant:g.id,p_owner:o.id,p_hasta:h});
+  return node('article',{class:'wa-admin-payment'},node('div',{class:'wa-admin-card-head'},node('h3',{},'Cuota mensual'),cuotaBadge(g.id,o.id)),
+   node('p',{class:'hint'},c.hasta?'Cubierta hasta '+dateLabel(c.hasta)+'.':'Administración manual por dueño. No se originan cobros automáticos.'),
+   c.estado==='vencida'?node('p',{class:'wa-admin-warning'},'Revisá el pago. Si no abonó, marcá impaga para pausar sus locales.'):null,
+   node('form',{class:'wa-admin-inline',onsubmit:e=>{e.preventDefault();mutate(()=>save('al_dia',until.value));}},node('label',{},'Pago válido hasta',until),node('button',{class:'btn primary',type:'submit',disabled:disabled()},'Registrar pago')),
+   node('div',{class:'actions'},button('Marcar impaga y pausar locales',()=>confirmAction('¿Marcar impaga la cuota de '+o.nombre+' y pausar únicamente sus locales asignados? El historial y la configuración se conservan.',()=>save('impago')),'btn danger',{disabled:disabled()||c.estado==='impago'}),button('Marcar sin cargo',()=>confirmAction('¿Eximir de la cuota a '+o.nombre+'?',()=>save('exento')),'btn',{disabled:disabled()||c.estado==='exento'})),
+   node('p',{class:'hint'},'Registrar un pago no reactiva líneas automáticamente: elegí qué local habilitar.'));
+ }
+ function paintLocales(){
+  if(!ready){localHost.replaceChildren(node('div',{class:'wa-admin-empty'},node('h2',{},loading?'Cargando empresas…':'No se pudo abrir el listado'),node('p',{},loading?'Consultando información privada.':'Actualizá para volver a intentar.'),button('Actualizar',()=>void reload(),'btn',{disabled:loading})));return;}
+  const gs=groups(),g=gs.find(x=>x.id===company),o=g?.owners.get(owner);
+  if(!g){company=null;owner=null;
+   const input=node('input',{type:'search',class:'wa-admin-search',placeholder:'Buscar empresa…','aria-label':'Buscar empresa',value:filter});
+   const grid=node('div',{class:'wa-admin-company-grid'});
+   const paintGrid=()=>{const f=filter.trim().toLocaleLowerCase('es');const matches=gs.filter(x=>x.nombre.toLocaleLowerCase('es').includes(f));grid.replaceChildren(...(matches.length?matches.map(x=>{
+    return button('',()=>{company=x.id;owner=null;paint();},'wa-admin-company',{ 'aria-label':'Abrir empresa '+x.nombre});
+   }).map((card,i)=>{const x=matches[i];card.append(node('span',{class:'wa-admin-initials'},x.nombre.split(/\s+/).slice(0,2).map(v=>v[0]).join('').toUpperCase()),node('div',{class:'wa-admin-company-info'},node('h3',{},x.nombre),node('p',{},x.locals.length+' local(es) · '+[...x.owners.values()].filter(o=>o.id).length+' dueño(s)'),state(x.locals.filter(r=>r.activo).length+' habilitado(s)',x.locals.some(r=>r.activo)?'ok':'neutral')),node('span',{class:'wa-admin-arrow','aria-hidden':'true'},'›'));return card;}):[node('p',{class:'hint'},'No se encontraron empresas.')]));};
+   input.addEventListener('input',()=>{filter=input.value;paintGrid();});paintGrid();
+   localHost.replaceChildren(node('div',{class:'wa-admin-section-heading'},node('h2',{},'Empresas y locales'),node('p',{},'Elegí una empresa y luego el dueño para administrar sus sucursales.')),input,grid);return;
+  }
+  const back=button(o?'‹ Volver a dueños':'‹ Volver a empresas',()=>{if(o)owner=null;else{company=null;owner=null;}paint();},'btn wa-admin-back');
+  if(!o){
+   const ownerRows=[...g.owners.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(d=>button('',()=>{owner=d.id;paint();},'wa-admin-owner',{'aria-label':'Abrir dueño '+d.nombre}));
+   const ds=[...g.owners.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+   ownerRows.forEach((b,i)=>{const d=ds[i];b.append(node('span',{class:'wa-admin-initials small'},d.nombre.slice(0,1).toUpperCase()),node('div',{class:'wa-admin-company-info'},node('strong',{},d.nombre),node('p',{},d.locals.length+' local(es) a cargo')),d.id?cuotaBadge(g.id,d.id):state('Sin asignar','neutral'),node('span',{class:'wa-admin-arrow','aria-hidden':'true'},'›'));});
+   localHost.replaceChildren(back,node('div',{class:'wa-admin-section-heading'},node('h2',{},g.nombre),node('p',{},'Dueños y responsables de esta empresa')),node('div',{class:'wa-admin-owner-list'},...ownerRows));return;
+  }
+  const shared=o.authorized.filter(r=>!o.locals.includes(r));
+  localHost.replaceChildren(back,node('div',{class:'wa-admin-section-heading'},node('h2',{},o.nombre),node('p',{},g.nombre+' · '+o.locals.length+' local(es) a cargo')),paymentPanel(g,o),node('h3',{class:'wa-admin-subheading'},'Locales a cargo'),node('div',{class:'wa-admin-local-grid'},...(o.locals.length?o.locals.map(r=>localCard(r,o)):[node('p',{class:'hint'},'No hay locales asignados como responsable principal.')])),shared.length?node('section',{class:'wa-admin-payment'},node('h3',{},'Otros locales con acceso autorizado'),node('p',{class:'hint'},'La gestión comercial queda a cargo del responsable asignado.'),...shared.map(r=>node('p',{},r.nombre))):null);
+ }
+ function paint(){
+  if(!visible())return;
+  for(const [t,b] of Object.entries(tabButtons)){b.classList.toggle('active',tab===t);b.setAttribute('aria-pressed',String(tab===t));}
+  localHost.hidden=tab!=='locales';trialHost.hidden=tab!=='prueba';connectionHost.hidden=tab!=='avisos';
+  const gs=groups();
+  const metric=(label,value,detail)=>node('div',{class:'wa-admin-metric'},node('small',{},label),node('strong',{},value),node('span',{},detail));
+  summary.replaceChildren(metric('Empresas',ready?gs.length:'—','Con locales registrados'),metric('Locales WAI',ready?commercial.filter(r=>r.activo).length:'—','Habilitados'),metric('Líneas activas',ready?commercial.filter(r=>r.activo).reduce((n,r)=>n+registered(r).filter(x=>x.activo).length,0):'—','En producción'),metric('Avisos de conexión',healthKnown?noticed:'—','Requieren revisión'));
+  topNotice.className='wa-admin-status'+(error?' error':'');topNotice.textContent=error||noticeText||'';
+  alertBadge.textContent=healthKnown?String(noticed):'…';alertBadge.classList.toggle('warn',healthKnown&&noticed>0);
+  if(tab==='locales')paintLocales();
+ }
+ dashboard.append(node('header',{class:'wa-admin-header'},brand('Panel de administración'),node('div',{class:'actions'},button('Actualizar',()=>void reload(),'btn'),node('a',{class:'btn',href:'/'},'GESTLOK'),button('Cerrar sesión',()=>void logout(),'btn'))),heading,summary,tabs,topNotice,localHost,trialHost,connectionHost,confirmation);
+ root.replaceChildren(dashboard);
+ startAdminHealth(health,mine,central,(data,ok)=>{
+  if(!visible())return;healthKnown=ok;noticed=ok?data.filter(r=>r.habilitada&&r.estado!=='conectado').length:0;
+  // No rerenderizar formularios durante el sondeo de conexiones.
+  alertBadge.textContent=ok?String(noticed):'…';alertBadge.classList.toggle('warn',ok&&noticed>0);
+  const m=summary.lastElementChild?.querySelector('strong');if(m)m.textContent=ok?String(noticed):'—';
+ });
+ paint();void reload();
+}
+
+function startAdminHealth(host,mine,central,onSnapshot=()=>{}){
  let centralBusy=false,centralSignature='',centralAsk='',centralMsg='';
  const paintCentral=d=>{
   if(!central||centralBusy)return;
@@ -125,7 +262,7 @@ function startAdminHealth(host,mine,central){
   if(!visible()||busy||actionBusy)return;busy=true;
   try{
    const [data,centralState]=await Promise.all([rpc('wai_estado_global'),central?rpc('wai_central_admin').catch(()=>null):Promise.resolve(null)]);if(!visible())return;if(centralState)paintCentral(centralState);
-   if(!Array.isArray(data))throw Error('Estado no disponible');
+   if(!Array.isArray(data))throw Error('Estado no disponible');onSnapshot(data,true);
    const enabled=data.filter(r=>r.habilitada),alerts=enabled.filter(r=>r.estado!=='conectado');
    label.className=alerts.length?'wai-health-warn':'hint';
    label.textContent=enabled.length?enabled.filter(r=>r.estado==='conectado').length+' con señal comprobada · '+alerts.length+' requieren revisión':'Sin líneas habilitadas';
@@ -137,7 +274,7 @@ function startAdminHealth(host,mine,central){
     const canRetry=r.habilitada&&['desconectado','qr_vencido','qr'].includes(r.estado)&&Date.now()-Date.parse(r.senal_at)<90000;
     const href=r.slug&&valid(r.slug)?(portalHref(r.slug)+(portalHref(r.slug).includes('?')?'&':'?')+'vincular=1'):null;
     return node('article',{class:'wai-health-row'+(warn?' wai-health-alert':'')},node('strong',{},r.empresa+' · '+r.local),node('small',{},r.numero),node('span',{class:healthy?'wai-health-ok':warn?'wai-health-warn':'hint'},(healthy?'● ':warn?'⚠ ':'')+(labels[r.estado]||'Sin estado comprobado')),node('small',{class:'hint'},'Última comprobación: '+(r.wa_verificada_at?scheduledLabel(r.wa_verificada_at):'sin señal comprobada')),
-     node('div',{class:'actions'},canRetry?button('Restablecer señal',async()=>{if(actionBusy)return;actionBusy=true;actionStatus.textContent='Solicitando reconexión…';try{await rpc('wai_conexiones',{p_accion:'reconectar',p_id:r.id});actionStatus.textContent='Solicitud enviada. Esperando una comprobación real.';}catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}},'btn'):null,
+     node('div',{class:'actions'},canRetry?button('Intentar reconectar sin QR',async()=>{if(actionBusy)return;actionBusy=true;actionStatus.textContent='Solicitando reconexión…';try{await rpc('wai_conexiones',{p_accion:'reconectar',p_id:r.id});actionStatus.textContent='Solicitud enviada. Esperando una comprobación real.';}catch(e){actionStatus.textContent=e.message;}finally{actionBusy=false;last='';void refreshNow();}},'btn'):null,
      trialEnvironment()&&portal?.administradora===true?button(r.habilitada?'Desactivar número':'Activar número',async()=>{
        if(actionBusy||!visible())return;
        if(!confirm((r.habilitada?'¿Pausar ':'¿Activar ')+r.numero+' exclusivamente en el entorno de ensayo? No modifica ningún número comercial.'))return;
@@ -147,7 +284,7 @@ function startAdminHealth(host,mine,central){
      },'btn'):null,
      href?node('a',{class:'btn',href},healthy?'Ver vinculación':'Vincular / revisar QR'):null));
    }));
-  }catch{if(visible()){fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();}}
+  }catch{if(visible()){onSnapshot([],false);fail=true;last='';label.className='wai-health-warn';label.textContent='No pudimos comprobar la señal. No se asume que los locales están conectados.';list.replaceChildren();}}
   finally{busy=false;}
  };
  host.replaceChildren(title,label,list,actionStatus,button('Actualizar estados',()=>{last='';void refreshNow();},'btn'));
