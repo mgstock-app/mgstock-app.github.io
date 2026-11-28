@@ -6,7 +6,7 @@ const valid=s=>typeof s==='string'&&s.length>=3&&s.length<=60&&/^[a-z0-9]+(-[a-z
 const direct=/^\/gestlok-wai-([a-z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const params=new URLSearchParams(location.search);
 const trialPanel=/^\/chat\/wai\/prueba\/?$/.test(location.pathname);
-const displayLocalName=(empresa,local)=>trialPanel?'Mi Gusto (Prueba)':empresa+' · '+local;
+const displayLocalName=(empresa,local)=>trialPanel&&/^mi gusto(?: \(prueba\))?$/i.test(String(empresa).trim())?'Mi Gusto (Prueba)':empresa+' · '+local;
 // gestlok.com.ar/wai es la app única de GESTLOK WAI (instalable). /chat/wai/ sigue funcionando igual.
 const appRoute=/^\/wai\/?$/.test(location.pathname);
 const portalBase=trialPanel?'/chat/wai/prueba/':appRoute?'/wai/':'/chat/wai/';
@@ -693,7 +693,8 @@ function openDrawer(kind){
   const excluded=button('Números excluidos',()=>{settingsPanel?.destruir();settingsPanel=null;void renderWaiExclusions(host);},'btn');
   const local=button('Datos del local',()=>{settingsPanel?.destruir();host.waiSettings=null;host.replaceChildren();settingsPanel=window.GestLokChatPanel.montar(host,{sb,embebido:true,waiSlug:slug});},'btn');
   const attention=button('Atención WAI',()=>{settingsPanel?.destruir();settingsPanel=null;void renderAttentionSettings(host);},'btn primary');
-  tabs.append(local,attention,excluded);drawerBody.append(tabs,host);
+  const editor=button('Botones y respuestas',()=>{settingsPanel?.destruir();settingsPanel=null;void renderCartaEditor(host);},'btn');
+  tabs.append(local,attention,editor,excluded);drawerBody.append(tabs,host);
   void renderAttentionSettings(host);
  }
  else{renderConnection();void refresh();}
@@ -722,6 +723,68 @@ async function renderWaiExclusions(host){
  host.replaceChildren(node('h2',{},'Números excluidos del bot'),node('p',{class:'hint'},'Estos números no se procesan ni reciben respuestas automáticas. Podés seguir conversando desde WhatsApp normalmente; no se bloquea el contacto. Cada local administra su propia lista.'),form,status,list);
  void change('ver');
 }
+// Only the same-local public image bucket is writable; no arbitrary URL is fetched.
+function waiPhotoField(local,initial,alive){
+ let url=initial||'',uploading=false;
+ const photo=node('img',{alt:'Vista previa de la foto',style:'max-width:100%;max-height:220px;object-fit:contain;border-radius:8px',hidden:!url});
+ const file=node('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':'Elegir foto'});
+ const message=node('small',{class:'hint',role:'status'});
+ const preview=()=>{photo.hidden=!url;if(url)photo.src=url;else photo.removeAttribute('src');};
+ const upload=button('Subir foto',async()=>{
+  if(uploading||!alive())return;const f=file.files?.[0],ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f?.type];
+  if(!f||!ext||f.size>2097152){message.textContent='Elegí JPG, PNG o WebP de hasta 2 MB.';return;}
+  uploading=true;upload.disabled=true;message.textContent='Cargando…';
+  try{
+   const bucket=sb.storage.from('gestlok-chat-cartas'),path=local+'/'+crypto.randomUUID()+'.'+ext;
+   const {error}=await bucket.upload(path,f,{contentType:f.type,upsert:false});if(error)throw error;
+   if(!alive())return;url=bucket.getPublicUrl(path).data.publicUrl;preview();message.textContent='Foto lista. Guardá la configuración para aplicarla.';
+  }catch{if(alive())message.textContent='No pudimos subir la foto. Revisá el formato y tus permisos.';}
+  finally{uploading=false;upload.disabled=false;}
+ },'btn');
+ const remove=button('Quitar foto',()=>{if(uploading)return;url='';preview();message.textContent='Guardá para quitar la asociación. No se borra la imagen original.';},'btn');
+ preview();return {view:node('div',{class:'wai-setting-card'},photo,file,node('div',{class:'actions'},upload,remove),message),value:()=>url,busy:()=>uploading};
+}
+async function renderCartaEditor(host){
+ const me=generation,local=sessionLocal?.id,identity=Symbol();host.waiSettings=identity;
+ const alive=()=>me===generation&&drawerKind==='config'&&host.isConnected&&host.waiSettings===identity;
+ host.replaceChildren(node('p',{class:'hint'},'Cargando botones del local…'));
+ try{
+  let data=await rpc('wai_carta_editor',{p_sucursal:local});if(!alive())return;
+  const list=node('div',{class:'wai-settings'}),status=node('p',{class:'hint',role:'status'});
+  const header=node('div',{class:'actions'},button('+ Agregar botón',()=>edit(null),'btn primary'),button('Editar respuestas de atención',()=>void renderAttentionSettings(host),'btn'));
+  function show(){if(!alive())return;list.replaceChildren(...(data.paginas.length?data.paginas.map(p=>node('article',{class:'wai-setting-card'},node('strong',{},p.titulo),node('p',{class:'hint'},(p.activa?'Activo':'Archivado')+' · Orden '+p.orden+' · '+(p.categorias||[]).join(', ')),p.imagen_url?node('img',{src:p.imagen_url,alt:'Foto de '+p.titulo,style:'max-width:100%;max-height:130px;object-fit:contain'}):null,button('Editar',()=>edit(p),'btn'))):[node('p',{class:'hint'},'Todavía no hay botones de carta. Agregá el primero cuando quieras.')]));}
+  function edit(p){
+   const title=node('input',{type:'text',maxlength:60,required:true,value:p?.titulo||''});
+   const order=node('input',{type:'number',min:0,max:9999,required:true,value:p?.orden??Math.min(9999,Math.max(0,...data.paginas.map(x=>x.orden))+10)});
+   const enabled=node('input',{type:'checkbox',checked:p?.activa!==false});
+   const photo=waiPhotoField(local,p?.imagen_url,alive);
+   const cats=[...new Set([...data.categorias.map(c=>c.nombre),...(p?.categorias||[])])];
+   const catFields=cats.map(n=>({n,field:node('input',{type:'checkbox',checked:(p?.categorias||[]).includes(n)})}));
+   const productRows=data.productos.map(x=>({n:x.nombre,c:x.categoria,field:node('input',{type:'checkbox',checked:(p?.productos_nombres||[]).includes(x.nombre)})}));
+   const legacy=(p?.productos_nombres||[]).filter(n=>!productRows.some(x=>x.n===n)).map(n=>({n,c:null,field:node('input',{type:'checkbox',checked:true})}));
+   const products=productRows.concat(legacy),productList=node('div');
+   const all=node('input',{type:'checkbox',checked:!(p?.productos_nombres||[]).length});
+   const catList=node('div',{},...catFields.map(x=>node('label',{class:'wai-check'},x.field,x.n)));
+   function sync(){const selected=new Set(catFields.filter(x=>x.field.checked).map(x=>x.n));productList.replaceChildren(...products.filter(x=>x.c===null||selected.has(x.c)).map(x=>node('label',{class:'wai-check'},x.field,x.n+(x.c?' · '+x.c:' (asociación anterior)'))));productList.hidden=all.checked;}
+   for(const x of catFields)x.field.addEventListener('change',sync);all.addEventListener('change',sync);sync();
+   const detail=node('select',{},node('option',{value:''},'Sin foto de detalle'),...data.paginas.filter(x=>x.clave!==p?.clave).map(x=>node('option',{value:x.clave},x.titulo)));detail.value=p?.detalle_clave||'';
+   const group=node('input',{type:'text',maxlength:120,value:p?.detalle_grupo||'',placeholder:'Ej.: empanadas'});
+   const save=node('button',{type:'submit',class:'btn primary'},'Guardar botón');
+   const form=node('form',{class:'wai-settings',onsubmit:async e=>{
+    e.preventDefault();if(photo.busy()||!alive()||save.disabled)return;
+    const selected=catFields.filter(x=>x.field.checked).map(x=>x.n);
+    const names=all.checked?[]:products.filter(x=>x.field.checked&&(x.c===null||selected.includes(x.c))).map(x=>x.n);
+    if(!all.checked&&!names.length){status.textContent='Elegí productos o activá Todos los productos.';return;}
+    if(p?.activa&&!enabled.checked&&!confirm('¿Archivar esta opción? No se elimina su configuración ni el historial.'))return;
+    save.disabled=true;status.textContent='Guardando…';
+    try{data=await rpc('wai_carta_editor',{p_sucursal:local,p_cambio:{clave:p?.clave||null,version:p?.version||null,titulo:title.value.trim(),imagen_url:photo.value(),orden:Number(order.value),activa:enabled.checked,categorias:selected,productos_nombres:names,detalle_clave:detail.value||null,detalle_grupo:detail.value?group.value.trim():null}});if(alive()){status.textContent='Botón guardado para este local.';show();}}
+    catch(err){if(alive())status.textContent=err.message;}finally{save.disabled=false;}
+   }},node('h3',{},p?'Editar opción':'Nueva opción'),node('label',{},'Nombre que ve el cliente',title),node('label',{class:'wai-check'},enabled,'Opción activa (destildá para archivar)'),node('label',{},'Orden',order),node('h4',{},'Foto asociada'),photo.view,node('h4',{},'Categorías de la carta'),catList,node('label',{class:'wai-check'},all,'Todos los productos de las categorías elegidas'),productList,node('details',{},node('summary',{},'Foto adicional para elegir gustos u opciones'),node('label',{},'Otra foto de carta',detail),node('label',{},'ID del grupo de opciones del producto',group),node('p',{class:'hint'},'Opcional: conservá el vínculo existente o dejalo vacío. El grupo debe coincidir con el configurado en Carta y precios.')),save,button('Cancelar',()=>{status.textContent='';show();},'btn'));
+   list.replaceChildren(form);status.textContent='';
+  }
+  host.replaceChildren(node('h2',{},'Botones y respuestas'),node('p',{class:'hint'},'Cada comercio edita su propia carta visual. El nombre será la opción que recibe el cliente; podés asociar una foto, elegir productos, ordenar o archivar. Los precios se toman del catálogo del local. Para consultas o servicios sin pedido, usá Editar respuestas de atención.'),header,status,list);show();
+ }catch(err){if(alive())host.replaceChildren(node('p',{class:'error'},err.message));}
+}
 async function renderAttentionSettings(host){
  const me=generation,local=sessionLocal?.id,identity=Symbol();host.waiSettings=identity;
  host.replaceChildren(node('p',{class:'hint',style:'padding:18px'},'Cargando configuración de atención…'));
@@ -744,17 +807,18 @@ async function renderAttentionSettings(host){
    const answer=node('textarea',{rows:2,maxlength:400,placeholder:'Respuesta configurada para esta opción'});answer.value=o.respuesta||'';
    const person=node('input',{type:'checkbox',checked:o.humano!==false});
    const box=node('div',{class:'wai-setting-card'});
-   const f={label,answer,person,box};fields.push(f);
+   const photo=waiPhotoField(local,o.imagen_url,()=>me===generation&&host.isConnected&&host.waiSettings===identity&&drawerKind==='config');
+   const f={label,answer,person,box,photo};fields.push(f);
    const remove=button('Quitar',()=>{if(fields.length<=2){status.textContent='Mantené al menos dos opciones.';return;}fields.splice(fields.indexOf(f),1);box.remove();},'btn');
-   const sync=()=>{answer.disabled=person.checked;};person.addEventListener('change',sync);sync();
-   box.append(node('label',{},'Texto de opción',label),node('label',{class:'wai-check'},person,'Derivar a una persona'),node('label',{},'Respuesta automática',answer),remove);items.append(box);
+   const sync=()=>{answer.disabled=person.checked;photo.view.hidden=person.checked;};person.addEventListener('change',sync);sync();
+   box.append(node('label',{},'Texto de opción',label),node('label',{class:'wai-check'},person,'Derivar a una persona'),node('label',{},'Respuesta automática',answer),photo.view,button('Subir orden',()=>{const i=fields.indexOf(f);if(i>0){[fields[i-1],fields[i]]=[fields[i],fields[i-1]];items.replaceChildren(...fields.map(x=>x.box));}},'btn'),button('Bajar orden',()=>{const i=fields.indexOf(f);if(i<fields.length-1){[fields[i+1],fields[i]]=[fields[i],fields[i+1]];items.replaceChildren(...fields.map(x=>x.box));}},'btn'),remove);items.append(box);
   };
   for(const o of data.opciones||[])row(o);
   const submit=node('button',{class:'btn primary',type:'submit'},'Guardar atención');
   const form=node('form',{class:'wai-settings',onsubmit:async e=>{
-   e.preventDefault();submit.disabled=true;status.textContent='Guardando…';
+   e.preventDefault();if(fields.some(f=>f.photo.busy())){status.textContent='Esperá a que termine la carga de fotos.';return;}submit.disabled=true;status.textContent='Guardando…';
    try{
-    const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked}))};
+    const config={pregunta:title.value.trim(),bienvenida_auto:auto.checked,pedidos:orders.checked,agente_activo:agent.checked,seguimiento_min:Number(follow.value),cierre_auto:closeAuto.checked,cierre_min:Number(closeMinutes.value),opciones:fields.map(f=>({label:f.label.value.trim(),respuesta:f.answer.value.trim(),humano:f.person.checked,imagen_url:f.person.checked?'':f.photo.value()}))};
     await rpc('wai_atencion_config',{p_sucursal:local,p_config:config});if(me===generation&&host.waiSettings===identity){status.textContent='Configuración guardada para este local.';void refresh();}
    }catch(e){status.textContent=e.message;}finally{submit.disabled=false;}
   }},node('h2',{},'Atención del comercio'),node('p',{class:'hint'},'Estas opciones sirven para productos, servicios, reservas o consultas. Cada local define su propia atención.'),node('label',{},'Pregunta o bienvenida',title),node('label',{class:'wai-check'},agent,'Activar asistente de atención (sin API paga)'),node('p',{class:'hint'},'El asistente interpreta consultas habituales y la modalidad de entrega; si no entiende, deriva a una persona. Envía opciones seleccionables dentro de WhatsApp.'),node('label',{class:'wai-check'},orders,'Habilitar seguimiento de pedidos y entregas'),node('h3',{},'Entrega y retiro'),node('p',{class:'hint'},'Delivery es opcional. Configuralo en Datos del local → Ajustes → Entrega y pago. Si desactivás Envío a domicilio, dejá Retiro en el local activo: el asistente no pedirá dirección ni cobrará envío.'),node('h3',{},'Horarios y pedidos programados'),node('p',{class:'hint'},'En Datos del local → Ajustes → Días y horarios de apertura, configurá tus turnos. Cuando el local esté cerrado, el asistente informa el horario y ofrece dejar un pedido para la próxima apertura. El gerente lo confirma al abrir.'),node('h3',{},'Finalización de chats'),node('p',{class:'hint'},'Al confirmar el gerente, se envía la invitación opcional a reseñar. La conversación queda abierta durante 4 horas desde la invitación. El cliente puede hacer otro pedido o reportar un problema. Los reclamos pendientes no se cierran automáticamente. No se envían encuestas de entrega y el historial se conserva.'),node('h3',{},'Opciones personalizadas de WhatsApp'),node('label',{class:'wai-check'},auto,'Enviar menú personalizado al inicio si el asistente está desactivado'),node('p',{class:'hint'},'Prueba con selección nativa por encuesta. Elegí respuesta automática configurada o atención humana. No requiere IA paga.'),items,button('+ Agregar opción',add,'btn'),submit,status);
@@ -912,3 +976,4 @@ setInterval(()=>{for(const im of root.querySelectorAll('[data-expira]'))if(Date.
 sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')setTimeout(()=>{clearPrivate();login();},0);});
 void init();
 })();
+
